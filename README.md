@@ -2,6 +2,12 @@
 
 ## Getting Started
 
+Checkout the repository and initialize all submodules:
+
+```
+git submodule update --init --recursive
+```
+
 TBD
 
 ## Contribution Style

@@ -12,9 +12,18 @@
 // Description:
 
 module hyperbus (
-    input logic clk_i,    // Clock
-    input logic rst_ni,   // Asynchronous reset active low
+    input logic        clk_i,    // Clock
+    input logic        rst_ni,   // Asynchronous reset active low
 
+    output logic       ck_o,
+    output logic       ck_no,
+    output logic       cs_no,
+    output logic       wp_no,
+    output logic       hwreset_no,
+    input  logic       rds_i,
+    inout  logic [7:0] dq_io,
+    input  logic       int_ni,
+    input  logic       rsto_ni
 );
 
 endmodule
