@@ -11,19 +11,24 @@
 // Date:
 // Description:
 
-module hyperbus (
-    input logic        clk_i,    // Clock
-    input logic        rst_ni,   // Asynchronous reset active low
-
-    output logic       ck_o,
-    output logic       ck_no,
-    output logic       cs_no,
-    output logic       wp_no,
-    output logic       hwreset_no,
-    input  logic       rds_i,
-    inout  logic [7:0] dq_io,
-    input  logic       int_ni,
-    input  logic       rsto_ni
+module hyperbus #(
+        int unsigned NR_CS = 2
+)(
+    input logic                    clk_i,          // Clock
+    input logic                    rst_ni,         // Asynchronous reset active low
+    // AXI Bus
+    // ....
+    // physical interface
+    output logic [NR_CS-1:0]       hyper_cs_no,
+    output logic                   hyper_ck_o,
+    output logic                   hyper_ck_no,
+    output logic                   hyper_rwds_o,
+    input  logic                   hyper_rwds_i,
+    output logic                   hyper_rwds_oe_o,
+    input  logic [7:0]             hyper_dq_i,
+    output logic [7:0]             hyper_dq_o,
+    output logic                   hyper_dq_oe_o,
+    output logic                   hyper_reset_no
 );
 
 endmodule

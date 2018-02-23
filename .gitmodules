@@ -1,3 +1,9 @@
 [submodule "models"]
 	path = models
 	url = git@iis-git.ee.ethz.ch:kerbin/models.git
+[submodule "src/tech_cells_generic"]
+	path = src/tech_cells_generic
+	url = git@iis-git.ee.ethz.ch:pulp-open/tech_cells_generic.git
+[submodule "src/tech_cells_UMC65"]
+	path = src/tech_cells_UMC65
+	url = git@iis-git.ee.ethz.ch:pulp-restricted/tech_cells_UMC65.git
