@@ -12,7 +12,7 @@
 // Description:
 
 module hyperbus #(
-        int unsigned NR_CS = 2
+    int unsigned NR_CS = 2
 )(
     input logic                    clk_i,          // Clock
     input logic                    rst_ni,         // Asynchronous reset active low
@@ -30,5 +30,37 @@ module hyperbus #(
     output logic                   hyper_dq_oe_o,
     output logic                   hyper_reset_no
 );
+
+    logic d0_i;
+    logic d1_i;
+    logic q_o;
+
+    assign d0_i = 0;
+    assign d1_i = 1;
+
+    logic clk0;
+    logic clk90;
+    logic clk180;
+    logic clk270;
+
+  clk_gen ddr_clk (
+    .clk_i (clk_i),
+    .rst_ni (rst_ni),
+    .clk0_o (clk0),
+    .clk90_o (clk90),
+    .clk180_o (clk180),
+    .clk270_o (clk270)
+  );
+
+  ddr_out ddr_data (
+    .rst_ni (rst_ni),
+    .clk_i (clk90),
+    .d0_i (d0_i),
+    .d1_i (d1_i),
+    .q_o (q_o)
+  );
+
+  assign hyper_ck_o = clk0;
+  assign hyper_ck_no = clk180;
 
 endmodule
