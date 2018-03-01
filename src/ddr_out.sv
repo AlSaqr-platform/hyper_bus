@@ -18,7 +18,7 @@ module ddr_out #(
    input  logic en_i,
    input  logic d0_i,
    input  logic d1_i,
-   output logic q_o,
+   output logic q_o
 );
     reg  q0;
     reg  q1;
