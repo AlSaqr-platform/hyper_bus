@@ -46,4 +46,106 @@ module hyperbus_phy #(
     output logic                   hyper_reset_no
 );
 
+    logic [47:0] cmd_addr;
+    logic [15:0] data_out;
+    logic [1:0] cmd_addr_sel;
+
+    logic clock_enable = 0;
+
+    logic clk0;
+    logic clk90;
+    logic clk180;
+    logic clk270;
+
+  clk_gen ddr_clk (
+    .clk_i (clk_i),
+    .rst_ni (rst_ni),
+    .clk0_o (clk0),
+    .clk90_o (clk90),
+    .clk180_o (clk180),
+    .clk270_o (clk270)
+  );
+
+    assign hyper_ck_o = (clock_enable) ? clk0 : 0;
+    assign hyper_ck_no = (clock_enable) ? clk180 : 1;
+
+    assign hyper_rwds_oe_o = 0;
+    assign hyper_cs_no = ~clock_enable;
+  
+    genvar i;
+    generate
+      for(i=0; i<=7; i++)
+      begin: ddr_out_bus
+        ddr_out ddr_data (
+          .rst_ni (rst_ni),
+          .clk_i (clk270),
+          .d0_i (data_out[i+8]),
+          .d1_i (data_out[i]),
+          .q_o (hyper_dq_o[i])
+        );
+      end
+    endgenerate
+
+
+    cmd_addr_gen cmd_addr_gen (
+        .rw_i            ( ~trans_write_i   ),
+        .address_space_i ( 1'b1            ),
+        .burst_type_i    ( 1'b1            ),
+        .address_i       ( trans_address_i ),
+        .cmd_addr_o      ( cmd_addr        )
+    );
+
+    
+
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cmd_addr_sel
+        if(~rst_ni) begin
+            cmd_addr_sel <= 0;
+        end else if (trans_valid_i && cmd_addr_sel != 2'h3) begin
+            cmd_addr_sel <= cmd_addr_sel + 1;
+        end
+    end
+
+    always @(cmd_addr_sel or trans_valid_i) begin
+        if (trans_valid_i) begin
+            case(cmd_addr_sel)
+                0: data_out = cmd_addr[47:32];
+                1: data_out = cmd_addr[31:16];
+                2: data_out = cmd_addr[15:0];
+                default: data_out = '0;
+            endcase // cmd_addr_sel
+        end else begin
+            data_out = '0;
+        end
+    end
+
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_dq_oe_o
+        if(~rst_ni) begin
+            hyper_dq_oe_o <= 1;
+        end else if(cmd_addr_sel == 2'h3) begin
+            hyper_dq_oe_o <= 0;
+        end
+    end
+
+    always_ff @(posedge clk180 or negedge rst_ni) begin : proc_clock_enable
+        if(~rst_ni) begin
+            clock_enable <= 0;
+        end else if (trans_valid_i) begin
+            clock_enable <= 1;
+        end
+    end
+
+    logic hyperbus_state;
+
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_reset_no
+        if(~rst_ni) begin
+            hyper_reset_no <= 0;
+            hyperbus_state <= 0;
+        end else if(~hyperbus_state) begin
+            hyper_reset_no <= 0;
+            hyperbus_state <= 1;
+        end else begin
+            hyper_reset_no <= 1;
+        end
+    end
+
 endmodule

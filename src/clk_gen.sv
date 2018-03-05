@@ -31,7 +31,7 @@ module clk_gen (
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if(~rst_ni) begin
             r_clk0_o   <= 0;
-            r_clk180_o <= 0;
+            r_clk180_o <= 1;
         end else begin
             r_clk0_o <= ~r_clk0_o;
             r_clk180_o <= r_clk90_o;
@@ -41,7 +41,7 @@ module clk_gen (
     always_ff @(negedge clk_i or negedge rst_ni) begin
         if (~rst_ni) begin
             r_clk90_o  <= 0;
-            r_clk270_o <= 0;
+            r_clk270_o <= 1;
         end else begin
             r_clk90_o  <= r_clk0_o;
             r_clk270_o <= r_clk180_o;

@@ -9,7 +9,7 @@
 
 module hyperbus_tb;
 
-  localparam TCLK = 6ns;
+  localparam TCLK = 3ns;
   localparam NR_CS = 2;
 
   logic             clk_i = 0;         

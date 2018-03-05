@@ -13,12 +13,12 @@
 
 module cmd_addr_gen #(
 )(
-	input logic rw_i, //1-read, 0-write
-	input logic address_space_i, //0-memory, 1-register
-	input logic burst_type_i, //0-wrapped, 1-linear
-	input logic [31:0] address_i,
-
-	output logic [47:0] cmd_addr_o
+	input logic              rw_i,              //1-read, 0-write
+	input logic              address_space_i,   //0-memory, 1-register
+	input logic              burst_type_i,      //0-wrapped, 1-linear
+	input logic  [31:0]      address_i,
+	
+	output logic [47:0]      cmd_addr_o
 );
 
 	assign cmd_addr_o[47] = rw_i;

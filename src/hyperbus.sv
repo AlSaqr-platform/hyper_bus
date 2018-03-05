@@ -51,14 +51,22 @@ module hyperbus #(
     .clk180_o (clk180),
     .clk270_o (clk270)
   );
+  
+  genvar i;
+  generate
+    for(i=0; i<=7; i++)
+    begin: ddr_out_bus
+      ddr_out ddr_data (
+        .rst_ni (rst_ni),
+        .clk_i (clk90),
+        .d0_i (hyper_),
+        .d1_i (d1_i),
+        .q_o (hyper_dq_o[i])
+      );
+    end
+  endgenerate
 
-  ddr_out ddr_data (
-    .rst_ni (rst_ni),
-    .clk_i (clk90),
-    .d0_i (d0_i),
-    .d1_i (d1_i),
-    .q_o (q_o)
-  );
+
 
   assign hyper_ck_o = clk0;
   assign hyper_ck_no = clk180;
