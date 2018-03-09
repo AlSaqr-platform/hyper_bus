@@ -57,17 +57,27 @@ module hyperbus_phy #(
     logic clk180;
     logic clk270;
 
-  clk_gen ddr_clk (
-    .clk_i (clk_i),
-    .rst_ni (rst_ni),
-    .clk0_o (clk0),
-    .clk90_o (clk90),
-    .clk180_o (clk180),
-    .clk270_o (clk270)
-  );
+    clk_gen ddr_clk (
+        .clk_i    ( clk_i  ),
+        .rst_ni   ( rst_ni ),
+        .clk0_o   ( clk0   ),
+        .clk90_o  ( clk90  ),
+        .clk180_o ( clk180 ),
+        .clk270_o ( clk270 )
+    );
 
-    assign hyper_ck_o = (clock_enable) ? clk0 : 0; //clk90
-    assign hyper_ck_no = (clock_enable) ? clk180 : 1; //instantiate clock gating
+    pulp_clock_gating hyper_ck_gating (
+        .clk_i      ( clk90        ),
+        .en_i       ( clock_enable ),
+        .test_en_i  ( 1'b0         ),
+        .clk_o      ( hyper_ck_o   )
+    ); 
+
+    pulp_clock_inverter hyper_ck_no_inv (
+        .clk_i ( hyper_ck_o  ),
+        .clk_o ( hyper_ck_no )
+    );
+
 
     assign hyper_rwds_oe_o = 0;
     assign hyper_cs_no = ~clock_enable;
@@ -78,7 +88,7 @@ module hyperbus_phy #(
       begin: ddr_out_bus
         ddr_out ddr_data (
           .rst_ni (rst_ni),
-          .clk_i (clk270),
+          .clk_i (clk0),
           .d0_i (data_out[i+8]),
           .d1_i (data_out[i]),
           .q_o (hyper_dq_o[i])
