@@ -25,11 +25,11 @@ module hyperbus_phy_tb;
   logic [BURST_WIDTH-1:0] trans_burst_i;
   logic                   tx_valid_i;
   logic                   tx_ready_o;
-  logic [7:0]             tx_data_i;
-  logic                   tx_strb_i;
+  logic [15:0]            tx_data_i;
+  logic [1:0]             tx_strb_i;
   logic                   rx_valid_o;
   logic                   rx_ready_i;
-  logic [7:0]             rx_data_o;
+  logic [15:0]            rx_data_o;
   logic [NR_CS-1:0]       hyper_cs_no;
   logic                   hyper_ck_o;
   logic                   hyper_ck_no;
@@ -88,7 +88,8 @@ module hyperbus_phy_tb;
   assign dq_io = hyper_dq_oe_o ? hyper_dq_o : 8'bz;
 
 
-  s27ks0641 hyperram_model (
+  s27ks0641 #(.TimingModel("S27KS0641DPBHI020")) hyperram_model
+  (
     .DQ7      (dq_io[7]),
     .DQ6      (dq_io[6]),
     .DQ5      (dq_io[5]),
@@ -124,6 +125,7 @@ module hyperbus_phy_tb;
   assign trans_address_i = 32'h0;
 
   initial begin
+    $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model);
     trans_valid_i = 0;
     #150us
     repeat(20) #TCLK

@@ -27,12 +27,12 @@ module hyperbus_phy #(
     // transmitting
     input  logic                   tx_valid_i,
     output logic                   tx_ready_o,
-    input  logic [7:0]             tx_data_i,
-    input  logic                   tx_strb_i,   // mask data
+    input  logic [15:0]            tx_data_i,
+    input  logic [1:0]             tx_strb_i,   // mask data
     // receiving channel
     output logic                   rx_valid_o,
     input  logic                   rx_ready_i,
-    output logic [7:0]             rx_data_o,
+    output logic [15:0]            rx_data_o,
     // physical interface
     output logic [NR_CS-1:0]       hyper_cs_no,
     output logic                   hyper_ck_o,
@@ -48,9 +48,9 @@ module hyperbus_phy #(
 
     logic [47:0] cmd_addr;
     logic [15:0] data_out;
-    logic [1:0] cmd_addr_sel;
+    logic [1:0]  cmd_addr_sel;
 
-    logic clock_enable = 0;
+    logic clock_enable = 1'b0;
 
     logic clk0;
     logic clk90;
@@ -66,8 +66,8 @@ module hyperbus_phy #(
     .clk270_o (clk270)
   );
 
-    assign hyper_ck_o = (clock_enable) ? clk0 : 0;
-    assign hyper_ck_no = (clock_enable) ? clk180 : 1;
+    assign hyper_ck_o = (clock_enable) ? clk0 : 0; //clk90
+    assign hyper_ck_no = (clock_enable) ? clk180 : 1; //instantiate clock gating
 
     assign hyper_rwds_oe_o = 0;
     assign hyper_cs_no = ~clock_enable;
@@ -88,14 +88,12 @@ module hyperbus_phy #(
 
 
     cmd_addr_gen cmd_addr_gen (
-        .rw_i            ( ~trans_write_i   ),
-        .address_space_i ( 1'b1            ),
+        .rw_i            ( ~trans_write_i  ),
+        .address_space_i ( 1'b0            ),
         .burst_type_i    ( 1'b1            ),
         .address_i       ( trans_address_i ),
         .cmd_addr_o      ( cmd_addr        )
     );
-
-    
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cmd_addr_sel
         if(~rst_ni) begin
@@ -118,6 +116,7 @@ module hyperbus_phy #(
         end
     end
 
+    //use data bus as input after sending cmd-addr
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_dq_oe_o
         if(~rst_ni) begin
             hyper_dq_oe_o <= 1;
@@ -131,21 +130,11 @@ module hyperbus_phy #(
             clock_enable <= 0;
         end else if (trans_valid_i) begin
             clock_enable <= 1;
-        end
-    end
-
-    logic hyperbus_state;
-
-    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_reset_no
-        if(~rst_ni) begin
-            hyper_reset_no <= 0;
-            hyperbus_state <= 0;
-        end else if(~hyperbus_state) begin
-            hyper_reset_no <= 0;
-            hyperbus_state <= 1;
         end else begin
-            hyper_reset_no <= 1;
+            clock_enable <= 0;
         end
     end
+
+    assign hyper_reset_no = 1;
 
 endmodule
