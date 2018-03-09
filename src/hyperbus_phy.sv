@@ -10,6 +10,7 @@
 // Author:
 // Date:
 // Description: Connect the AXI interface with the actual HyperBus
+`timescale 1 ps/1 ps
 
 module hyperbus_phy #(
     int unsigned BURST_WIDTH = 12,
@@ -54,6 +55,9 @@ module hyperbus_phy #(
     logic clock_enable = 1'b0;
     logic en_cs;
 
+    logic [15:0] data_i;
+    logic hyper_rwds_i_d;
+
     logic clk0;
     logic clk90;
     logic clk180;
@@ -86,6 +90,8 @@ module hyperbus_phy #(
     assign hyper_cs_no[0] = ~ (en_cs && trans_cs_i[0]);
     assign hyper_cs_no[1] = ~ (en_cs && trans_cs_i[1]); //ToDo Use NR_CS
   
+    assign #2000 hyper_rwds_i_d = hyper_rwds_i;
+
     genvar i;
     generate
       for(i=0; i<=7; i++)
@@ -108,6 +114,15 @@ module hyperbus_phy #(
         .cmd_addr_o      ( cmd_addr        )
     );
 
+    ddr_in ddr_in (
+        .clk0            ( clk0           ),
+        .hyper_rwds_i_d  ( hyper_rwds_i_d ),
+        .hyper_dq_i      ( hyper_dq_i     ),
+        .data_o          ( data_i         ),
+        .en_read         ( en_read        ),
+        .rst_ni          ( rst_ni         )
+    );
+
     always @(cmd_addr_sel) begin
         case(cmd_addr_sel)
             0: data_out = cmd_addr[47:32];
@@ -116,6 +131,8 @@ module hyperbus_phy #(
             default: data_out = '0;
         endcase // cmd_addr_sel
     end
+
+
 
     typedef enum logic[3:0] {STANDBY, CMD_ADDR, WAIT2, WAIT, DATA_W, DATA_R, END} hyper_trans_t;
     hyper_trans_t hyper_trans_state;

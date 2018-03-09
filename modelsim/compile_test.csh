@@ -23,5 +23,6 @@ vlog-${VER} -sv -work ${LIB} \
 	../src/hyperbus.sv \
 	../src/hyperbus_phy.sv \
 	../src/cmd_addr_gen.sv \
+	../src/ddr_in.sv \
 	../src/hyperbus_tb.sv \
 	../src/hyperbus_phy_tb.sv
