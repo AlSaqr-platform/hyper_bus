@@ -88,7 +88,7 @@ module hyperbus_phy_tb;
   assign dq_io = hyper_dq_oe_o ? hyper_dq_o : 8'bz;
 
 
-  s27ks0641 #(.mem_file_name("/scratch/hyperbus1/src/s27ks0641.mem"), .TimingModel("S27KS0641DPBHI020")) hyperram_model
+  s27ks0641 #(.mem_file_name("../src/s27ks0641.mem"), .TimingModel("S27KS0641DPBHI020")) hyperram_model
   (
     .DQ7      (dq_io[7]),
     .DQ6      (dq_io[6]),
@@ -123,6 +123,7 @@ module hyperbus_phy_tb;
 
   assign trans_write_i = 0;
   assign trans_address_i = 32'h0; //22-bit: 4CD9FC
+  assign trans_burst_i = 12'h10;
   assign trans_cs_i = 2'b01;
 
   initial begin

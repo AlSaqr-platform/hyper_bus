@@ -54,6 +54,7 @@ module hyperbus_phy #(
 
     logic clock_enable = 1'b0;
     logic en_cs;
+    logic en_read;
 
     logic [15:0] data_i;
     logic hyper_rwds_i_d;
@@ -87,11 +88,18 @@ module hyperbus_phy #(
     assign hyper_rwds_oe_o = 0;
     assign hyper_reset_no = 1;
 
-    assign hyper_cs_no[0] = ~ (en_cs && trans_cs_i[0]);
-    assign hyper_cs_no[1] = ~ (en_cs && trans_cs_i[1]); //ToDo Use NR_CS
-  
-    assign #2000 hyper_rwds_i_d = hyper_rwds_i;
+    //selecting ram must be in sync with future hyper_ck_o
+    always_ff @(posedge clk90 or negedge rst_ni) begin : proc_hyper_cs_no
+        if(~rst_ni) begin
+            hyper_cs_no <= {NR_CS{1'b1}};
+        end else begin
+            hyper_cs_no[0] = ~ (en_cs && trans_cs_i[0]);
+            hyper_cs_no[1] = ~ (en_cs && trans_cs_i[1]); //ToDo Use NR_CS
+        end
+    end
 
+    assign #2000 hyper_rwds_i_d = hyper_rwds_i;
+    
     genvar i;
     generate
       for(i=0; i<=7; i++)
@@ -138,22 +146,26 @@ module hyperbus_phy #(
     hyper_trans_t hyper_trans_state;
 
     logic [3:0] wait_cnt;
+    logic [BURST_WIDTH-1:0] burst_cnt;
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
         if(~rst_ni) begin
             hyper_trans_state <= STANDBY;
             wait_cnt <= WAIT_CYCLES;
+            burst_cnt <= {BURST_WIDTH{1'b0}};
             cmd_addr_sel = 0;
         end else begin
             //defaults
             clock_enable <= 1'b1;
             en_cs <= 1'b1;
+            en_read <= 1'b0;
             hyper_dq_oe_o <= 0;
             case(hyper_trans_state)
                 STANDBY: begin
                     clock_enable <= 1'b0;
                     en_cs <= 1'b0;
                     if(trans_valid_i) begin
+                        en_cs <= 1'b1;
                         hyper_trans_state <= CMD_ADDR;
                         cmd_addr_sel = 0;
                     end
@@ -176,10 +188,20 @@ module hyperbus_phy #(
                 WAIT: begin
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin
+                        burst_cnt <= trans_burst_i - 1;
                         hyper_trans_state <= DATA_R;
                     end
                 end
                 DATA_R: begin
+                    burst_cnt <= burst_cnt - 1;
+                    en_read <= 1'b1;
+                    if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
+                        hyper_trans_state <= END;
+                    end
+                end
+                END: begin
+                    clock_enable <= 1'b0;
+                    en_cs <= 1'b0;
                 end
             endcase
         end
