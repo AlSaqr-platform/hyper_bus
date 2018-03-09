@@ -13,7 +13,8 @@
 
 module hyperbus_phy #(
     int unsigned BURST_WIDTH = 12,
-    int unsigned NR_CS = 2
+    int unsigned NR_CS = 2,
+    int unsigned WAIT_CYCLES = 6
 )(
     input logic                    clk_i,    // Clock
     input logic                    rst_ni,   // Asynchronous reset active low
@@ -51,6 +52,7 @@ module hyperbus_phy #(
     logic [1:0]  cmd_addr_sel;
 
     logic clock_enable = 1'b0;
+    logic en_cs;
 
     logic clk0;
     logic clk90;
@@ -78,9 +80,11 @@ module hyperbus_phy #(
         .clk_o ( hyper_ck_no )
     );
 
-
     assign hyper_rwds_oe_o = 0;
-    assign hyper_cs_no = ~clock_enable;
+    assign hyper_reset_no = 1;
+
+    assign hyper_cs_no[0] = ~ (en_cs && trans_cs_i[0]);
+    assign hyper_cs_no[1] = ~ (en_cs && trans_cs_i[1]); //ToDo Use NR_CS
   
     genvar i;
     generate
@@ -96,7 +100,6 @@ module hyperbus_phy #(
       end
     endgenerate
 
-
     cmd_addr_gen cmd_addr_gen (
         .rw_i            ( ~trans_write_i  ),
         .address_space_i ( 1'b0            ),
@@ -105,46 +108,64 @@ module hyperbus_phy #(
         .cmd_addr_o      ( cmd_addr        )
     );
 
-    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cmd_addr_sel
-        if(~rst_ni) begin
-            cmd_addr_sel <= 0;
-        end else if (trans_valid_i && cmd_addr_sel != 2'h3) begin
-            cmd_addr_sel <= cmd_addr_sel + 1;
-        end
+    always @(cmd_addr_sel) begin
+        case(cmd_addr_sel)
+            0: data_out = cmd_addr[47:32];
+            1: data_out = cmd_addr[31:16];
+            2: data_out = cmd_addr[15:0];
+            default: data_out = '0;
+        endcase // cmd_addr_sel
     end
 
-    always @(cmd_addr_sel or trans_valid_i) begin
-        if (trans_valid_i) begin
-            case(cmd_addr_sel)
-                0: data_out = cmd_addr[47:32];
-                1: data_out = cmd_addr[31:16];
-                2: data_out = cmd_addr[15:0];
-                default: data_out = '0;
-            endcase // cmd_addr_sel
+    typedef enum logic[3:0] {STANDBY, CMD_ADDR, WAIT2, WAIT, DATA_W, DATA_R, END} hyper_trans_t;
+    hyper_trans_t hyper_trans_state;
+
+    logic [3:0] wait_cnt;
+
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
+        if(~rst_ni) begin
+            hyper_trans_state <= STANDBY;
+            wait_cnt <= WAIT_CYCLES;
+            cmd_addr_sel = 0;
         end else begin
-            data_out = '0;
-        end
-    end
-
-    //use data bus as input after sending cmd-addr
-    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_dq_oe_o
-        if(~rst_ni) begin
-            hyper_dq_oe_o <= 1;
-        end else if(cmd_addr_sel == 2'h3) begin
+            //defaults
+            clock_enable <= 1'b1;
+            en_cs <= 1'b1;
             hyper_dq_oe_o <= 0;
+            case(hyper_trans_state)
+                STANDBY: begin
+                    clock_enable <= 1'b0;
+                    en_cs <= 1'b0;
+                    if(trans_valid_i) begin
+                        hyper_trans_state <= CMD_ADDR;
+                        cmd_addr_sel = 0;
+                    end
+                end
+                CMD_ADDR: begin
+                    cmd_addr_sel <= cmd_addr_sel + 1;
+                    hyper_dq_oe_o <= 1'b1;
+                    if(cmd_addr_sel == 2) begin
+                        wait_cnt <= WAIT_CYCLES - 1;
+                        hyper_trans_state <= WAIT2;
+                    end
+                end
+                WAIT2: begin
+                    wait_cnt <= wait_cnt - 1;
+                    if(wait_cnt == 4'h0) begin
+                        wait_cnt <= WAIT_CYCLES - 1;
+                        hyper_trans_state <= WAIT;
+                    end
+                end
+                WAIT: begin
+                    wait_cnt <= wait_cnt - 1;
+                    if(wait_cnt == 4'h0) begin
+                        hyper_trans_state <= DATA_R;
+                    end
+                end
+                DATA_R: begin
+                end
+            endcase
         end
     end
-
-    always_ff @(posedge clk180 or negedge rst_ni) begin : proc_clock_enable
-        if(~rst_ni) begin
-            clock_enable <= 0;
-        end else if (trans_valid_i) begin
-            clock_enable <= 1;
-        end else begin
-            clock_enable <= 0;
-        end
-    end
-
-    assign hyper_reset_no = 1;
 
 endmodule

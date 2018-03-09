@@ -122,7 +122,8 @@ module hyperbus_phy_tb;
   end
 
   assign trans_write_i = 0;
-  assign trans_address_i = 32'h0;
+  assign trans_address_i = 32'h0; //22-bit: 4CD9FC
+  assign trans_cs_i = 2'b01;
 
   initial begin
     $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model);
