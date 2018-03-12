@@ -151,6 +151,7 @@ module hyperbus_phy #(
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
         if(~rst_ni) begin
             hyper_trans_state <= STANDBY;
+            trans_ready_o <= 1'b0;
             wait_cnt <= WAIT_CYCLES;
             burst_cnt <= {BURST_WIDTH{1'b0}};
             cmd_addr_sel = 0;
@@ -159,12 +160,13 @@ module hyperbus_phy #(
             clock_enable <= 1'b1;
             en_cs <= 1'b1;
             en_read <= 1'b0;
-            hyper_dq_oe_o <= 0;
+            hyper_dq_oe_o <= 1'b0;
             case(hyper_trans_state)
                 STANDBY: begin
                     clock_enable <= 1'b0;
                     en_cs <= 1'b0;
                     if(trans_valid_i) begin
+                        trans_ready_o <= 1'b1;
                         en_cs <= 1'b1;
                         hyper_trans_state <= CMD_ADDR;
                         cmd_addr_sel = 0;
@@ -204,6 +206,10 @@ module hyperbus_phy #(
                     en_cs <= 1'b0;
                 end
             endcase
+
+            if(~trans_valid_i) begin
+                trans_ready_o <= 1'b0;
+            end
         end
     end
 

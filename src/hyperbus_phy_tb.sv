@@ -87,7 +87,6 @@ module hyperbus_phy_tb;
   assign hyper_dq_i = dq_io;
   assign dq_io = hyper_dq_oe_o ? hyper_dq_o : 8'bz;
 
-
   s27ks0641 #(.mem_file_name("../src/s27ks0641.mem"), .TimingModel("S27KS0641DPBHI020")) hyperram_model
   (
     .DQ7      (dq_io[7]),
@@ -126,13 +125,26 @@ module hyperbus_phy_tb;
   assign trans_burst_i = 12'h10;
   assign trans_cs_i = 2'b01;
 
+  logic start = 1'b0;
+
   initial begin
     $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model);
-    trans_valid_i = 0;
     #150us
-    repeat(20) #TCLK
+    repeat(20) #TCLK;
     #1ns
-    trans_valid_i = 1;
+    start = 1;
+    #TCLK
+    start = 0;
+  end
+
+  always_ff @(posedge clk_i or negedge rst_ni) begin : proc_trans_valid_i
+    if(~rst_ni) begin
+      trans_valid_i <= 1'b0;
+    end else if (start) begin
+      trans_valid_i <= 1'b1;
+    end else if (trans_ready_o) begin
+      trans_valid_i <= 1'b0;
+    end
   end
 
 endmodule
