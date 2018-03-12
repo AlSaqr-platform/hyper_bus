@@ -52,9 +52,16 @@ module hyperbus_phy #(
     logic [15:0] data_out;
     logic [1:0]  cmd_addr_sel;
 
+    //local copy of transaction
+    logic [31:0]            local_address;
+    logic [NR_CS-1:0]       local_cs;
+    logic                   local_write;
+    logic [BURST_WIDTH-1:0] local_burst;
+
     logic clock_enable = 1'b0;
     logic en_cs;
     logic en_read;
+    logic en_read_transaction;
 
     logic [15:0] data_i;
     logic hyper_rwds_i_d;
@@ -93,8 +100,8 @@ module hyperbus_phy #(
         if(~rst_ni) begin
             hyper_cs_no <= {NR_CS{1'b1}};
         end else begin
-            hyper_cs_no[0] = ~ (en_cs && trans_cs_i[0]);
-            hyper_cs_no[1] = ~ (en_cs && trans_cs_i[1]); //ToDo Use NR_CS
+            hyper_cs_no[0] = ~ (en_cs && local_cs[0]);
+            hyper_cs_no[1] = ~ (en_cs && local_cs[1]); //ToDo Use NR_CS
         end
     end
 
@@ -115,10 +122,10 @@ module hyperbus_phy #(
     endgenerate
 
     cmd_addr_gen cmd_addr_gen (
-        .rw_i            ( ~trans_write_i  ),
+        .rw_i            ( ~local_write    ),
         .address_space_i ( 1'b0            ),
         .burst_type_i    ( 1'b1            ),
-        .address_i       ( trans_address_i ),
+        .address_i       ( local_address   ),
         .cmd_addr_o      ( cmd_addr        )
     );
 
@@ -131,12 +138,12 @@ module hyperbus_phy #(
         .rst_ni          ( rst_ni         )
     );
 
-    always @(cmd_addr_sel) begin
+    always @* begin
         case(cmd_addr_sel)
             0: data_out = cmd_addr[47:32];
             1: data_out = cmd_addr[31:16];
             2: data_out = cmd_addr[15:0];
-            default: data_out = '0;
+            default: data_out = 16'b0;
         endcase // cmd_addr_sel
     end
 
@@ -161,15 +168,16 @@ module hyperbus_phy #(
             en_cs <= 1'b1;
             en_read <= 1'b0;
             hyper_dq_oe_o <= 1'b0;
-            trans_ready_o <= 1'b0;
-
+            en_read_transaction <= 1'b0;
             case(hyper_trans_state)
                 STANDBY: begin
                     clock_enable <= 1'b0;
                     en_cs <= 1'b0;
+                    en_read_transaction <= 1'b1;
                     if(trans_valid_i) begin
                         trans_ready_o <= 1'b1;
                         en_cs <= 1'b1;
+                        en_read_transaction <= 1'b0;
                         hyper_trans_state <= CMD_ADDR;
                         cmd_addr_sel = 0;
                     end
@@ -192,7 +200,7 @@ module hyperbus_phy #(
                 WAIT: begin  //t_ACC
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin
-                        burst_cnt <= trans_burst_i - 1;
+                        burst_cnt <= local_burst - 1;
                         hyper_trans_state <= DATA_R;
                     end
                 end
@@ -207,6 +215,7 @@ module hyperbus_phy #(
                 END: begin
                     clock_enable <= 1'b0;
                     en_cs <= 1'b0;
+                    en_read_transaction <= 1'b1;
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin //t_RWR
                         wait_cnt <= WAIT_CYCLES - 1;
@@ -218,6 +227,20 @@ module hyperbus_phy #(
             if(~trans_valid_i) begin
                 trans_ready_o <= 1'b0;
             end
+        end
+    end
+
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_local_transaction
+        if(~rst_ni) begin
+            local_address <= 32'h0;
+            local_cs <= {NR_CS{1'b0}};
+            local_write <= 1'b0;
+            local_burst <= {BURST_WIDTH{1'b0}};
+        end else if(en_read_transaction) begin
+            local_address <= trans_address_i;
+            local_cs <= trans_cs_i;
+            local_write <= trans_write_i;
+            local_burst <= trans_burst_i;
         end
     end
 

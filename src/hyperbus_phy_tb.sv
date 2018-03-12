@@ -17,12 +17,12 @@ module hyperbus_phy_tb;
 
   logic                   clk_i;
   logic                   rst_ni;
-  logic                   trans_valid_i;
+  logic                   trans_valid_i = 0;
   logic                   trans_ready_o;
-  logic [31:0]            trans_address_i;
-  logic [NR_CS-1:0]       trans_cs_i;
-  logic                   trans_write_i;
-  logic [BURST_WIDTH-1:0] trans_burst_i;
+  logic [31:0]            trans_address_i = 0;
+  logic [NR_CS-1:0]       trans_cs_i = 0;
+  logic                   trans_write_i = 0;
+  logic [BURST_WIDTH-1:0] trans_burst_i = 0;
   logic                   tx_valid_i;
   logic                   tx_ready_o;
   logic [15:0]            tx_data_i;
@@ -120,11 +120,6 @@ module hyperbus_phy_tb;
     end
   end
 
-  assign trans_write_i = 0;
-  assign trans_address_i = 32'h0; //22-bit: 4CD9FC
-  assign trans_burst_i = 12'h10;
-  assign trans_cs_i = 2'b01;
-
   logic start = 1'b0;
 
   initial begin
@@ -132,19 +127,30 @@ module hyperbus_phy_tb;
     #150us
     repeat(20) #TCLK;
     #1ns
-    start = 1;
-    #TCLK
-    start = 0;
+    doReadTransaction(32'h8, 8);
+    doReadTransaction(32'h10, 16);
+    doReadTransaction(32'h0, 32);
   end
 
-  always_ff @(posedge clk_i or negedge rst_ni) begin : proc_trans_valid_i
-    if(~rst_ni) begin
-      trans_valid_i <= 1'b0;
-    end else if (start) begin
-      trans_valid_i <= 1'b1;
-    end else if (trans_ready_o) begin
-      trans_valid_i <= 1'b0;
+  task doReadTransaction(logic[31:0] address, int burst);
+
+    wait(~trans_valid_i);
+
+    if(trans_ready_o) begin
+      wait(~trans_ready_o);
+      #TCLK;
     end
-  end
+
+    trans_address_i = address;
+    trans_burst_i = burst;
+    trans_write_i = 0;
+    trans_cs_i = 2'b01;
+
+    trans_valid_i = 1;
+    wait(trans_ready_o);
+    #TCLK;
+    trans_valid_i = 0;
+
+  endtask : doReadTransaction
 
 endmodule
