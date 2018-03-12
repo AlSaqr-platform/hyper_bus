@@ -98,7 +98,7 @@ module hyperbus_phy #(
         end
     end
 
-    assign #2000 hyper_rwds_i_d = hyper_rwds_i;
+    assign #2000 hyper_rwds_i_d = hyper_rwds_i; //Delay of rwds for center aligned read
     
     genvar i;
     generate
@@ -161,6 +161,8 @@ module hyperbus_phy #(
             en_cs <= 1'b1;
             en_read <= 1'b0;
             hyper_dq_oe_o <= 1'b0;
+            trans_ready_o <= 1'b0;
+
             case(hyper_trans_state)
                 STANDBY: begin
                     clock_enable <= 1'b0;
@@ -180,14 +182,14 @@ module hyperbus_phy #(
                         hyper_trans_state <= WAIT2;
                     end
                 end
-                WAIT2: begin
+                WAIT2: begin  //Additional latency (If RWDS HIGH)
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin
                         wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= WAIT;
                     end
                 end
-                WAIT: begin
+                WAIT: begin  //t_ACC
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin
                         burst_cnt <= trans_burst_i - 1;
@@ -198,12 +200,18 @@ module hyperbus_phy #(
                     burst_cnt <= burst_cnt - 1;
                     en_read <= 1'b1;
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
+                        wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= END;
                     end
                 end
                 END: begin
                     clock_enable <= 1'b0;
                     en_cs <= 1'b0;
+                    wait_cnt <= wait_cnt - 1;
+                    if(wait_cnt == 4'h0) begin //t_RWR
+                        wait_cnt <= WAIT_CYCLES - 1;
+                        hyper_trans_state <= STANDBY;
+                    end
                 end
             endcase
 

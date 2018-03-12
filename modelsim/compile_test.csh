@@ -1,6 +1,6 @@
 #! /bin/tcsh -f
 
-set VER=10.5a
+set VER=10.6b
 set LIB=work
 
 
