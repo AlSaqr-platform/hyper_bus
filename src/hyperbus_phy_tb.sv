@@ -127,9 +127,11 @@ module hyperbus_phy_tb;
     #150us
     repeat(20) #TCLK;
     #1ns
-    doReadTransaction(32'h8, 8);
-    doReadTransaction(32'h10, 16);
+
     doReadTransaction(32'h0, 32);
+    doWriteTransaction(32'h0, 8, 16'h1234);
+    doReadTransaction(32'h0, 8);
+
   end
 
   task doReadTransaction(logic[31:0] address, int burst);
@@ -152,5 +154,28 @@ module hyperbus_phy_tb;
     trans_valid_i = 0;
 
   endtask : doReadTransaction
+
+  task doWriteTransaction(logic [31:0] address, int burst, logic [15:0] data);
+    
+    wait (~trans_valid_i)
+
+    if(trans_ready_o) begin
+      wait(~trans_ready_o);
+      #TCLK;
+    end
+
+    trans_address_i = address;
+    trans_burst_i = burst;
+    trans_write_i = 1;
+    trans_cs_i = 2'b01;
+    tx_data_i = data;
+    tx_strb_i = 1'b0;
+
+    trans_valid_i = 1;
+    wait(trans_ready_o);
+    #TCLK;
+    trans_valid_i = 0;
+
+  endtask : doWriteTransaction
 
 endmodule

@@ -50,7 +50,9 @@ module hyperbus_phy #(
 
     logic [47:0] cmd_addr;
     logic [15:0] data_out;
+    logic [15:0] CA_out;
     logic [1:0]  cmd_addr_sel;
+    logic [15:0] write_data;
 
     //local copy of transaction
     logic [31:0]            local_address;
@@ -62,7 +64,8 @@ module hyperbus_phy #(
     logic en_cs;
     logic en_read;
     logic en_read_transaction;
-
+    logic en_write;
+    //logic en_rwds;
     logic [15:0] data_i;
     logic hyper_rwds_i_d;
 
@@ -92,8 +95,9 @@ module hyperbus_phy #(
         .clk_o ( hyper_ck_no )
     );
 
-    assign hyper_rwds_oe_o = 0;
+    //assign hyper_rwds_oe_o = 0;
     assign hyper_reset_no = 1;
+    //assign write_data = tx_data_i;
 
     //selecting ram must be in sync with future hyper_ck_o
     always_ff @(posedge clk90 or negedge rst_ni) begin : proc_hyper_cs_no
@@ -121,6 +125,10 @@ module hyperbus_phy #(
       end
     endgenerate
 
+    //Drive RWDS
+    assign data_out = en_write ? tx_data_i : CA_out;
+    assign hyper_rwds_o = en_write ? tx_strb_i : 1'b0; //RWDS low before end of initial latency, en_rwds redundant
+
     cmd_addr_gen cmd_addr_gen (
         .rw_i            ( ~local_write    ),
         .address_space_i ( 1'b0            ),
@@ -140,10 +148,10 @@ module hyperbus_phy #(
 
     always @* begin
         case(cmd_addr_sel)
-            0: data_out = cmd_addr[47:32];
-            1: data_out = cmd_addr[31:16];
-            2: data_out = cmd_addr[15:0];
-            default: data_out = 16'b0;
+            0: CA_out = cmd_addr[47:32];
+            1: CA_out = cmd_addr[31:16];
+            2: CA_out = cmd_addr[15:0];
+            default: CA_out = 16'b0;
         endcase // cmd_addr_sel
     end
 
@@ -167,7 +175,10 @@ module hyperbus_phy #(
             clock_enable <= 1'b1;
             en_cs <= 1'b1;
             en_read <= 1'b0;
+            en_write <= 1'b0;
+            //en_rwds <= 1'b0;
             hyper_dq_oe_o <= 1'b0;
+            hyper_rwds_oe_o = 1'b0;
             en_read_transaction <= 1'b0;
             case(hyper_trans_state)
                 STANDBY: begin
@@ -199,14 +210,33 @@ module hyperbus_phy #(
                 end
                 WAIT: begin  //t_ACC
                     wait_cnt <= wait_cnt - 1;
+                    en_write <= 1'b1;
                     if(wait_cnt == 4'h0) begin
                         burst_cnt <= local_burst - 1;
-                        hyper_trans_state <= DATA_R;
+                        if (local_write) begin
+                            hyper_rwds_oe_o <= 1'b1;
+                            hyper_dq_oe_o <= 1'b1;
+                            en_write <= 1'b1;
+                            hyper_trans_state <= DATA_W;
+                        end else begin
+                            hyper_trans_state <= DATA_R;
+                        end
                     end
                 end
                 DATA_R: begin
                     burst_cnt <= burst_cnt - 1;
                     en_read <= 1'b1;
+                    if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
+                        wait_cnt <= WAIT_CYCLES - 1;
+                        hyper_trans_state <= END;
+                    end
+                end
+                DATA_W: begin
+                    burst_cnt <= burst_cnt - 1;
+                    hyper_dq_oe_o <= 1'b1;
+                    hyper_rwds_oe_o <= 1'b1;
+                    en_write <= 1'b1;
+                    //en_rwds <= 1'b1;
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
                         wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= END;
