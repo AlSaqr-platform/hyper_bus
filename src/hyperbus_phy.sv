@@ -192,7 +192,7 @@ module hyperbus_phy #(
             en_write <= 1'b0;
             //en_rwds <= 1'b0;
             hyper_dq_oe_o <= 1'b0;
-            hyper_rwds_oe_o = 1'b0;
+            hyper_rwds_oe_o <= 1'b0;
             en_read_transaction <= 1'b0;
             case(hyper_trans_state)
                 STANDBY: begin
