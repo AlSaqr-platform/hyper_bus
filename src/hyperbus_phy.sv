@@ -63,6 +63,7 @@ module hyperbus_phy #(
     logic clock_enable = 1'b0;
     logic en_cs;
     logic en_read;
+    logic en_ddr_in;
     logic en_read_transaction;
     logic en_write;
     //logic en_rwds;
@@ -100,7 +101,7 @@ module hyperbus_phy #(
     //assign write_data = tx_data_i;
 
     //selecting ram must be in sync with future hyper_ck_o
-    always_ff @(posedge clk90 or negedge rst_ni) begin : proc_hyper_cs_no
+    always_ff @(posedge clk270 or negedge rst_ni) begin : proc_hyper_cs_no
         if(~rst_ni) begin
             hyper_cs_no <= {NR_CS{1'b1}};
         end else begin
@@ -142,8 +143,20 @@ module hyperbus_phy #(
         .hyper_rwds_i_d  ( hyper_rwds_i_d ),
         .hyper_dq_i      ( hyper_dq_i     ),
         .data_o          ( data_i         ),
-        .en_read         ( en_read        ),
+        .en_read         ( en_ddr_in      ),
         .rst_ni          ( rst_ni         )
+    );
+
+    logic temp;
+
+    input_fifo i_input_fifo (
+        .clk_i       ( clk0       ),
+        .rst_ni      ( rst_ni     ),
+        .data_i      ( data_i     ),
+        .en_write_i  ( en_read    ),
+        .data_o      ( rx_data_o  ),
+        .valid_o     ( rx_valid_o ),
+        .ready_i     ( rx_ready_i )
     );
 
     always @* begin
@@ -174,6 +187,7 @@ module hyperbus_phy #(
             //defaults
             clock_enable <= 1'b1;
             en_cs <= 1'b1;
+            en_ddr_in <= 1'b0;
             en_read <= 1'b0;
             en_write <= 1'b0;
             //en_rwds <= 1'b0;
@@ -204,7 +218,11 @@ module hyperbus_phy #(
                 WAIT2: begin  //Additional latency (If RWDS HIGH)
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin
-                        wait_cnt <= WAIT_CYCLES - 1;
+                        if (local_write) begin
+                            wait_cnt <= WAIT_CYCLES - 1;
+                        end else begin
+                            wait_cnt <= WAIT_CYCLES;
+                        end
                         hyper_trans_state <= WAIT;
                     end
                 end
@@ -219,12 +237,14 @@ module hyperbus_phy #(
                             en_write <= 1'b1;
                             hyper_trans_state <= DATA_W;
                         end else begin
+                            en_ddr_in <= 1'b1;
                             hyper_trans_state <= DATA_R;
                         end
                     end
                 end
                 DATA_R: begin
                     burst_cnt <= burst_cnt - 1;
+                    en_ddr_in <= 1'b1;
                     en_read <= 1'b1;
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
                         wait_cnt <= WAIT_CYCLES - 1;

@@ -28,7 +28,7 @@ module hyperbus_phy_tb;
   logic [15:0]            tx_data_i;
   logic [1:0]             tx_strb_i;
   logic                   rx_valid_o;
-  logic                   rx_ready_i;
+  logic                   rx_ready_i = 0;
   logic [15:0]            rx_data_o;
   logic [NR_CS-1:0]       hyper_cs_no;
   logic                   hyper_ck_o;
@@ -128,9 +128,11 @@ module hyperbus_phy_tb;
     repeat(20) #TCLK;
     #1ns
 
-    doReadTransaction(32'h0, 32);
+    doReadTransaction(32'h05FFFC, 8);
     doWriteTransaction(32'h0, 8, 16'h1234);
     doReadTransaction(32'h0, 8);
+
+    #50ns done = 1;
 
   end
 
@@ -152,6 +154,16 @@ module hyperbus_phy_tb;
     wait(trans_ready_o);
     #TCLK;
     trans_valid_i = 0;
+
+    rx_ready_i = 1;
+    for(int i = 0; i<burst; i++) begin
+      wait(rx_valid_o);
+      #(TCLK/2);
+      $display("Data at address %h is %h", address+i, rx_data_o);
+      #(TCLK/2*3);
+    end
+    wait(~rx_valid_o);
+    rx_ready_i = 0;
 
   endtask : doReadTransaction
 
