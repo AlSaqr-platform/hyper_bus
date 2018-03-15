@@ -19,6 +19,7 @@ module input_fifo #(
     //IN Interface
     input  logic [15:0] data_i,
     input  logic        en_write_i,
+    output logic        request_wait_o,
 
     //OUT Interface
     output logic [15:0] data_o,
@@ -60,5 +61,7 @@ module input_fifo #(
             end
         end
     end
+
+    assign request_wait_o = ~(valid == 4'b0000 || valid == 4'b0001 || valid == 4'b0010 || valid == 4'b0100 || valid == 4'b1000);
 
 endmodule

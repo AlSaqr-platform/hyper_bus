@@ -128,7 +128,7 @@ module hyperbus_phy_tb;
     repeat(20) #TCLK;
     #1ns
 
-    doReadTransaction(32'h05FFFC, 8);
+    doReadTransaction(32'h05FFF3, 16, 3);
     doWriteTransaction(32'h0, 8, 16'h1234);
     doReadTransaction(32'h0, 8);
 
@@ -136,7 +136,7 @@ module hyperbus_phy_tb;
 
   end
 
-  task doReadTransaction(logic[31:0] address, int burst);
+  task doReadTransaction(logic[31:0] address, int burst, int interruptReadyAt = -1);
 
     wait(~trans_valid_i);
 
@@ -155,12 +155,23 @@ module hyperbus_phy_tb;
     #TCLK;
     trans_valid_i = 0;
 
+    //read data from phy
     rx_ready_i = 1;
+    wait(rx_valid_o); //sync loop to clk0
     for(int i = 0; i<burst; i++) begin
-      wait(rx_valid_o);
       #(TCLK/2);
-      $display("Data at address %h is %h", address+i, rx_data_o);
-      #(TCLK/2*3);
+      if(interruptReadyAt == i) begin
+        rx_ready_i = 0;
+        #(8*TCLK);
+        rx_ready_i = 1;
+      end 
+      #(TCLK);
+      if(rx_valid_o) begin
+        $display("Data at address %h is %h, received at %0t", address+i, rx_data_o, $time);
+      end else begin
+        i--; //data not valid, try next cycle
+      end
+      #(TCLK/2);
     end
     wait(~rx_valid_o);
     rx_ready_i = 0;
