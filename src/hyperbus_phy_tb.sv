@@ -115,6 +115,9 @@ module hyperbus_phy_tb;
       #(TCLK/2);
   end
 
+  int expectedResultAt05FFF3[16] = '{16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h1001, 16'h2002, 16'h3003};
+  int expectedResultAll1234[8] = '{default: 16'h1234};
+
   program test_hyper_phy;
     // SystemVerilog "clocking block"
     // Clocking outputs are DUT inputs and vice versa
@@ -157,28 +160,17 @@ module hyperbus_phy_tb;
 
       #150us;
 
-      doReadTransaction(32'h05FFF3, 16, 3);
+      doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
       doWriteTransaction(32'h0, 8, 16'h1234);
-      doReadTransaction(32'h0, 8);
-      doReadTransaction(32'h0, 8);
-      // etc. ...      
+      doReadTransaction(32'h0, 8, expectedResultAll1234);
+      // etc. ... 
+
+      ##100;     
     end
-
-    // // Check the results - could combine with stimulus block
-    // initial begin
-    //   ##1   
-    //   // Sampled 1ps (or whatever the precision is) before posedge clock
-    //   ##1 assert (cb_counter.Q == 8'b00000000);
-    //   ##1 assert (cb_counter.Q == 8'b00000000);
-    //   ##2 assert (cb_counter.Q == 8'b00000010);
-    //   ##4 assert (cb_counter.Q == 8'b11111110);
-    //   // etc. ...      
-    //  end
-
     // Simulation stops automatically when both initials have been completed
   
 
-    task doReadTransaction(logic[31:0] address, int burst, int interruptReadyAt = -1);
+    task doReadTransaction(logic[31:0] address, int burst, int expectedResult[] = '{default: 16'b0}, int interruptReadyAt = -1);
       cb_hyper_phy.trans_address_i <= address;
       cb_hyper_phy.trans_burst_i <= burst;
       cb_hyper_phy.trans_write_i <= 0;
@@ -202,7 +194,8 @@ module hyperbus_phy_tb;
         end 
 
         if(cb_hyper_phy.rx_valid_o) begin
-          $info("Data at address %h is %h", address+i, cb_hyper_phy.rx_data_o);
+          $display("Data at address %h is %h, expected %4h", address+i, cb_hyper_phy.rx_data_o, expectedResult[i]);
+          assert(cb_hyper_phy.rx_data_o == expectedResult[i]);
           i++;
         end
 
