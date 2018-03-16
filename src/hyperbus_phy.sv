@@ -76,6 +76,9 @@ module hyperbus_phy #(
     logic clk180;
     logic clk270;
 
+    typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, WAIT2, WAIT, DATA_W, DATA_R, START_WAIT, WAIT_R, END} hyper_trans_t;
+    hyper_trans_t hyper_trans_state;
+
     clk_gen ddr_clk (
         .clk_i    ( clk_i  ),
         .rst_ni   ( rst_ni ),
@@ -144,21 +147,21 @@ module hyperbus_phy #(
         .hyper_rwds_i_d  ( hyper_rwds_i_d ),
         .hyper_dq_i      ( hyper_dq_i     ),
         .data_o          ( data_i         ),
-        .en_read         ( en_ddr_in      ),
+        .enable          ( en_ddr_in      ),
         .rst_ni          ( rst_ni         )
     );
 
     logic temp;
 
     input_fifo i_input_fifo (
-        .clk_i          ( clk0           ),
-        .rst_ni         ( rst_ni         ),
-        .data_i         ( data_i         ),
-        .en_write_i     ( en_read        ),
-        .request_wait_o ( request_wait_r ),
-        .data_o         ( rx_data_o      ),
-        .valid_o        ( rx_valid_o     ),
-        .ready_i        ( rx_ready_i     )
+        .clk_i          ( clk0                                   ),
+        .rst_ni         ( rst_ni                                 ),
+        .data_i         ( data_i                                 ),
+        .en_write_i     ( en_read && hyper_trans_state != WAIT_R ),
+        .request_wait_o ( request_wait_r                         ),
+        .data_o         ( rx_data_o                              ),
+        .valid_o        ( rx_valid_o                             ),
+        .ready_i        ( rx_ready_i                             )
     );
 
     always @* begin
@@ -171,50 +174,32 @@ module hyperbus_phy #(
     end
 
 
-
-    typedef enum logic[3:0] {STANDBY, CMD_ADDR, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, END} hyper_trans_t;
-    hyper_trans_t hyper_trans_state;
-
     logic [3:0] wait_cnt;
     logic [BURST_WIDTH-1:0] burst_cnt;
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
         if(~rst_ni) begin
             hyper_trans_state <= STANDBY;
-            trans_ready_o <= 1'b0;
             wait_cnt <= WAIT_CYCLES;
             burst_cnt <= {BURST_WIDTH{1'b0}};
-            cmd_addr_sel = 0;
+            cmd_addr_sel <= 1'b0;
         end else begin
-            //defaults
-            clock_enable <= 1'b1;
-            en_cs <= 1'b1;
-            en_ddr_in <= 1'b0;
-            en_read <= 1'b0;
-            en_write <= 1'b0;
-            //en_rwds <= 1'b0;
-            hyper_dq_oe_o <= 1'b0;
-            hyper_rwds_oe_o <= 1'b0;
-            en_read_transaction <= 1'b0;
             case(hyper_trans_state)
                 STANDBY: begin
-                    clock_enable <= 1'b0;
-                    en_cs <= 1'b0;
-                    en_read_transaction <= 1'b1;
                     if(trans_valid_i) begin
-                        assert(trans_cs_i != {NR_CS{1'b0}}) else $error("No Device selected (CS=0b00)");
+                        hyper_trans_state <= SET_CMD_ADDR;
+                        cmd_addr_sel <= 1'b0;
                         trans_ready_o <= 1'b1;
-                        en_cs <= 1'b1;
-                        en_read_transaction <= 1'b0;
-                        hyper_trans_state <= CMD_ADDR;
-                        cmd_addr_sel = 0;
                     end
                 end
+                SET_CMD_ADDR: begin
+                    cmd_addr_sel <= cmd_addr_sel + 1;
+                    hyper_trans_state <= CMD_ADDR;
+                end    
                 CMD_ADDR: begin
                     cmd_addr_sel <= cmd_addr_sel + 1;
-                    hyper_dq_oe_o <= 1'b1;
-                    if(cmd_addr_sel == 2) begin
-                        wait_cnt <= WAIT_CYCLES - 1;
+                    if(cmd_addr_sel == 3) begin
+                        wait_cnt <= WAIT_CYCLES - 2;
                         hyper_trans_state <= WAIT2;
                     end
                 end
@@ -231,66 +216,112 @@ module hyperbus_phy #(
                 end
                 WAIT: begin  //t_ACC
                     wait_cnt <= wait_cnt - 1;
-                    en_write <= 1'b1;
                     if(wait_cnt == 4'h0) begin
                         burst_cnt <= local_burst - 1;
                         if (local_write) begin
-                            hyper_rwds_oe_o <= 1'b1;
-                            hyper_dq_oe_o <= 1'b1;
-                            en_write <= 1'b1;
                             hyper_trans_state <= DATA_W;
                         end else begin
-                            en_ddr_in <= 1'b1;
                             hyper_trans_state <= DATA_R;
                         end
                     end
                 end
+
+
                 DATA_R: begin
                     burst_cnt <= burst_cnt - 1;
-                    en_ddr_in <= 1'b1;
-                    en_read <= 1'b1;
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
                         wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= END;
+                    end else if(request_wait_r) begin
+                        hyper_trans_state <= START_WAIT;
                     end
-                    if(request_wait_r) begin
-                        clock_enable <= 1'b0;
-                        hyper_trans_state <= WAIT_R;
-                    end
-                end
-                WAIT_R: begin
-                    clock_enable <= 1'b0;
-                    if(~request_wait_r) begin
-                        clock_enable <= 1'b1;
-                        hyper_trans_state <= DATA_R;
-                    end
+
                 end
                 DATA_W: begin
                     burst_cnt <= burst_cnt - 1;
-                    hyper_dq_oe_o <= 1'b1;
-                    hyper_rwds_oe_o <= 1'b1;
-                    en_write <= 1'b1;
-                    //en_rwds <= 1'b1;
-                    if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
+                    if(burst_cnt == {BURST_WIDTH{1'b0}}) begin                        wait_cnt <= WAIT_CYCLES - 1;
                         wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= END;
                     end
                 end
+
+                START_WAIT: begin
+                    hyper_trans_state <= WAIT_R;
+                end
+                WAIT_R: begin
+                    if(~request_wait_r) begin
+                        hyper_trans_state <= DATA_R;
+                    end
+                end
                 END: begin
-                    clock_enable <= 1'b0;
-                    en_cs <= 1'b0;
-                    en_read_transaction <= 1'b1;
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin //t_RWR
-                        wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= STANDBY;
                     end
                 end
             endcase
-
             if(~trans_valid_i) begin
                 trans_ready_o <= 1'b0;
+            end 
+        end
+    end
+
+    always @* begin
+        //defaults
+        clock_enable = 1'b1;
+        en_cs = 1'b1;
+        en_ddr_in = 1'b0;
+        en_write = 1'b0;
+        hyper_dq_oe_o = 1'b0;
+        hyper_rwds_oe_o = 1'b0;
+        en_read_transaction = 1'b0;
+
+        case(hyper_trans_state)
+            STANDBY: begin
+                clock_enable = 1'b0;
+                en_cs = 1'b0;
+                en_read_transaction = 1'b1;
             end
+            SET_CMD_ADDR: begin
+                clock_enable = 1'b0;
+            end
+            CMD_ADDR: begin
+                hyper_dq_oe_o = 1'b1;
+            end
+            WAIT: begin  //t_ACC
+                if (local_write) begin
+                    en_write = 1'b1;
+                end
+            end
+            START_WAIT: begin
+                clock_enable = 1'b0;
+                en_ddr_in = 1'b1;
+            end
+
+            WAIT_R: begin
+                clock_enable = 1'b0;
+            end
+            DATA_R: begin
+                en_ddr_in = 1'b1;
+            end
+            DATA_W: begin
+                hyper_dq_oe_o = 1'b1;
+                hyper_rwds_oe_o = 1'b1;
+                en_write = 1'b1;
+            end
+            END: begin
+                clock_enable = 1'b0;
+                en_cs = 1'b0;
+                en_read_transaction = 1'b1;
+            end
+        endcase
+    end
+
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_en_read_d
+        if(~rst_ni) begin
+            en_read <= 0;
+        end else begin
+            en_read <= en_ddr_in;
         end
     end
 

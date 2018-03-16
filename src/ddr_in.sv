@@ -17,7 +17,7 @@ module ddr_in #(
 	input logic 			 hyper_rwds_i_d,
 	input logic  [7:0]       hyper_dq_i,
 	input logic 			 rst_ni,
-	input logic 			 en_read,
+	input logic 			 enable,
 	
 	output logic [15:0]      data_o
 );
@@ -27,7 +27,7 @@ module ddr_in #(
     always_ff @(posedge hyper_rwds_i_d or negedge rst_ni) begin : proc_ddr_pos
         if(~rst_ni) begin
             ddr_pos <= 16'h0;
-        end else if (en_read) begin
+        end else if (enable) begin
             ddr_pos <= hyper_dq_i;
         end
     end
@@ -35,7 +35,7 @@ module ddr_in #(
     always_ff @(negedge hyper_rwds_i_d or negedge rst_ni) begin : proc_ddr_neg
         if(~rst_ni) begin
             ddr_neg <= 16'h0;
-        end else if (en_read) begin
+        end else if (enable) begin
             ddr_neg <= hyper_dq_i;
         end
     end
@@ -43,7 +43,7 @@ module ddr_in #(
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_data_i //not on clk0, delayed rwds
         if(~rst_ni) begin
             data_o <= 16'h0;
-        end else if (en_read) begin
+        end else if (enable) begin
             data_o[7:0]  <= ddr_neg;
             data_o[15:8] <= ddr_pos;
         end
