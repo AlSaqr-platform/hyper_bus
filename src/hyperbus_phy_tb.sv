@@ -118,6 +118,8 @@ module hyperbus_phy_tb;
   int expectedResultAt05FFF3[16] = '{16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h1001, 16'h2002, 16'h3003};
   int expectedResultAll1234[8] = '{default: 16'h1234};
 
+  int writeData[8] = '{16'h1001, 16'h2002, 16'h3003, 16'h4004, 16'h5005, 16'h6006, 16'h7007, 16'h8008};
+
   program test_hyper_phy;
     // SystemVerilog "clocking block"
     // Clocking outputs are DUT inputs and vice versa
@@ -149,7 +151,6 @@ module hyperbus_phy_tb;
       tx_valid_i = 0;
       tx_data_i = 0;
       tx_strb_i = 0;
-
       rx_ready_i = 0;
 
 
@@ -161,8 +162,8 @@ module hyperbus_phy_tb;
       #150us;
 
       doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
-      doWriteTransaction(32'h0, 8, 16'h1234);
-      doReadTransaction(32'h0, 8, expectedResultAll1234);
+      doWriteTransaction(32'h0, 8, writeData);
+      doReadTransaction(32'h0, 8, writeData);
       // etc. ... 
 
       ##100;     
@@ -206,19 +207,26 @@ module hyperbus_phy_tb;
 
     endtask : doReadTransaction
 
-    task doWriteTransaction(logic [31:0] address, int burst, logic [15:0] data);
+    task doWriteTransaction(logic [31:0] address, int burst, int data[]);
       
       cb_hyper_phy.trans_address_i <= address;
       cb_hyper_phy.trans_burst_i <= burst;
       cb_hyper_phy.trans_write_i <= 1;
       cb_hyper_phy.trans_cs_i <= 2'b01;
-      cb_hyper_phy.tx_data_i <= data;
       cb_hyper_phy.tx_strb_i <= 1'b0;
 
       cb_hyper_phy.trans_valid_i <= 1;
       wait(cb_hyper_phy.trans_ready_o);
       cb_hyper_phy.trans_valid_i <= 0;
       wait(~cb_hyper_phy.trans_ready_o);
+
+      for(i = 0; i < burst; i++) begin
+        cb_hyper_phy.tx_data_i <= data[i];
+        cb_hyper_phy.tx_valid_i <= 1'b1;
+        wait(cb_hyper_phy.tx_ready_o);
+        ##2;
+      end
+      cb_hyper_phy.tx_valid_i <= 1'b0;
 
     endtask : doWriteTransaction
 

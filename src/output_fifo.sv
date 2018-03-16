@@ -9,7 +9,7 @@
 
 `timescale 1 ps/1 ps
 
-module input_fifo #(
+module output_fifo #(
     int unsigned FIFO_SIZE = 4,
     int unsigned TOTAL_SIZE = FIFO_SIZE * 16
 )(
@@ -18,13 +18,13 @@ module input_fifo #(
 
     //IN Interface
     input  logic [15:0] data_i,
-    input  logic        en_write_i,
-    output logic        request_wait_o,
+    input  logic        valid_i,
+    output logic        ready_o,
 
     //OUT Interface
     output logic [15:0] data_o,
-    output logic        valid_o,
-    input  logic        ready_i
+    output logic        request_wait_o,
+    input  logic        en_read_i
 );
 
 
@@ -37,7 +37,6 @@ module input_fifo #(
     logic [1:0] sel_write; 
 
     assign data_o = storage[(sel_read << 4)+15-:16];
-    assign valid_o = valid[sel_read];
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_storage
         if(~rst_ni) begin
@@ -47,21 +46,23 @@ module input_fifo #(
             sel_write <= '0;
         end else  begin 
 
-            //read from fifo
-            if(ready_i && valid[sel_read]) begin
-                valid[sel_read] = 1'b0;
-                sel_read <= sel_read + 1;
-            end
-
             //write to fifo
-            if(en_write_i && ~valid[sel_write]) begin
+            if(valid_i && ~valid[sel_write]) begin
                 storage[(16*sel_write)+15-:16] <= data_i;
                 valid[sel_write] <= 1'b1;
                 sel_write <= sel_write + 1;
             end
+
+            //read from fifo
+            if(en_read_i && valid[sel_read]) begin
+                valid[sel_read] = 1'b0;
+                sel_read <= sel_read + 1;
+            end
         end
     end
-    
+
+    assign ready_o = ~valid[sel_write];
+
     assign request_wait_o = ~(valid == 4'b0000 || valid == 4'b0001 || valid == 4'b0010 || valid == 4'b0100 || valid == 4'b1000);
 
 endmodule

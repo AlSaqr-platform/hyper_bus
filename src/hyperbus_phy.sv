@@ -100,9 +100,7 @@ module hyperbus_phy #(
         .clk_o ( hyper_ck_no )
     );
 
-    //assign hyper_rwds_oe_o = 0;
     assign hyper_reset_no = 1;
-    //assign write_data = tx_data_i;
 
     //selecting ram must be in sync with future hyper_ck_o
     always_ff @(posedge clk270 or negedge rst_ni) begin : proc_hyper_cs_no
@@ -131,7 +129,7 @@ module hyperbus_phy #(
     endgenerate
 
     //Drive RWDS
-    assign data_out = en_write ? tx_data_i : CA_out;
+    assign data_out = en_write ? write_data : CA_out;
     assign hyper_rwds_o = en_write ? tx_strb_i : 1'b0; //RWDS low before end of initial latency, en_rwds redundant
 
     cmd_addr_gen cmd_addr_gen (
@@ -162,6 +160,17 @@ module hyperbus_phy #(
         .data_o         ( rx_data_o                              ),
         .valid_o        ( rx_valid_o                             ),
         .ready_i        ( rx_ready_i                             )
+    );
+
+    output_fifo i_output_fifo (
+        .clk_i          ( clk0       ),
+        .rst_ni         ( rst_ni     ),
+        .data_i         ( tx_data_i  ),
+        .valid_i        ( tx_valid_i ),
+        .ready_o        ( tx_ready_o ),
+        .data_o         ( write_data ),
+       // .request_wait_o (            ),
+        .en_read_i      ( en_write   ) 
     );
 
     always @* begin
@@ -289,7 +298,7 @@ module hyperbus_phy #(
                 hyper_dq_oe_o = 1'b1;
             end
             WAIT: begin  //t_ACC
-                if (local_write) begin
+                if (wait_cnt == 4'b0000) begin
                     en_write = 1'b1;
                 end
             end

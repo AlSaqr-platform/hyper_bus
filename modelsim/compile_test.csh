@@ -21,6 +21,7 @@ vlog-${VER} -sv -work ${LIB} \
 	../src/ddr_out.sv \
 	../src/pad_simulation.sv \
 	../src/input_fifo.sv \
+	../src/output_fifo.sv \
 	../src/hyperbus.sv \
 	../src/hyperbus_phy.sv \
 	../src/cmd_addr_gen.sv \
