@@ -11,24 +11,26 @@
 
 module hyperbus_phy_tb;
 
+  timeunit 1ns;
+
   localparam TCLK = 3ns;
   localparam NR_CS = 2;
   localparam BURST_WIDTH = 12;
 
   logic                   clk_i;
   logic                   rst_ni;
-  logic                   trans_valid_i = 0;
+  logic                   trans_valid_i;
   logic                   trans_ready_o;
-  logic [31:0]            trans_address_i = 0;
-  logic [NR_CS-1:0]       trans_cs_i = 0;
-  logic                   trans_write_i = 0;
-  logic [BURST_WIDTH-1:0] trans_burst_i = 0;
+  logic [31:0]            trans_address_i;
+  logic [NR_CS-1:0]       trans_cs_i;
+  logic                   trans_write_i;
+  logic [BURST_WIDTH-1:0] trans_burst_i;
   logic                   tx_valid_i;
   logic                   tx_ready_o;
   logic [15:0]            tx_data_i;
   logic [1:0]             tx_strb_i;
   logic                   rx_valid_o;
-  logic                   rx_ready_i = 0;
+  logic                   rx_ready_i;
   logic [15:0]            rx_data_o;
   logic [NR_CS-1:0]       hyper_cs_no;
   logic                   hyper_ck_o;
@@ -76,6 +78,8 @@ module hyperbus_phy_tb;
   wire        rwds;
   wire [7:0 ] dq_io;
 
+  int i;
+
   // TODO: Instantiate model of HyperRAM/HyperFlash.
   pad_simulation pad_sim (
     .data_i   (hyper_rwds_o),   
@@ -104,101 +108,127 @@ module hyperbus_phy_tb;
     .RESETNeg (hyper_reset_no)    
   );
 
-  logic done = 0;
-
-  initial begin
-    repeat(3) #TCLK;
-    rst_ni = 0;
-    repeat(3) #TCLK;
-    rst_ni = 1;
-    #TCLK;
-    while (!done) begin
+  always begin
       clk_i = 1;
       #(TCLK/2);
       clk_i = 0;
       #(TCLK/2);
-    end
   end
 
-  logic start = 1'b0;
+  program test_hyper_phy;
+    // SystemVerilog "clocking block"
+    // Clocking outputs are DUT inputs and vice versa
+    default clocking cb_hyper_phy @(posedge clk_i);
+      default input #1step output #1ns;
+      output negedge rst_ni;
 
-  initial begin
-    $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model);
-    #150us
-    repeat(20) #TCLK;
-    #1ns
+      output trans_valid_i, trans_address_i, trans_cs_i, trans_write_i, trans_burst_i;
+      input trans_ready_o;
 
-    doReadTransaction(32'h05FFF3, 16, 3);
-    doWriteTransaction(32'h0, 8, 16'h1234);
-    doReadTransaction(32'h0, 8);
+      output tx_valid_i, tx_data_i, tx_strb_i;
+      input tx_ready_o;
 
-    #50ns done = 1;
+      output rx_ready_i;
+      input rx_valid_o, rx_data_o;
+    endclocking
 
-  end
+    // Apply the test stimulus
+    initial begin
+      $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model); 
 
-  task doReadTransaction(logic[31:0] address, int burst, int interruptReadyAt = -1);
+      // Set all inputs at the beginning    
+      trans_valid_i = 0;
+      trans_address_i = 0;
+      trans_cs_i = 0;
+      trans_write_i = 0;
+      trans_burst_i = 0;
 
-    wait(~trans_valid_i);
+      tx_valid_i = 0;
+      tx_data_i = 0;
+      tx_strb_i = 0;
 
-    if(trans_ready_o) begin
-      wait(~trans_ready_o);
-      #TCLK;
+      rx_ready_i = 0;
+
+
+      // Will be applied on negedge of clock!
+      cb_hyper_phy.rst_ni <= 0;
+      // Will be applied 4ns after the clock!
+      ##2 cb_hyper_phy.rst_ni <= 1;
+
+      #150us;
+
+      doReadTransaction(32'h05FFF3, 16, 3);
+      doWriteTransaction(32'h0, 8, 16'h1234);
+      doReadTransaction(32'h0, 8);
+      doReadTransaction(32'h0, 8);
+      // etc. ...      
     end
 
-    trans_address_i = address;
-    trans_burst_i = burst;
-    trans_write_i = 0;
-    trans_cs_i = 2'b01;
+    // // Check the results - could combine with stimulus block
+    // initial begin
+    //   ##1   
+    //   // Sampled 1ps (or whatever the precision is) before posedge clock
+    //   ##1 assert (cb_counter.Q == 8'b00000000);
+    //   ##1 assert (cb_counter.Q == 8'b00000000);
+    //   ##2 assert (cb_counter.Q == 8'b00000010);
+    //   ##4 assert (cb_counter.Q == 8'b11111110);
+    //   // etc. ...      
+    //  end
 
-    trans_valid_i = 1;
-    wait(trans_ready_o);
-    #TCLK;
-    trans_valid_i = 0;
+    // Simulation stops automatically when both initials have been completed
+  
 
-    //read data from phy
-    rx_ready_i = 1;
-    wait(rx_valid_o); //sync loop to clk0
-    for(int i = 0; i<burst; i++) begin
-      #(TCLK/2);
-      if(interruptReadyAt == i) begin
-        rx_ready_i = 0;
-        #(8*TCLK);
-        rx_ready_i = 1;
-      end 
-      #(TCLK);
-      if(rx_valid_o) begin
-        $display("Data at address %h is %h, received at %0t", address+i, rx_data_o, $time);
-      end else begin
-        i--; //data not valid, try next cycle
+    task doReadTransaction(logic[31:0] address, int burst, int interruptReadyAt = -1);
+      cb_hyper_phy.trans_address_i <= address;
+      cb_hyper_phy.trans_burst_i <= burst;
+      cb_hyper_phy.trans_write_i <= 0;
+      cb_hyper_phy.trans_cs_i <= 2'b01;
+
+      cb_hyper_phy.trans_valid_i <= 1;
+      wait(cb_hyper_phy.trans_ready_o);
+      cb_hyper_phy.trans_valid_i <= 0;
+
+      //read data from phy
+      cb_hyper_phy.rx_ready_i <= 1;
+      wait(cb_hyper_phy.rx_valid_o);
+
+      i = 0;
+      while(i<burst) begin
+
+        if(interruptReadyAt == i) begin
+          cb_hyper_phy.rx_ready_i <= 0;
+          ##2;
+          cb_hyper_phy.rx_ready_i <= 1;
+        end 
+
+        if(cb_hyper_phy.rx_valid_o) begin
+          $info("Data at address %h is %h", address+i, cb_hyper_phy.rx_data_o);
+          i++;
+        end
+
+        ##2; //One clock in clk0
       end
-      #(TCLK/2);
-    end
-    wait(~rx_valid_o);
-    rx_ready_i = 0;
 
-  endtask : doReadTransaction
+      cb_hyper_phy.rx_ready_i <= 0;
 
-  task doWriteTransaction(logic [31:0] address, int burst, logic [15:0] data);
-    
-    wait (~trans_valid_i)
+    endtask : doReadTransaction
 
-    if(trans_ready_o) begin
-      wait(~trans_ready_o);
-      #TCLK;
-    end
+    task doWriteTransaction(logic [31:0] address, int burst, logic [15:0] data);
+      
+      cb_hyper_phy.trans_address_i <= address;
+      cb_hyper_phy.trans_burst_i <= burst;
+      cb_hyper_phy.trans_write_i <= 1;
+      cb_hyper_phy.trans_cs_i <= 2'b01;
+      cb_hyper_phy.tx_data_i <= data;
+      cb_hyper_phy.tx_strb_i <= 1'b0;
 
-    trans_address_i = address;
-    trans_burst_i = burst;
-    trans_write_i = 1;
-    trans_cs_i = 2'b01;
-    tx_data_i = data;
-    tx_strb_i = 1'b0;
+      cb_hyper_phy.trans_valid_i <= 1;
+      wait(cb_hyper_phy.trans_ready_o);
+      cb_hyper_phy.trans_valid_i <= 0;
+      wait(~cb_hyper_phy.trans_ready_o);
 
-    trans_valid_i = 1;
-    wait(trans_ready_o);
-    #TCLK;
-    trans_valid_i = 0;
+    endtask : doWriteTransaction
 
-  endtask : doWriteTransaction
+  endprogram
 
 endmodule

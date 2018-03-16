@@ -202,6 +202,7 @@ module hyperbus_phy #(
                     en_cs <= 1'b0;
                     en_read_transaction <= 1'b1;
                     if(trans_valid_i) begin
+                        assert(trans_cs_i != {NR_CS{1'b0}}) else $error("No Device selected (CS=0b00)");
                         trans_ready_o <= 1'b1;
                         en_cs <= 1'b1;
                         en_read_transaction <= 1'b0;
