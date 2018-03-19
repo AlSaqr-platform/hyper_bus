@@ -25,6 +25,7 @@ module hyperbus_phy_tb;
   logic [NR_CS-1:0]       trans_cs_i;
   logic                   trans_write_i;
   logic [BURST_WIDTH-1:0] trans_burst_i;
+  logic                   trans_address_space_i;
   logic                   tx_valid_i;
   logic                   tx_ready_o;
   logic [15:0]            tx_data_i;
@@ -48,29 +49,30 @@ module hyperbus_phy_tb;
     .NR_CS(NR_CS),
     .BURST_WIDTH(BURST_WIDTH)
   ) dut_i (
-    .clk_i                ( clk_i           ),
-    .rst_ni               ( rst_ni          ),
-    .trans_valid_i        ( trans_valid_i   ),
-    .trans_ready_o        ( trans_ready_o   ),
-    .trans_address_i      ( trans_address_i ),
-    .trans_cs_i           ( trans_cs_i      ),
-    .trans_write_i        ( trans_write_i   ),
-    .trans_burst_i        ( trans_burst_i   ),
-    .tx_valid_i           ( tx_valid_i      ),
-    .tx_ready_o           ( tx_ready_o      ),
-    .tx_data_i            ( tx_data_i       ),
-    .tx_strb_i            ( tx_strb_i       ),
-    .rx_valid_o           ( rx_valid_o      ),
-    .rx_ready_i           ( rx_ready_i      ),
-    .rx_data_o            ( rx_data_o       ),
-    .hyper_cs_no          ( hyper_cs_no     ),
-    .hyper_ck_o           ( hyper_ck_o      ),
-    .hyper_ck_no          ( hyper_ck_no     ),
-    .hyper_rwds_o         ( hyper_rwds_o    ),
-    .hyper_rwds_i         ( hyper_rwds_i    ),
-    .hyper_rwds_oe_o      ( hyper_rwds_oe_o ),
-    .hyper_dq_i           ( hyper_dq_i      ),
-    .hyper_dq_o           ( hyper_dq_o      ),
+    .clk_i                ( clk_i                 ),
+    .rst_ni               ( rst_ni                ),
+    .trans_valid_i        ( trans_valid_i         ),
+    .trans_ready_o        ( trans_ready_o         ),
+    .trans_address_i      ( trans_address_i       ),
+    .trans_cs_i           ( trans_cs_i            ),
+    .trans_write_i        ( trans_write_i         ),
+    .trans_burst_i        ( trans_burst_i         ),
+    .trans_address_space_i( trans_address_space_i ),
+    .tx_valid_i           ( tx_valid_i            ),
+    .tx_ready_o           ( tx_ready_o            ),
+    .tx_data_i            ( tx_data_i             ),
+    .tx_strb_i            ( tx_strb_i             ),
+    .rx_valid_o           ( rx_valid_o            ),
+    .rx_ready_i           ( rx_ready_i            ),
+    .rx_data_o            ( rx_data_o             ),
+    .hyper_cs_no          ( hyper_cs_no           ),
+    .hyper_ck_o           ( hyper_ck_o            ),
+    .hyper_ck_no          ( hyper_ck_no           ),
+    .hyper_rwds_o         ( hyper_rwds_o          ),
+    .hyper_rwds_i         ( hyper_rwds_i          ),
+    .hyper_rwds_oe_o      ( hyper_rwds_oe_o       ),
+    .hyper_dq_i           ( hyper_dq_i            ),
+    .hyper_dq_o           ( hyper_dq_o            ),
     .hyper_dq_oe_o        ( hyper_dq_oe_o   ),
     .hyper_reset_no       ( hyper_reset_no  )
   );
@@ -124,6 +126,8 @@ module hyperbus_phy_tb;
 
   int writeData64[64] = '{16'h0f00, 16'h0f01, 16'h0f02, 16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h0000, 16'h1001, 16'h2002, 16'h3003, 16'h4004, 16'h5005, 16'h6006, 16'h7007, 16'h8008, 16'h9009, 16'ha00a, 16'hb00b, 16'hc00c, 16'hd00d, 16'he00e, 16'hf00f, 16'h0f00, 16'h0f01, 16'h0f02, 16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h0000, 16'h1001, 16'h2002, 16'h3003, 16'h4004, 16'h5005, 16'h6006, 16'h7007, 16'h8008, 16'h9009, 16'ha00a, 16'hb00b, 16'hc00c, 16'hd00d, 16'he00e, 16'hf00f};
   logic [1:0] mask64[64] = '{14: 2'b01, 43: 2'b10, default: 2'b00 };
+  int regWriteData[1] = '{16'h8f1f};
+  int regWriteData2[1] = '{16'h0002};
 
   program test_hyper_phy;
     // SystemVerilog "clocking block"
@@ -132,7 +136,7 @@ module hyperbus_phy_tb;
       default input #1step output #1ns;
       output negedge rst_ni;
 
-      output trans_valid_i, trans_address_i, trans_cs_i, trans_write_i, trans_burst_i;
+      output trans_valid_i, trans_address_i, trans_cs_i, trans_write_i, trans_burst_i, trans_address_space_i;
       input trans_ready_o;
 
       output tx_valid_i, tx_data_i, tx_strb_i;
@@ -152,6 +156,7 @@ module hyperbus_phy_tb;
       trans_cs_i = 0;
       trans_write_i = 0;
       trans_burst_i = 0;
+      trans_address_space_i = 0;
 
       tx_valid_i = 0;
       tx_data_i = 0;
@@ -165,23 +170,28 @@ module hyperbus_phy_tb;
       ##2 cb_hyper_phy.rst_ni <= 1;
 
       #150us;
+      doWriteTransaction(32'h00000800, 1, regWriteData, '{2'b00}, -1 , 1);
 
       doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
       doWriteTransaction(32'h0, 8, writeData8, maskAll8, 1);
       doReadTransaction(32'h0, 8, expectedResultWrite);
       doWriteTransaction(32'h0, 64, writeData64, mask64);
       // etc. ... 
+      //doWriteTransaction(32'h0, 8, writeData);
+      //doReadTransaction(32'h0, 8, writeData);
+      //doWriteTransaction(32'h111111, 8, writeData);
+      //doReadTransaction(32'h0, 8, writeData);
 
       ##100;     
     end
     // Simulation stops automatically when both initials have been completed
   
-    task doReadTransaction(logic[31:0] address, int burst, int expectedResult[] = '{default: 16'b0}, int interruptReadyAt = -1);
+    task doReadTransaction(logic[31:0] address, int burst, int expectedResult[] = '{default: 16'b0}, int interruptReadyAt = -1, logic address_space = 0);
       cb_hyper_phy.trans_address_i <= address;
       cb_hyper_phy.trans_burst_i <= burst;
       cb_hyper_phy.trans_write_i <= 0;
       cb_hyper_phy.trans_cs_i <= 2'b01;
-
+      cb_hyper_phy.trans_address_space_i <= address_space;
       cb_hyper_phy.trans_valid_i <= 1;
       wait(cb_hyper_phy.trans_ready_o);
       cb_hyper_phy.trans_valid_i <= 0;
@@ -212,12 +222,13 @@ module hyperbus_phy_tb;
 
     endtask : doReadTransaction
 
-    task doWriteTransaction(logic [31:0] address, int burst, int data[], logic [1:0] mask[], int interruptValidAt = -1);
+    task doWriteTransaction(logic [31:0] address, int burst, int data[], logic [1:0] mask[], int interruptValidAt = -1, logic address_space = 0);
       
       cb_hyper_phy.trans_address_i <= address;
       cb_hyper_phy.trans_burst_i <= burst;
       cb_hyper_phy.trans_write_i <= 1;
       cb_hyper_phy.trans_cs_i <= 2'b01;
+      cb_hyper_phy.trans_address_space_i <= address_space;
 
       cb_hyper_phy.trans_valid_i <= 1;
       wait(cb_hyper_phy.trans_ready_o);
