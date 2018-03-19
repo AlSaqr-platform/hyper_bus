@@ -3,3 +3,5 @@ command.log
 filenames.log
 view_command.log
 WORK
+reports
+Synopsys_stack_trace_*
