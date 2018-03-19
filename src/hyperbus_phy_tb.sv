@@ -170,12 +170,18 @@ module hyperbus_phy_tb;
       ##2 cb_hyper_phy.rst_ni <= 1;
 
       #150us;
-      doWriteTransaction(32'h00000800, 1, regWriteData, '{2'b00}, -1 , 1);
+
+      doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
+
+      doConfig0Write(16'h8f17);
 
       doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
       doWriteTransaction(32'h0, 8, writeData8, maskAll8, 1);
+
+      
       doReadTransaction(32'h0, 8, expectedResultWrite);
       doWriteTransaction(32'h0, 64, writeData64, mask64);
+      doReadTransaction(32'h0, 64, writeData64);
       // etc. ... 
       //doWriteTransaction(32'h0, 8, writeData);
       //doReadTransaction(32'h0, 8, writeData);
@@ -252,6 +258,10 @@ module hyperbus_phy_tb;
       cb_hyper_phy.tx_valid_i <= 1'b0;
 
     endtask : doWriteTransaction
+
+    task doConfig0Write(logic [15:0] data);
+        doWriteTransaction(32'h00000800, 1, '{data}, '{2'b00}, -1 , 1); //set variable latency
+    endtask : doConfig0Write
 
   endprogram
 

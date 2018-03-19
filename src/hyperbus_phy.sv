@@ -26,7 +26,7 @@ module hyperbus_phy #(
     input  logic [NR_CS-1:0]       trans_cs_i,        // chipselect
     input  logic                   trans_write_i,     // transaction is a write
     input  logic [BURST_WIDTH-1:0] trans_burst_i,
-    input logic					   trans_address_space_i,
+    input logic                    trans_address_space_i,
     // transmitting
     input  logic                   tx_valid_i,
     output logic                   tx_ready_o,
@@ -62,7 +62,7 @@ module hyperbus_phy #(
     logic [NR_CS-1:0]       local_cs;
     logic                   local_write;
     logic [BURST_WIDTH-1:0] local_burst;
-    logic					local_address_space;
+    logic                   local_address_space;
 
     logic clock_enable = 1'b0;
     logic en_cs;
@@ -200,6 +200,7 @@ module hyperbus_phy #(
 
     logic [3:0] wait_cnt;
     logic [BURST_WIDTH-1:0] burst_cnt;
+    logic additional_latency;
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
         if(~rst_ni) begin
@@ -207,6 +208,7 @@ module hyperbus_phy #(
             wait_cnt <= WAIT_CYCLES;
             burst_cnt <= {BURST_WIDTH{1'b0}};
             cmd_addr_sel <= 1'b0;
+            additional_latency <= 1'b0;
         end else begin
             case(hyper_trans_state)
                 STANDBY: begin
@@ -222,27 +224,34 @@ module hyperbus_phy #(
                 end    
                 CMD_ADDR: begin
                     cmd_addr_sel <= cmd_addr_sel + 1;
+                    if(cmd_addr_sel == 2) begin
+                        additional_latency <= hyper_rwds_i; //Sample RWDS after second part of CA is sent
+                    end
                     if(cmd_addr_sel == 3) begin
-                    	if (local_address_space) begin
-                    		burst_cnt <= local_burst - 1;
-                    		hyper_trans_state <= REG_WRITE;
-                    	end else begin 
-                        wait_cnt <= WAIT_CYCLES - 2;
-                        hyper_trans_state <= WAIT2;
-                    	end
+                        if (local_address_space) begin //Write to memory config register
+                            burst_cnt <= local_burst - 1;
+                            hyper_trans_state <= REG_WRITE;
+                        end else begin 
+                            if (local_write) begin
+                                wait_cnt <= WAIT_CYCLES - 2;
+                            end else begin
+                                wait_cnt <= WAIT_CYCLES - 1; //Data is delayed by one clock in ddr_in
+                            end
+                            if(additional_latency) begin
+                                hyper_trans_state <= WAIT2;
+                            end else begin
+                                hyper_trans_state <= WAIT;
+                            end
+                        end
                     end
                 end  
                 REG_WRITE: begin
                         hyper_trans_state <= END;
-				end         	
+                end
                 WAIT2: begin  //Additional latency (If RWDS HIGH)
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin
-                        if (local_write) begin
-                            wait_cnt <= WAIT_CYCLES - 1;
-                        end else begin
-                            wait_cnt <= WAIT_CYCLES; //Data is delayed by one clock in ddr_in
-                        end
+                        wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= WAIT;
                     end
                 end
