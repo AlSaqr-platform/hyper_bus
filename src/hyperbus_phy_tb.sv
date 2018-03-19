@@ -173,11 +173,10 @@ module hyperbus_phy_tb;
 
       doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
 
-      doConfig0Write(16'h8f17);
+      doConfig0Write(16'h8f17); // use variable latency
 
       doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
       doWriteTransaction(32'h0, 8, writeData8, maskAll8, 1);
-
       
       doReadTransaction(32'h0, 8, expectedResultWrite);
       doWriteTransaction(32'h0, 64, writeData64, mask64);
@@ -188,7 +187,7 @@ module hyperbus_phy_tb;
       //doWriteTransaction(32'h111111, 8, writeData);
       //doReadTransaction(32'h0, 8, writeData);
 
-      ##100;     
+      ##100;
     end
     // Simulation stops automatically when both initials have been completed
   

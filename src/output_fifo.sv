@@ -10,9 +10,8 @@
 `timescale 1 ps/1 ps
 
 module output_fifo #(
-    int unsigned FIFO_SIZE = 4,
-    int unsigned FIFO_WIDTH = 2,  //Size of FIFO is 2^FIFO_WIDTH
-    int unsigned DATA_WIDTH = 18
+    parameter FIFO_WIDTH = 2,
+    parameter DATA_WIDTH = 18
 )(
     input logic         clk_i,
     input logic         rst_ni,
@@ -54,7 +53,7 @@ module output_fifo #(
 
             //read from fifo
             if(en_read_i && valid[sel_read]) begin
-                valid[sel_read] = 1'b0;
+                valid[sel_read] <= 1'b0;
                 sel_read <= sel_read + 1;
             end
         end

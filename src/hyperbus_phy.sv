@@ -13,9 +13,9 @@
 `timescale 1 ps/1 ps
 
 module hyperbus_phy #(
-    int unsigned BURST_WIDTH = 12,
-    int unsigned NR_CS = 2,
-    int unsigned WAIT_CYCLES = 6
+    parameter BURST_WIDTH = 12,
+    parameter NR_CS = 2,
+    parameter WAIT_CYCLES = 6
 )(
     input logic                    clk_i,    // Clock
     input logic                    rst_ni,   // Asynchronous reset active low
@@ -64,7 +64,7 @@ module hyperbus_phy #(
     logic [BURST_WIDTH-1:0] local_burst;
     logic                   local_address_space;
 
-    logic clock_enable = 1'b0;
+    logic clock_enable;
     logic en_cs;
     logic en_read;
     logic en_ddr_in;
@@ -107,17 +107,15 @@ module hyperbus_phy #(
         .clk_o ( hyper_ck_no )
     );
 
-    //assign hyper_rwds_oe_o = 0;
     assign hyper_reset_no = 1;
-    //assign write_data = tx_data_i;
 
     //selecting ram must be in sync with future hyper_ck_o
     always_ff @(posedge clk270 or negedge rst_ni) begin : proc_hyper_cs_no
         if(~rst_ni) begin
             hyper_cs_no <= {NR_CS{1'b1}};
         end else begin
-            hyper_cs_no[0] = ~ (en_cs && local_cs[0]);
-            hyper_cs_no[1] = ~ (en_cs && local_cs[1]); //ToDo Use NR_CS
+            hyper_cs_no[0] <= ~ (en_cs && local_cs[0]);
+            hyper_cs_no[1] <= ~ (en_cs && local_cs[1]); //ToDo Use NR_CS
         end
     end
 
@@ -403,7 +401,7 @@ module hyperbus_phy #(
             local_cs <= {NR_CS{1'b0}};
             local_write <= 1'b0;
             local_burst <= {BURST_WIDTH{1'b0}};
-            local_address_space <= 0'b0;
+            local_address_space <= 1'b0;
         end else if(en_read_transaction) begin
             local_address <= trans_address_i;
             local_cs <= trans_cs_i;
