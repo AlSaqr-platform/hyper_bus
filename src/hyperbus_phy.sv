@@ -66,7 +66,8 @@ module hyperbus_phy #(
     logic en_cs;
     logic en_read;
     logic en_ddr_in;
-    logic request_wait_r;
+    logic request_wait_read;
+    logic request_wait_write;
     logic en_read_transaction;
     logic en_write;
     //logic en_rwds;
@@ -78,7 +79,7 @@ module hyperbus_phy #(
     logic clk180;
     logic clk270;
 
-    typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, WAIT2, WAIT, DATA_W, DATA_R, START_WAIT, WAIT_R, END} hyper_trans_t;
+    typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, WAIT2, WAIT, DATA_W, DATA_R, START_WAIT_R, WAIT_R, WAIT_W, START_DATA_W, END} hyper_trans_t;
     hyper_trans_t hyper_trans_state;
 
     clk_gen ddr_clk (
@@ -163,21 +164,21 @@ module hyperbus_phy #(
         .rst_ni         ( rst_ni                                 ),
         .data_i         ( data_i                                 ),
         .en_write_i     ( en_read && hyper_trans_state != WAIT_R ),
-        .request_wait_o ( request_wait_r                         ),
+        .request_wait_o ( request_wait_read                      ),
         .data_o         ( rx_data_o                              ),
         .valid_o        ( rx_valid_o                             ),
         .ready_i        ( rx_ready_i                             )
     );
 
     output_fifo i_output_fifo (
-        .clk_i          ( clk0       ),
-        .rst_ni         ( rst_ni     ),
-        .data_i         ( {tx_strb_i, tx_data_i}  ),
-        .valid_i        ( tx_valid_i ),
-        .ready_o        ( tx_ready_o ),
+        .clk_i          ( clk0                      ),
+        .rst_ni         ( rst_ni                    ),
+        .data_i         ( {tx_strb_i, tx_data_i}    ),
+        .valid_i        ( tx_valid_i                ),
+        .ready_o        ( tx_ready_o                ),
         .data_o         ( { write_strb, write_data} ),
-        // .request_wait_o (            ),
-        .en_read_i      ( en_write   ) 
+        .request_wait_o ( request_wait_write        ),
+        .en_read_i      ( en_write                  ) 
     );
 
     always @* begin
@@ -225,7 +226,7 @@ module hyperbus_phy #(
                         if (local_write) begin
                             wait_cnt <= WAIT_CYCLES - 1;
                         end else begin
-                            wait_cnt <= WAIT_CYCLES;
+                            wait_cnt <= WAIT_CYCLES; //Data is delayed by one clock in ddr_in
                         end
                         hyper_trans_state <= WAIT;
                     end
@@ -235,7 +236,11 @@ module hyperbus_phy #(
                     if(wait_cnt == 4'h0) begin
                         burst_cnt <= local_burst - 1;
                         if (local_write) begin
-                            hyper_trans_state <= DATA_W;
+                            if(~request_wait_write) begin
+                                hyper_trans_state <= DATA_W;
+                            end else begin //Data to write not ready yet
+                                hyper_trans_state <= WAIT_W;
+                            end
                         end else begin
                             hyper_trans_state <= DATA_R;
                         end
@@ -248,26 +253,34 @@ module hyperbus_phy #(
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
                         wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= END;
-                    end else if(request_wait_r) begin
-                        hyper_trans_state <= START_WAIT;
+                    end else if(request_wait_read) begin
+                        hyper_trans_state <= START_WAIT_R;
                     end
-
                 end
                 DATA_W: begin
                     burst_cnt <= burst_cnt - 1;
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin                        wait_cnt <= WAIT_CYCLES - 1;
                         wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= END;
+                    end else if (request_wait_write) begin
+                        hyper_trans_state <= WAIT_W;
                     end
                 end
-
-                START_WAIT: begin
+                START_WAIT_R: begin
                     hyper_trans_state <= WAIT_R;
                 end
                 WAIT_R: begin
-                    if(~request_wait_r) begin
+                    if(~request_wait_read) begin
                         hyper_trans_state <= DATA_R;
                     end
+                end
+                WAIT_W: begin
+                    if(~request_wait_write) begin
+                        hyper_trans_state <= START_DATA_W;
+                    end
+                end
+                START_DATA_W: begin
+                    hyper_trans_state <= DATA_W;
                 end
                 END: begin
                     wait_cnt <= wait_cnt - 1;
@@ -312,14 +325,7 @@ module hyperbus_phy #(
                     end
                 end
             end
-            START_WAIT: begin
-                clock_enable = 1'b0;
-                en_ddr_in = 1'b1;
-            end
 
-            WAIT_R: begin
-                clock_enable = 1'b0;
-            end
             DATA_R: begin
                 en_ddr_in = 1'b1;
             end
@@ -328,6 +334,27 @@ module hyperbus_phy #(
                 hyper_rwds_oe_o = 1'b1;
                 en_write = 1'b1;
             end
+
+
+            START_WAIT_R: begin
+                clock_enable = 1'b0;
+                en_ddr_in = 1'b1;
+            end
+            WAIT_R: begin
+                clock_enable = 1'b0;
+            end
+            WAIT_W: begin
+                clock_enable = 1'b0;
+                hyper_dq_oe_o = 1'b1;
+                hyper_rwds_oe_o = 1'b1;
+            end
+            START_DATA_W: begin
+                clock_enable = 1'b0;
+                hyper_dq_oe_o = 1'b1;
+                hyper_rwds_oe_o = 1'b1;
+                en_write = 1'b1;
+            end
+
             END: begin
                 clock_enable = 1'b0;
                 en_cs = 1'b0;

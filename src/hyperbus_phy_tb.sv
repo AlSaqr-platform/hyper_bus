@@ -167,7 +167,7 @@ module hyperbus_phy_tb;
       #150us;
 
       doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
-      doWriteTransaction(32'h0, 8, writeData8, maskAll8);
+      doWriteTransaction(32'h0, 8, writeData8, maskAll8, 1);
       doReadTransaction(32'h0, 8, expectedResultWrite);
       doWriteTransaction(32'h0, 64, writeData64, mask64);
       // etc. ... 
@@ -212,7 +212,7 @@ module hyperbus_phy_tb;
 
     endtask : doReadTransaction
 
-    task doWriteTransaction(logic [31:0] address, int burst, int data[], logic [1:0] mask[]);
+    task doWriteTransaction(logic [31:0] address, int burst, int data[], logic [1:0] mask[], int interruptValidAt = -1);
       
       cb_hyper_phy.trans_address_i <= address;
       cb_hyper_phy.trans_burst_i <= burst;
@@ -229,7 +229,14 @@ module hyperbus_phy_tb;
         cb_hyper_phy.tx_strb_i <= mask[i];
         cb_hyper_phy.tx_valid_i <= 1'b1;
         wait(cb_hyper_phy.tx_ready_o);
-        ##2;
+
+        if(interruptValidAt == i) begin
+            cb_hyper_phy.tx_valid_i <= 1'b0;
+            ##30;
+            cb_hyper_phy.tx_valid_i <= 1'b1;
+        end
+
+        ##2; //Wait one cycle of clk0
       end
       cb_hyper_phy.tx_valid_i <= 1'b0;
 

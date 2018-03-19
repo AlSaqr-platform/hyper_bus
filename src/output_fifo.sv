@@ -64,6 +64,6 @@ module output_fifo #(
 
     assign ready_o = ~valid[sel_write];
 
-    assign request_wait_o = ~(valid == 4'b0000 || valid == 4'b0001 || valid == 4'b0010 || valid == 4'b0100 || valid == 4'b1000);
+    assign request_wait_o = (valid == 4'b0000);
 
 endmodule
