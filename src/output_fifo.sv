@@ -11,8 +11,8 @@
 
 module output_fifo #(
     int unsigned FIFO_SIZE = 4,
-    int unsigned DATA_WIDTH = 18,
-    int unsigned TOTAL_SIZE = FIFO_SIZE * DATA_WIDTH
+    int unsigned FIFO_WIDTH = 2,  //Size of FIFO is 2^FIFO_WIDTH
+    int unsigned DATA_WIDTH = 18
 )(
     input logic         clk_i,
     input logic         rst_ni,
@@ -28,28 +28,26 @@ module output_fifo #(
     input  logic        en_read_i
 );
 
+    logic [(1 << FIFO_WIDTH)-1:0] valid;
 
-    logic [FIFO_SIZE-1:0] valid;
+    logic [DATA_WIDTH-1:0] storage[1 << FIFO_WIDTH];
 
-    logic [TOTAL_SIZE-1:0] storage;
+    logic [FIFO_WIDTH-1:0] sel_read; //ToDo depends on FIFO_SIZE
+    logic [FIFO_WIDTH-1:0] sel_write; 
 
-    logic [1:0] sel_read; //ToDo depends on FIFO_SIZE
-
-    logic [1:0] sel_write; 
-
-    assign data_o = storage[DATA_WIDTH*sel_read+DATA_WIDTH-1-:DATA_WIDTH];
+    
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_storage
         if(~rst_ni) begin
-            storage <= {TOTAL_SIZE{1'b0}};
-            valid <= {FIFO_SIZE{1'b0}};
+            storage <= '{default: {DATA_WIDTH{1'b0}}};
+            valid <= {1 << FIFO_WIDTH{1'b0}};
             sel_read <= '0;
             sel_write <= '0;
         end else  begin 
 
             //write to fifo
             if(valid_i && ~valid[sel_write]) begin
-                storage[(DATA_WIDTH*sel_write)+DATA_WIDTH-1-:DATA_WIDTH] <= data_i;
+                storage[sel_write] <= data_i;
                 valid[sel_write] <= 1'b1;
                 sel_write <= sel_write + 1;
             end
@@ -62,8 +60,11 @@ module output_fifo #(
         end
     end
 
+    //Input Interface Signals
     assign ready_o = ~valid[sel_write];
 
-    assign request_wait_o = (valid == 4'b0000);
+    //Output Interface Signals
+    assign data_o = storage[sel_read];
+    assign request_wait_o = (valid == {1 << FIFO_WIDTH{1'b0}});
 
 endmodule
