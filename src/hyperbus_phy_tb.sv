@@ -118,7 +118,12 @@ module hyperbus_phy_tb;
   int expectedResultAt05FFF3[16] = '{16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h1001, 16'h2002, 16'h3003};
   int expectedResultAll1234[8] = '{default: 16'h1234};
 
-  int writeData[8] = '{16'h1001, 16'h2002, 16'h3003, 16'h4004, 16'h5005, 16'h6006, 16'h7007, 16'h8008};
+  int writeData8[8] = '{16'h1001, 16'h2002, 16'h3003, 16'h40FF, 16'h5555, 16'h6006, 16'h7007, 16'h8008};
+  logic [1:0] maskAll8[8] = '{3: 2'b01, 4: 2'b10, default: 2'b00 };
+  int expectedResultWrite[8] = '{16'h1001, 16'h2002, 16'h3003, 16'h4004, 16'h0055, 16'h6006, 16'h7007, 16'h8008};
+
+  int writeData64[64] = '{16'h0f00, 16'h0f01, 16'h0f02, 16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h0000, 16'h1001, 16'h2002, 16'h3003, 16'h4004, 16'h5005, 16'h6006, 16'h7007, 16'h8008, 16'h9009, 16'ha00a, 16'hb00b, 16'hc00c, 16'hd00d, 16'he00e, 16'hf00f, 16'h0f00, 16'h0f01, 16'h0f02, 16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h0000, 16'h1001, 16'h2002, 16'h3003, 16'h4004, 16'h5005, 16'h6006, 16'h7007, 16'h8008, 16'h9009, 16'ha00a, 16'hb00b, 16'hc00c, 16'hd00d, 16'he00e, 16'hf00f};
+  logic [1:0] mask64[64] = '{14: 2'b01, 43: 2'b10, default: 2'b00 };
 
   program test_hyper_phy;
     // SystemVerilog "clocking block"
@@ -162,15 +167,15 @@ module hyperbus_phy_tb;
       #150us;
 
       doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
-      doWriteTransaction(32'h0, 8, writeData);
-      doReadTransaction(32'h0, 8, writeData);
+      doWriteTransaction(32'h0, 8, writeData8, maskAll8);
+      doReadTransaction(32'h0, 8, expectedResultWrite);
+      doWriteTransaction(32'h0, 64, writeData64, mask64);
       // etc. ... 
 
       ##100;     
     end
     // Simulation stops automatically when both initials have been completed
   
-
     task doReadTransaction(logic[31:0] address, int burst, int expectedResult[] = '{default: 16'b0}, int interruptReadyAt = -1);
       cb_hyper_phy.trans_address_i <= address;
       cb_hyper_phy.trans_burst_i <= burst;
@@ -207,13 +212,12 @@ module hyperbus_phy_tb;
 
     endtask : doReadTransaction
 
-    task doWriteTransaction(logic [31:0] address, int burst, int data[]);
+    task doWriteTransaction(logic [31:0] address, int burst, int data[], logic [1:0] mask[]);
       
       cb_hyper_phy.trans_address_i <= address;
       cb_hyper_phy.trans_burst_i <= burst;
       cb_hyper_phy.trans_write_i <= 1;
       cb_hyper_phy.trans_cs_i <= 2'b01;
-      cb_hyper_phy.tx_strb_i <= 1'b0;
 
       cb_hyper_phy.trans_valid_i <= 1;
       wait(cb_hyper_phy.trans_ready_o);
@@ -222,6 +226,7 @@ module hyperbus_phy_tb;
 
       for(i = 0; i < burst; i++) begin
         cb_hyper_phy.tx_data_i <= data[i];
+        cb_hyper_phy.tx_strb_i <= mask[i];
         cb_hyper_phy.tx_valid_i <= 1'b1;
         wait(cb_hyper_phy.tx_ready_o);
         ##2;

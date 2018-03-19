@@ -11,18 +11,19 @@
 
 module output_fifo #(
     int unsigned FIFO_SIZE = 4,
-    int unsigned TOTAL_SIZE = FIFO_SIZE * 16
+    int unsigned DATA_WIDTH = 18,
+    int unsigned TOTAL_SIZE = FIFO_SIZE * DATA_WIDTH
 )(
     input logic         clk_i,
     input logic         rst_ni,
 
     //IN Interface
-    input  logic [15:0] data_i,
+    input  logic [DATA_WIDTH-1:0] data_i,
     input  logic        valid_i,
     output logic        ready_o,
 
     //OUT Interface
-    output logic [15:0] data_o,
+    output logic [DATA_WIDTH-1:0] data_o,
     output logic        request_wait_o,
     input  logic        en_read_i
 );
@@ -36,7 +37,7 @@ module output_fifo #(
 
     logic [1:0] sel_write; 
 
-    assign data_o = storage[(sel_read << 4)+15-:16];
+    assign data_o = storage[DATA_WIDTH*sel_read+DATA_WIDTH-1-:DATA_WIDTH];
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_storage
         if(~rst_ni) begin
@@ -48,7 +49,7 @@ module output_fifo #(
 
             //write to fifo
             if(valid_i && ~valid[sel_write]) begin
-                storage[(16*sel_write)+15-:16] <= data_i;
+                storage[(DATA_WIDTH*sel_write)+DATA_WIDTH-1-:DATA_WIDTH] <= data_i;
                 valid[sel_write] <= 1'b1;
                 sel_write <= sel_write + 1;
             end

@@ -50,9 +50,11 @@ module hyperbus_phy #(
 
     logic [47:0] cmd_addr;
     logic [15:0] data_out;
+    logic [1:0]  data_rwds_out;
     logic [15:0] CA_out;
     logic [1:0]  cmd_addr_sel;
     logic [15:0] write_data;
+    logic [1:0]  write_strb;
 
     //local copy of transaction
     logic [31:0]            local_address;
@@ -128,9 +130,16 @@ module hyperbus_phy #(
       end
     endgenerate
 
-    //Drive RWDS
     assign data_out = en_write ? write_data : CA_out;
-    assign hyper_rwds_o = en_write ? tx_strb_i : 1'b0; //RWDS low before end of initial latency, en_rwds redundant
+    assign data_rwds_out = en_write ? write_strb : 2'b00; //RWDS low before end of initial latency
+
+    ddr_out ddr_data_strb ( //Todo
+      .rst_ni (rst_ni),
+      .clk_i (clk0),
+      .d0_i (data_rwds_out[1]),
+      .d1_i (data_rwds_out[0]),
+      .q_o (hyper_rwds_o)
+    );
 
     cmd_addr_gen cmd_addr_gen (
         .rw_i            ( ~local_write    ),
@@ -149,8 +158,6 @@ module hyperbus_phy #(
         .rst_ni          ( rst_ni         )
     );
 
-    logic temp;
-
     input_fifo i_input_fifo (
         .clk_i          ( clk0                                   ),
         .rst_ni         ( rst_ni                                 ),
@@ -165,11 +172,11 @@ module hyperbus_phy #(
     output_fifo i_output_fifo (
         .clk_i          ( clk0       ),
         .rst_ni         ( rst_ni     ),
-        .data_i         ( tx_data_i  ),
+        .data_i         ( {tx_strb_i, tx_data_i}  ),
         .valid_i        ( tx_valid_i ),
         .ready_o        ( tx_ready_o ),
-        .data_o         ( write_data ),
-       // .request_wait_o (            ),
+        .data_o         ( { write_strb, write_data} ),
+        // .request_wait_o (            ),
         .en_read_i      ( en_write   ) 
     );
 
@@ -298,8 +305,11 @@ module hyperbus_phy #(
                 hyper_dq_oe_o = 1'b1;
             end
             WAIT: begin  //t_ACC
-                if (wait_cnt == 4'b0000) begin
-                    en_write = 1'b1;
+                if(local_write == 1'b1) begin
+                    hyper_rwds_oe_o = 1'b1;
+                    if (wait_cnt == 4'b0000) begin
+                        en_write = 1'b1;
+                    end
                 end
             end
             START_WAIT: begin
