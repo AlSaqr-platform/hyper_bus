@@ -81,6 +81,7 @@ module hyperbus_phy #(
     logic clk180;
     logic clk270;
     logic address_space;
+    logic data_i_valid;
 
     typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, START_WAIT_R, WAIT_R, WAIT_W, START_DATA_W, END} hyper_trans_t;
 
@@ -160,7 +161,8 @@ module hyperbus_phy #(
         .hyper_dq_i      ( hyper_dq_i     ),
         .data_o          ( data_i         ),
         .enable          ( en_ddr_in      ),
-        .rst_ni          ( rst_ni         )
+        .rst_ni          ( rst_ni         ),
+        .valid_o         ( data_i_valid   )
     );
 
     input_fifo i_input_fifo (
