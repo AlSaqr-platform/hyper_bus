@@ -141,7 +141,7 @@ module hyperbus_phy_tb;
 
         int burst;
         int received_data[];
-        logic testPassed = 0;
+        logic testPassed = 1'bx;
 
         function new (int burst);
             this.burst = burst;
@@ -153,16 +153,29 @@ module hyperbus_phy_tb;
         endtask
 
         task check(int expectedResult[]);
-            this.testPassed = 1;
+            if(this.testPassed !== 1'b0) begin
+                this.testPassed = 1'b1;
+            end
+
             for (int i = 0; i < this.burst; i++) begin
                 assert(this.received_data[i] == expectedResult[i]) else $error("Received %4h at index %p, but expected %4h", this.received_data[i], i, expectedResult[i]);
                 if(this.received_data[i] != expectedResult[i])
-                    this.testPassed = 0;
+                    this.testPassed = 1'b0;
             end
         endtask
 
-        task printResult();
+        task checkTimeOfFirstByte(int min_time, int max_time);
+            assert(this.time_to_first_byte > min_time) else begin 
+                $error("Returned data too fast: time_to_first_byte = %p, expected value between %p and %p", this.time_to_first_byte, min_time, max_time);
+                this.testPassed = 1'b0;
+            end
+            assert(this.time_to_first_byte < max_time) else begin
+                $error("Returned data too late: time_to_first_byte = %p, expected value between %p and %p", this.time_to_first_byte, min_time, max_time);
+                this.testPassed = 1'b0;
+            end
+        endtask : checkTimeOfFirstByte
 
+        task printResult();
             $display("%4s | %4d ns | %4d words", this.testPassed ? "Pass" : "Fail", this.time_to_first_byte, this.received_data.size(), );
         
         endtask : printResult
@@ -321,7 +334,7 @@ module hyperbus_phy_tb;
         doTransaction(stimuli);
 
         result.check(expectedResultAt05FFF3);
-        //result.checkTimeOfFirstByte(min, max);
+        result.checkTimeOfFirstByte(60, 80);
         result.printResult();
 
     endtask : testVariableLatency
