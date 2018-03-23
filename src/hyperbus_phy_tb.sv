@@ -130,6 +130,102 @@ module hyperbus_phy_tb;
   int regWriteData2[1] = '{16'h0002};
 
   program test_hyper_phy;
+
+    typedef struct {
+        int afterByte;
+        int cycles;
+    } InterruptHandshake;
+
+    class transactionResult;
+        realtime time_to_first_byte;
+
+        int burst;
+        int received_data[];
+        logic testPassed = 0;
+
+        function new (int burst);
+            this.burst = burst;
+            this.received_data = new[burst];    
+        endfunction
+
+        task setReceivedData(int index, int data);
+            this.received_data[index] = data;
+        endtask
+
+        task check(int expectedResult[]);
+            this.testPassed = 1;
+            for (int i = 0; i < this.burst; i++) begin
+                assert(this.received_data[i] == expectedResult[i]) else $error("Received %4h at index %p, but expected %4h", this.received_data[i], i, expectedResult[i]);
+                if(this.received_data[i] != expectedResult[i])
+                    this.testPassed = 0;
+            end
+        endtask
+
+        task printResult();
+
+            $display("%4s | %4d ns | %4d words", this.testPassed ? "Pass" : "Fail", this.time_to_first_byte, this.received_data.size(), );
+        
+        endtask : printResult
+
+        task printData(int expectedResult[] = null);
+            for (int i = 0; i < this.burst; i++) begin
+                if(expectedResult) begin
+                    $display("Data at index %h is %4h, expected %4h", i, this.received_data[i], expectedResult[i]);
+                end else begin
+                    $display("Data at index %h is %4h", i, this.received_data[i]);
+                end
+            end
+        endtask 
+
+    endclass : transactionResult
+
+    class transactionStimuli;
+        int address;
+        int burst;
+        logic address_space = 0;
+        logic isWrite = 0;
+        int writeData[];
+        logic[1:0] writeMask[];
+        transactionResult result;
+
+        InterruptHandshake interruptions[$];
+
+        function new (int address, int burst);
+            this.address = address;
+            this.burst = burst;
+        endfunction
+
+        task write(int data[], logic[1:0] mask[]);
+            this.isWrite = 1;
+            this.writeData = data;
+            this.writeMask = mask;
+        endtask : write
+
+        task name(string name);
+            $display("");
+            $display("-------------------------------------");
+            $display("Test ", name);
+            $display("-------------------------------------");
+        endtask : name
+
+        task addInterruptHandshake(int afterByte, int cycles);
+            this.interruptions.push_back('{afterByte, cycles});
+
+            // for (int i = 0; i < this.interruptions.size; i++)
+            //     $display("Interruption at %p for %p cycles", this.interruptions[i].afterByte, this.interruptions[i].cycles);
+        endtask
+
+        function int doInterrupt(int afterByte);
+            for (int i = 0; i < this.interruptions.size; i++) begin
+                if(this.interruptions[i].afterByte == afterByte)
+                    return this.interruptions[i].cycles;
+            end
+
+            return 0;
+        endfunction
+
+    endclass : transactionStimuli
+
     // SystemVerilog "clocking block"
     // Clocking outputs are DUT inputs and vice versa
     default clocking cb_hyper_phy @(posedge clk_i);
@@ -146,120 +242,214 @@ module hyperbus_phy_tb;
       input rx_valid_o, rx_data_o;
     endclocking
 
+    transactionStimuli stimuli;
+    transactionResult result;
+
     // Apply the test stimulus
     initial begin
-      $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model); 
+        $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model); 
 
-      // Set all inputs at the beginning    
-      trans_valid_i = 0;
-      trans_address_i = 0;
-      trans_cs_i = 0;
-      trans_write_i = 0;
-      trans_burst_i = 0;
-      trans_address_space_i = 0;
+        // Set all inputs at the beginning    
+        trans_valid_i = 0;
+        trans_address_i = 0;
+        trans_cs_i = 0;
+        trans_write_i = 0;
+        trans_burst_i = 0;
+        trans_address_space_i = 0;
 
-      tx_valid_i = 0;
-      tx_data_i = 0;
-      tx_strb_i = 0;
-      rx_ready_i = 0;
+        tx_valid_i = 0;
+        tx_data_i = 0;
+        tx_strb_i = 0;
+        rx_ready_i = 0;
 
+        // Will be applied on negedge of clock!
+        cb_hyper_phy.rst_ni <= 0;
+        // Will be applied 4ns after the clock!
+        ##2 cb_hyper_phy.rst_ni <= 1;
 
-      // Will be applied on negedge of clock!
-      cb_hyper_phy.rst_ni <= 0;
-      // Will be applied 4ns after the clock!
-      ##2 cb_hyper_phy.rst_ni <= 1;
+        #150us; //Wait for RAM to initalize
 
-      #150us;
+        testBasic();
+        testWriteWithMask();
+        testVariableLatency();
+        testWithMultipleInterruptions();
+        testLongTransaction();
 
-      doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
-
-      doConfig0Write(16'h8f17); // use variable latency
-
-      doReadTransaction(32'h05FFF3, 16, expectedResultAt05FFF3, 3);
-      doWriteTransaction(32'h0, 8, writeData8, maskAll8, 1);
-      
-      doReadTransaction(32'h0, 8, expectedResultWrite);
-      doWriteTransaction(32'h0, 64, writeData64, mask64);
-      doReadTransaction(32'h0, 64, writeData64);
-      // etc. ... 
-      //doWriteTransaction(32'h0, 8, writeData);
-      //doReadTransaction(32'h0, 8, writeData);
-      //doWriteTransaction(32'h111111, 8, writeData);
-      //doReadTransaction(32'h0, 8, writeData);
-
-      ##100;
+        ##100;
     end
-    // Simulation stops automatically when both initials have been completed
-  
-    task doReadTransaction(logic[31:0] address, int burst, int expectedResult[] = '{default: 16'b0}, int interruptReadyAt = -1, logic address_space = 0);
-      cb_hyper_phy.trans_address_i <= address;
-      cb_hyper_phy.trans_burst_i <= burst;
-      cb_hyper_phy.trans_write_i <= 0;
-      cb_hyper_phy.trans_cs_i <= 2'b01;
-      cb_hyper_phy.trans_address_space_i <= address_space;
-      cb_hyper_phy.trans_valid_i <= 1;
-      wait(cb_hyper_phy.trans_ready_o);
-      cb_hyper_phy.trans_valid_i <= 0;
 
-      //read data from phy
-      cb_hyper_phy.rx_ready_i <= 1;
-      wait(cb_hyper_phy.rx_valid_o);
+    task testBasic();
 
-      i = 0;
-      while(i<burst) begin
+        stimuli = new(32'h05FFF3, 16);
+        stimuli.name("Basic functionality");
+        stimuli.addInterruptHandshake(3, 5);
 
-        if(interruptReadyAt == i) begin
-          cb_hyper_phy.rx_ready_i <= 0;
-          ##2;
-          cb_hyper_phy.rx_ready_i <= 1;
-        end 
+        doTransaction(stimuli);
 
-        if(cb_hyper_phy.rx_valid_o) begin
-          $display("Data at address %h is %h, expected %4h", address+i, cb_hyper_phy.rx_data_o, expectedResult[i]);
-          assert(cb_hyper_phy.rx_data_o == expectedResult[i]);
-          i++;
+        result.check(expectedResultAt05FFF3);
+        result.printResult();
+    
+    endtask : testBasic
+
+    task testWriteWithMask();
+
+        stimuli = new(32'h0, 8);
+        stimuli.name("Write data to RAM with some bytes masked");
+        stimuli.write(writeData8, maskAll8);
+        stimuli.addInterruptHandshake(5, 5);
+
+        doTransaction(stimuli);
+
+        //Read written data
+        stimuli.isWrite = 0;
+
+        doTransaction(stimuli);
+
+        result.check(expectedResultWrite);
+        result.printResult();
+
+    endtask : testWriteWithMask
+
+    task testVariableLatency();
+
+        doConfig0Write(16'h8f17); // use variable latency
+
+        stimuli = new(32'h05FFF3, 8);
+        stimuli.name("Use variable latency");
+        stimuli.addInterruptHandshake(3, 5);
+
+        doTransaction(stimuli);
+
+        result.check(expectedResultAt05FFF3);
+        //result.checkTimeOfFirstByte(min, max);
+        result.printResult();
+
+    endtask : testVariableLatency
+
+    task testWithMultipleInterruptions();
+
+        stimuli = new(32'h05FFF3, 16);
+        stimuli.name("Test with multiple interruptions");
+        stimuli.addInterruptHandshake(-1, 10);
+        stimuli.addInterruptHandshake(3, 5);
+        stimuli.addInterruptHandshake(8, 8);
+
+        doTransaction(stimuli);
+
+        result.check(expectedResultAt05FFF3);
+        result.printResult();
+
+    endtask : testWithMultipleInterruptions
+
+    task testLongTransaction();
+        automatic int expectedResult[64];
+
+        stimuli = new(32'h0, 64);
+        stimuli.name("Test a long(64 word) transaction");
+        stimuli.write(writeData64, mask64);
+
+        doTransaction(stimuli);
+
+        //Read written data
+        stimuli.isWrite = 0;
+
+        doTransaction(stimuli);
+        
+        expectedResult = writeData64;
+        expectedResult[14] = 16'h0f0f;
+        expectedResult[43] = 16'h000b;
+
+        result.check(expectedResult);
+        result.printResult();
+
+    endtask : testLongTransaction
+
+    task doTransaction(transactionStimuli stimuli);
+        static realtime starttime;
+
+        result = new(stimuli.burst);
+
+        cb_hyper_phy.trans_address_i <= stimuli.address;
+        cb_hyper_phy.trans_burst_i <= stimuli.burst;
+        cb_hyper_phy.trans_write_i <= stimuli.isWrite;
+        cb_hyper_phy.trans_cs_i <= 2'b01;
+        cb_hyper_phy.trans_address_space_i <= stimuli.address_space;
+
+        cb_hyper_phy.trans_valid_i <= 1;
+        starttime = $time;
+        wait(cb_hyper_phy.trans_ready_o);
+        cb_hyper_phy.trans_valid_i <= 0;
+        wait(~cb_hyper_phy.trans_ready_o);
+
+        if(stimuli.isWrite) begin
+            writeData(stimuli);
+        end else begin
+            readData(stimuli, starttime);
         end
 
-        ##2; //One clock in clk0
-      end
+    endtask : doTransaction
+
+    task readData(transactionStimuli stimuli, realtime starttime);
+
+        //read data from phy
+        wait(cb_hyper_phy.rx_valid_o);
+        result.time_to_first_byte = $time - starttime;
+
+        i = 0;
+        while(i<stimuli.burst) begin
+
+            //Simulate not ready to receive data
+            if(stimuli.doInterrupt(i-1)) begin
+                cb_hyper_phy.rx_ready_i <= 0;
+                ##(2*stimuli.doInterrupt(i-1));
+                cb_hyper_phy.rx_ready_i <= 1;
+            end 
+
+            cb_hyper_phy.rx_ready_i <= 1;
+
+            if(cb_hyper_phy.rx_valid_o) begin
+                result.setReceivedData(i, cb_hyper_phy.rx_data_o);
+                i++;
+            end
+
+            ##2; //One clock in clk0
+        end
+
+##6; //ToDo Get left data... Do not send more words than expected!
 
       cb_hyper_phy.rx_ready_i <= 0;
+    
+    endtask : readData
 
-    endtask : doReadTransaction
-
-    task doWriteTransaction(logic [31:0] address, int burst, int data[], logic [1:0] mask[], int interruptValidAt = -1, logic address_space = 0);
+    task writeData(transactionStimuli stimuli);
       
-      cb_hyper_phy.trans_address_i <= address;
-      cb_hyper_phy.trans_burst_i <= burst;
-      cb_hyper_phy.trans_write_i <= 1;
-      cb_hyper_phy.trans_cs_i <= 2'b01;
-      cb_hyper_phy.trans_address_space_i <= address_space;
+        for(i = 0; i < stimuli.burst; i++) begin
 
-      cb_hyper_phy.trans_valid_i <= 1;
-      wait(cb_hyper_phy.trans_ready_o);
-      cb_hyper_phy.trans_valid_i <= 0;
-      wait(~cb_hyper_phy.trans_ready_o);
+            //Simulate not ready to receive data
+            if(stimuli.doInterrupt(i-1)) begin
+                cb_hyper_phy.tx_valid_i <= 0;
+                ##(2*stimuli.doInterrupt(i-1));
+                cb_hyper_phy.tx_valid_i <= 1;
+            end 
 
-      for(i = 0; i < burst; i++) begin
-        cb_hyper_phy.tx_data_i <= data[i];
-        cb_hyper_phy.tx_strb_i <= mask[i];
-        cb_hyper_phy.tx_valid_i <= 1'b1;
-        wait(cb_hyper_phy.tx_ready_o);
-
-        if(interruptValidAt == i) begin
-            cb_hyper_phy.tx_valid_i <= 1'b0;
-            ##30;
+            cb_hyper_phy.tx_data_i <= stimuli.writeData[i];
+            cb_hyper_phy.tx_strb_i <= stimuli.writeMask[i];
             cb_hyper_phy.tx_valid_i <= 1'b1;
+            wait(cb_hyper_phy.tx_ready_o);
+
+            ##2; //Wait one cycle of clk0
         end
+        cb_hyper_phy.tx_valid_i <= 1'b0;
 
-        ##2; //Wait one cycle of clk0
-      end
-      cb_hyper_phy.tx_valid_i <= 1'b0;
-
-    endtask : doWriteTransaction
+    endtask : writeData
 
     task doConfig0Write(logic [15:0] data);
-        doWriteTransaction(32'h00000800, 1, '{data}, '{2'b00}, -1 , 1); //set variable latency
+        stimuli = new(32'h0, 1);
+        stimuli.write('{data}, '{2'b00});
+        stimuli.address_space = 1;
+
+        doTransaction(stimuli);
+
     endtask : doConfig0Write
 
   endprogram

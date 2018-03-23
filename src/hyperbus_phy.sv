@@ -26,7 +26,7 @@ module hyperbus_phy #(
     input  logic [NR_CS-1:0]       trans_cs_i,        // chipselect
     input  logic                   trans_write_i,     // transaction is a write
     input  logic [BURST_WIDTH-1:0] trans_burst_i,
-    input logic                    trans_address_space_i,
+    input  logic                   trans_address_space_i,
     // transmitting
     input  logic                   tx_valid_i,
     output logic                   tx_ready_o,
@@ -137,7 +137,7 @@ module hyperbus_phy #(
     assign data_out = en_write ? write_data : CA_out;
     assign data_rwds_out = en_write ? write_strb : 2'b00; //RWDS low before end of initial latency
 
-    ddr_out ddr_data_strb ( //Todo
+    ddr_out ddr_data_strb (
       .rst_ni (rst_ni),
       .clk_i (clk0),
       .d0_i (data_rwds_out[1]),
