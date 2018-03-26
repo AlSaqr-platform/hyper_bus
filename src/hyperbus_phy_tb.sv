@@ -119,6 +119,7 @@ module hyperbus_phy_tb;
 
   int expectedResultAt05FFF3[16] = '{16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h1001, 16'h2002, 16'h3003};
   int expectedResultAll1234[8] = '{default: 16'h1234};
+  int expectedResultSimple[47] = '{16'h0001, 16'h0002, 16'h0003, 16'h0004, 16'h0005, 16'h0006, 16'h0007, 16'h0008, 16'h0009, 16'h000A, 16'h000B, 16'h000C, 16'h000D, 16'h000E, 16'h000F, 16'h0010, 16'h0011, 16'h0012, 16'h0013, 16'h0014, 16'h0015, 16'h0016, 16'h0017, 16'h0018, 16'h0019, 16'h001A, 16'h001B, 16'h001C, 16'h001D, 16'h001E, 16'h001F, 16'h0020, 16'h0021, 16'h0022, 16'h0023, 16'h0024, 16'h0025, 16'h0026, 16'h0027, 16'h0028, 16'h0029, 16'h002A, 16'h002B, 16'h002C, 16'h002D, 16'h002E, 16'h002F};
 
   int writeData8[8] = '{16'h1001, 16'h2002, 16'h3003, 16'h40FF, 16'h5555, 16'h6006, 16'h7007, 16'h8008};
   logic [1:0] maskAll8[8] = '{3: 2'b01, 4: 2'b10, default: 2'b00 };
@@ -282,11 +283,15 @@ module hyperbus_phy_tb;
 
         #150us; //Wait for RAM to initalize
 
+        // stimuli.address_space = 1;
+
         testBasic();
         testWriteWithMask();
         testVariableLatency();
         testWithMultipleInterruptions();
         testLongTransaction();
+        testDifferentBurstRead(); 
+        
 
         ##100;
     end
@@ -377,6 +382,21 @@ module hyperbus_phy_tb;
 
     endtask : testLongTransaction
 
+    task testDifferentBurstRead();
+
+        stimuli.name("Test reading with different burst lengths");
+
+        //ToDo burst length of 1 not working
+        for(int burst=2; i < 47; burst++) begin
+            stimuli = new(32'h3000, burst);
+            doTransaction(stimuli);
+
+            result.check(expectedResultSimple);
+            result.printResult();
+        end
+
+    endtask : testDifferentBurstRead
+
     task doTransaction(transactionStimuli stimuli);
         static realtime starttime;
 
@@ -389,8 +409,8 @@ module hyperbus_phy_tb;
         cb_hyper_phy.trans_address_space_i <= stimuli.address_space;
 
         cb_hyper_phy.trans_valid_i <= 1;
-        starttime = $time;
         wait(cb_hyper_phy.trans_ready_o);
+        starttime = $time;
         cb_hyper_phy.trans_valid_i <= 0;
         wait(~cb_hyper_phy.trans_ready_o);
 
@@ -457,7 +477,7 @@ module hyperbus_phy_tb;
     endtask : writeData
 
     task doConfig0Write(logic [15:0] data);
-        stimuli = new(32'h0, 1);
+        stimuli = new(32'h800, 1);
         stimuli.write('{data}, '{2'b00});
         stimuli.address_space = 1;
 
