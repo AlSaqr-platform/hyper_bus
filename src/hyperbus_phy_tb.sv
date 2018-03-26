@@ -387,8 +387,9 @@ module hyperbus_phy_tb;
         stimuli.name("Test reading with different burst lengths");
 
         //ToDo burst length of 1 not working
-        for(int burst=2; i < 47; burst++) begin
+        for(int burst=2; burst < 48; burst++) begin
             stimuli = new(32'h3000, burst);
+
             doTransaction(stimuli);
 
             result.check(expectedResultSimple);
