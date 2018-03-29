@@ -73,6 +73,7 @@ module hyperbus_phy #(
     logic mode_write;
     logic read_clk_en;
     logic read_clk_en_n;
+    logic rst_read_fifo;
     // logic flush_read_fifo;
 
     logic clk0;
@@ -117,9 +118,7 @@ module hyperbus_phy #(
             hyper_cs_no[1] <= ~ (en_cs && local_cs[1]); //ToDo Use NR_CS
         end
     end
-
-    assign #2000 hyper_rwds_i_d = hyper_rwds_i; //Delay of rwds for center aligned read
-    
+ 
     genvar i;
     generate
       for(i=0; i<=7; i++)
@@ -146,61 +145,29 @@ module hyperbus_phy #(
     );
 
     cmd_addr_gen cmd_addr_gen (
-        .rw_i            ( ~local_write     	),
-        .address_space_i ( local_address_space 	),
-        .burst_type_i    ( 1'b1             	),
-        .address_i       ( local_address    	),
-        .cmd_addr_o      ( cmd_addr         	)
+        .rw_i            ( ~local_write        ),
+        .address_space_i ( local_address_space ),
+        .burst_type_i    ( 1'b1                ),
+        .address_i       ( local_address       ),
+        .cmd_addr_o      ( cmd_addr            )
     );
-    ddr_in i_ddr_in (
-        .hyper_rwds_i_d  ( hyper_rwds_i_d_gated ), 
-        .hyper_dq_i      ( hyper_dq_i           ), 
-        .data_o          ( data_i               ), 
-        .enable          ( en_ddr_in            ), 
-        .rst_ni          ( rst_ni               )
-    ); 
 
     assign write_data = tx_data_i;
     assign write_strb = tx_strb_i;
 
-    logic cdc_input_fifo_ready;
-    logic read_in_valid;
-    logic rst_read_fifo;
+    read_clk_rwds i_read_clk_rwds (
+        .clk0                   ( clk0          ),
+        .rst_ni                 ( rst_ni        ),   // Asynchronous reset active low
+        .hyper_rwds_i           ( hyper_rwds_i  ),
+        .hyper_dq_i             ( hyper_dq_i    ),
+        .read_clk_en_i          ( read_clk_en   ),
+        .en_ddr_in_i            ( en_ddr_in     ),
+        .rst_read_fifo_i        ( rst_read_fifo ),
+        .ready_i                ( rx_ready_i    ),
 
-    cdc_fifo  #(.T(logic[15:0]), .LOG_DEPTH(5)) i_cdc_fifo_hyper ( 
-      .src_rst_ni  ( rst_ni && rst_read_fifo), 
-      .src_clk_i   ( hyper_rwds_i_d_gated), 
-      .src_data_i  ( data_i  ), 
-      .src_valid_i ( read_in_valid ), 
-      .src_ready_o ( cdc_input_fifo_ready ), 
- 
-      .dst_rst_ni  (rst_ni && rst_read_fifo ), 
-      .dst_clk_i   (clk0     ), 
-      .dst_data_o  (rx_data_o), 
-      .dst_valid_o (rx_valid_o), 
-      .dst_ready_i (rx_ready_i) 
-    ); 
-
-    always_ff @(posedge hyper_rwds_i_d_gated or negedge rst_ni or negedge read_clk_en) begin : proc_read_in_valid
-        if(~rst_ni || ~read_clk_en) begin
-            read_in_valid <= 0;
-        end else begin
-            read_in_valid <= 1;
-        end
-    end
-
-    // cdc_enable fuer valid_i
-
-    pulp_clock_gating cdc_read_ck_gating (
-        .clk_i      ( hyper_rwds_i_d        ),
-        .en_i       ( read_clk_en ),
-        .test_en_i  ( 1'b0                  ),
-        .clk_o      ( hyper_rwds_i_d_gated  )
+        .data_o                 ( rx_data_o     ),
+        .valid_o                ( rx_valid_o    )
     );
-
-    always @(negedge cdc_input_fifo_ready) begin
-        assert(cdc_input_fifo_ready) else $error("FIFO i_cdc_fifo_hyper should always be ready");
-    end
 
     always @* begin
         case(cmd_addr_sel)
