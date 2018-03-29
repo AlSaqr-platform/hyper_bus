@@ -14,18 +14,18 @@
 
 module read_clk_rwds #(
 )(
-   	input logic 				   clk0,
+    input logic                    clk0,
     input logic                    rst_ni,   // Asynchronous reset active low
-	input logic 				   hyper_rwds_i,
-	input logic	[7:0]			   hyper_dq_i,
-	input logic 				   read_clk_en_i,
-	input logic 				   en_ddr_in_i,
-	input logic 				   rst_read_fifo_i,
-	input logic 				   ready_i, //Clock to FIFO
-	//input logic 				   delay_config, //Configuration of delay line
+    input logic                    hyper_rwds_i,
+    input logic [7:0]              hyper_dq_i,
+    input logic                    read_clk_en_i,
+    input logic                    en_ddr_in_i,
+    input logic                    rst_read_fifo_i,
+    input logic                    ready_i, //Clock to FIFO
+    //input logic                  delay_config, //Configuration of delay line
 
-    output logic 				   valid_o,
-    output logic [15:0]			   data_o
+    output logic                   valid_o,
+    output logic [15:0]            data_o
 );
 
     assign #2000 hyper_rwds_i_d = hyper_rwds_i; //Delay of rwds for center aligned read
@@ -36,7 +36,7 @@ module read_clk_rwds #(
 
     cdc_fifo  #(.T(logic[15:0]), .LOG_DEPTH(5)) i_cdc_fifo_hyper ( 
       .src_rst_ni  ( rst_ni && rst_read_fifo_i ), 
-      .src_clk_i   ( clk_rwds			       ), 
+      .src_clk_i   ( clk_rwds                  ), 
       .src_data_i  ( src_data                  ), 
       .src_valid_i ( read_in_valid             ), 
       .src_ready_o ( cdc_input_fifo_ready      ), 
@@ -72,9 +72,9 @@ module read_clk_rwds #(
     //Clock gating resulting in clk_rwds
     pulp_clock_gating cdc_read_ck_gating (
         .clk_i      ( hyper_rwds_i_d ),
-        .en_i       ( read_clk_en_i	 ),
+        .en_i       ( read_clk_en_i  ),
         .test_en_i  ( 1'b0           ),
-        .clk_o      ( clk_rwds		 )
+        .clk_o      ( clk_rwds       )
     );
 
 endmodule
