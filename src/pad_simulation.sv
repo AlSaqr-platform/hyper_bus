@@ -7,15 +7,24 @@
 // work. Any reuse/redistribution is strictly forbidden without written
 // permission from ETH Zurich.
 
-module pad_simulation (
-    input  logic data_i,
-    input  logic oe_i,
-    output logic data_o,
-    inout  logic pad_io
+`timescale 1ps/1ps
+
+module pad_simulation #(
+  parameter WIDTH = 1
+  )(
+    input  logic [WIDTH-1:0] data_i,
+    input  logic             oe_i,
+    output logic [WIDTH-1:0] data_o,
+    inout  logic [WIDTH-1:0] pad_io
 );
 
-	assign data_o = pad_io;
+    logic [WIDTH-1:0] out;
 
-	assign pad_io = oe_i ? data_i : 1'bz;
+    assign #2000 data_o = pad_io;
+
+    //split delay, delay above 3ns doesn't work
+    assign #3000 out = (oe_i) ? data_i : 8'bz;
+
+    assign #2000 pad_io = out;
 
 endmodule

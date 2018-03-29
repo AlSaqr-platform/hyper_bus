@@ -77,37 +77,54 @@ module hyperbus_phy_tb;
     .hyper_reset_no       ( hyper_reset_no  )
   );
 
-  wire        rwds;
-  wire [7:0 ] dq_io;
+    //simulate pad delays
+    //-------------------
+    
+    wire        wire_rwds;
+    wire [7:0 ] wire_dq_io;
+    wire [1:0]  wire_cs_no;
+    wire        wire_ck_o;
+    wire        wire_ck_no;
+    wire        wire_reset_no;
 
-  int i;
+    pad_simulation pad_sim (
+        .data_i   (hyper_rwds_o),   
+        .oe_i     (hyper_rwds_oe_o),
+        .data_o   (hyper_rwds_i),  
+        .pad_io   (wire_rwds) 
+    );
 
-  // TODO: Instantiate model of HyperRAM/HyperFlash.
-  pad_simulation pad_sim (
-    .data_i   (hyper_rwds_o),   
-    .oe_i     (hyper_rwds_oe_o),
-    .data_o   (hyper_rwds_i),  
-    .pad_io   (rwds) 
-  );
+    pad_simulation #(8) pad_sim_data (
+        .data_i   (hyper_dq_o),   
+        .oe_i     (hyper_dq_oe_o),
+        .data_o   (hyper_dq_i),  
+        .pad_io   (wire_dq_io) 
+    );
 
-  assign hyper_dq_i = dq_io;
-  assign dq_io = hyper_dq_oe_o ? hyper_dq_o : 8'bz;
+    pad_simulation #(4) pad_sim_others (
+        .data_i   ({hyper_cs_no, hyper_ck_o, hyper_ck_no}),   
+        .oe_i     (1'b1),
+        .data_o   (),  
+        .pad_io   ({wire_cs_no, wire_ck_o, wire_ck_no}) 
+    );
+
+    assign wire_reset_no = hyper_reset_no; //if delayed, a hold violation occures 
 
   s27ks0641 #(.mem_file_name("../src/s27ks0641.mem"), .TimingModel("S27KS0641DPBHI020")) hyperram_model
   (
-    .DQ7      (dq_io[7]),
-    .DQ6      (dq_io[6]),
-    .DQ5      (dq_io[5]),
-    .DQ4      (dq_io[4]),
-    .DQ3      (dq_io[3]),
-    .DQ2      (dq_io[2]),
-    .DQ1      (dq_io[1]),
-    .DQ0      (dq_io[0]),
-    .RWDS     (rwds),
-    .CSNeg    (hyper_cs_no[0]),
-    .CK       (hyper_ck_o),
-    .CKNeg    (hyper_ck_no),
-    .RESETNeg (hyper_reset_no)    
+    .DQ7      (wire_dq_io[7]),
+    .DQ6      (wire_dq_io[6]),
+    .DQ5      (wire_dq_io[5]),
+    .DQ4      (wire_dq_io[4]),
+    .DQ3      (wire_dq_io[3]),
+    .DQ2      (wire_dq_io[2]),
+    .DQ1      (wire_dq_io[1]),
+    .DQ0      (wire_dq_io[0]),
+    .RWDS     (wire_rwds),
+    .CSNeg    (wire_cs_no[0]),
+    .CK       (wire_ck_o),
+    .CKNeg    (wire_ck_no),
+    .RESETNeg (wire_reset_no)    
   );
 
   always begin
@@ -339,7 +356,7 @@ module hyperbus_phy_tb;
         doTransaction(stimuli);
 
         result.check(expectedResultAt05FFF3);
-        result.checkTimeOfFirstByte(100,120);
+        result.checkTimeOfFirstByte(110,130);
         result.printResult();
 
     endtask : testVariableLatency
@@ -424,6 +441,7 @@ module hyperbus_phy_tb;
     endtask : doTransaction
 
     task readData(transactionStimuli stimuli, realtime starttime);
+        int i;
 
         //read data from phy
         cb_hyper_phy.rx_ready_i <= 1;
@@ -458,7 +476,7 @@ module hyperbus_phy_tb;
 
     task writeData(transactionStimuli stimuli);
       
-        for(i = 0; i < stimuli.burst; i++) begin
+        for(int i = 0; i < stimuli.burst; i++) begin
 
             //Simulate not ready to receive data
             if(stimuli.doInterrupt(i-1)) begin

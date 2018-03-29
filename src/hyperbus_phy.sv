@@ -205,9 +205,6 @@ module hyperbus_phy #(
                 end    
                 CMD_ADDR: begin
                     cmd_addr_sel <= cmd_addr_sel + 1;
-                    if(cmd_addr_sel == 2) begin
-                        additional_latency <= hyper_rwds_i; //Sample RWDS after second part of CA is sent
-                    end
                     if(cmd_addr_sel == 3) begin
                         if (local_address_space && local_write) begin //Write to memory config register
                             burst_cnt <= local_burst - 1;
@@ -218,7 +215,8 @@ module hyperbus_phy #(
                             end else begin
                                 wait_cnt <= WAIT_CYCLES - 1; //Data is delayed by one clock in ddr_in
                             end
-                            if(additional_latency) begin
+                            additional_latency <= hyper_rwds_i; //Sample RWDS
+                            if(hyper_rwds_i) begin
                                 hyper_trans_state <= WAIT2;
                             end else begin
                                 hyper_trans_state <= WAIT;
