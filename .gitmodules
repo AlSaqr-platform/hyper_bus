@@ -7,3 +7,6 @@
 [submodule "src/tech_cells_UMC65"]
 	path = src/tech_cells_UMC65
 	url = git@iis-git.ee.ethz.ch:pulp-restricted/tech_cells_UMC65.git
+[submodule "src/common_cells"]
+	path = src/common_cells
+	url = git@iis-git.ee.ethz.ch:sasa/common_cells.git

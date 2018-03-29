@@ -17,11 +17,12 @@ vlog-${VER} -sv -work ${LIB} \
 	../src/tech_cells_generic/pulp_clock_mux2.sv \
 	../src/tech_cells_generic/pulp_clock_gating.sv \
 	../src/tech_cells_generic/pulp_clock_inverter.sv \
+	../src/common_cells/src/cdc_fifo.sv \
+	../src/common_cells/src/cdc_2phase.sv \
 	../src/clk_gen.sv \
 	../src/ddr_out.sv \
 	../src/pad_simulation.sv \
 	../src/input_fifo.sv \
-	../src/output_fifo.sv \
 	../src/hyperbus.sv \
 	../src/hyperbus_phy.sv \
 	../src/cmd_addr_gen.sv \

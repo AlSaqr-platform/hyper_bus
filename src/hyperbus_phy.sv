@@ -67,18 +67,19 @@ module hyperbus_phy #(
     logic clock_enable;
     logic en_cs;
     logic en_ddr_in;
-    logic request_wait_read;
     logic en_read_transaction;
     logic [15:0] data_i;
     logic hyper_rwds_i_d;
     logic mode_write;
+    logic read_clk_en;
+    logic read_clk_en_n;
+    // logic flush_read_fifo;
 
     logic clk0;
     logic clk90;
     logic clk180;
     logic clk270;
     logic address_space;
-    logic data_i_valid;
 
     typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, END} hyper_trans_t;
 
@@ -94,8 +95,8 @@ module hyperbus_phy #(
     );
 
     pulp_clock_gating hyper_ck_gating (
-        .clk_i      ( clk90                         ),
-        .en_i       ( clock_enable && ~request_wait_read ),
+        .clk_i      ( clk90        ),
+        .en_i       ( clock_enable ),
         .test_en_i  ( 1'b0         ),
         .clk_o      ( hyper_ck_o   )
     ); 
@@ -151,30 +152,55 @@ module hyperbus_phy #(
         .address_i       ( local_address    	),
         .cmd_addr_o      ( cmd_addr         	)
     );
-
-    ddr_in ddr_in (
-        .clk0            ( clk0           ),
-        .hyper_rwds_i_d  ( hyper_rwds_i_d ),
-        .hyper_dq_i      ( hyper_dq_i     ),
-        .data_o          ( data_i         ),
-        .enable          ( en_ddr_in      ),
-        .rst_ni          ( rst_ni         ),
-        .valid_o         ( data_i_valid   )
-    );
-    //Data from hyperram
-    input_fifo i_input_fifo (
-        .clk_i          ( clk0                      ),
-        .rst_ni         ( rst_ni                    ),
-        .data_i         ( data_i                    ),
-        .en_write_i     ( en_ddr_in && data_i_valid ),
-        .request_wait_o ( request_wait_read         ),
-        .data_o         ( rx_data_o                 ),
-        .valid_o        ( rx_valid_o                ),
-        .ready_i        ( rx_ready_i                )
-    );
+    ddr_in i_ddr_in (
+        .hyper_rwds_i_d  ( hyper_rwds_i_d_gated ), 
+        .hyper_dq_i      ( hyper_dq_i           ), 
+        .data_o          ( data_i               ), 
+        .enable          ( en_ddr_in            ), 
+        .rst_ni          ( rst_ni               )
+    ); 
 
     assign write_data = tx_data_i;
     assign write_strb = tx_strb_i;
+
+    logic cdc_input_fifo_ready;
+    logic read_in_valid;
+    logic rst_read_fifo;
+
+    cdc_fifo  #(.T(logic[15:0]), .LOG_DEPTH(5)) i_cdc_fifo_hyper ( 
+      .src_rst_ni  ( rst_ni && rst_read_fifo), 
+      .src_clk_i   ( hyper_rwds_i_d_gated), 
+      .src_data_i  ( data_i  ), 
+      .src_valid_i ( read_in_valid ), 
+      .src_ready_o ( cdc_input_fifo_ready ), 
+ 
+      .dst_rst_ni  (rst_ni && rst_read_fifo ), 
+      .dst_clk_i   (clk0     ), 
+      .dst_data_o  (rx_data_o), 
+      .dst_valid_o (rx_valid_o), 
+      .dst_ready_i (rx_ready_i) 
+    ); 
+
+    always_ff @(posedge hyper_rwds_i_d_gated or negedge rst_ni or negedge read_clk_en) begin : proc_read_in_valid
+        if(~rst_ni || ~read_clk_en) begin
+            read_in_valid <= 0;
+        end else begin
+            read_in_valid <= 1;
+        end
+    end
+
+    // cdc_enable fuer valid_i
+
+    pulp_clock_gating cdc_read_ck_gating (
+        .clk_i      ( hyper_rwds_i_d        ),
+        .en_i       ( read_clk_en ),
+        .test_en_i  ( 1'b0                  ),
+        .clk_o      ( hyper_rwds_i_d_gated  )
+    );
+
+    always @(negedge cdc_input_fifo_ready) begin
+        assert(cdc_input_fifo_ready) else $error("FIFO i_cdc_fifo_hyper should always be ready");
+    end
 
     always @* begin
         case(cmd_addr_sel)
@@ -260,13 +286,14 @@ module hyperbus_phy #(
                     end
                 end
                 DATA_R: begin
-                    if(data_i_valid) begin 
-                        burst_cnt <= burst_cnt - 1;
-                    end
-                    if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                        wait_cnt <= WAIT_CYCLES - 1;
-                        hyper_trans_state <= END;
-                    end else if(request_wait_read) begin
+                    if(rx_valid_o && rx_ready_i) begin
+                        if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
+                            wait_cnt <= WAIT_CYCLES - 1;
+                            hyper_trans_state <= END;
+                        end else begin
+                            burst_cnt <= burst_cnt - 1;
+                        end
+                    end else if(~rx_ready_i) begin
                         hyper_trans_state <= WAIT_R;
                     end
                 end
@@ -280,7 +307,10 @@ module hyperbus_phy #(
                     end
                 end
                 WAIT_R: begin
-                    if(~request_wait_read) begin
+                    if(rx_valid_o && rx_ready_i) begin
+                        burst_cnt <= burst_cnt - 1;
+                    end
+                    if(rx_ready_i) begin
                         hyper_trans_state <= DATA_R;
                     end
                 end
@@ -290,9 +320,12 @@ module hyperbus_phy #(
                     end
                 end
                 END: begin
-                    wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin //t_RWR
-                        hyper_trans_state <= STANDBY;
+                        if (~rx_valid_o) begin
+                            hyper_trans_state <= STANDBY;
+                        end
+                    end else begin
+                        wait_cnt <= wait_cnt - 1;
                     end
                 end
             endcase
@@ -311,6 +344,9 @@ module hyperbus_phy #(
         hyper_dq_oe_o = 1'b0;
         hyper_rwds_oe_o = 1'b0;
         en_read_transaction = 1'b0;
+        read_clk_en_n = 1'b0;
+        // flush_read_fifo = 1'b0;
+        rst_read_fifo = 1'b1;
         mode_write = 1'b0;
 
         case(hyper_trans_state)
@@ -337,12 +373,18 @@ module hyperbus_phy #(
                         tx_ready_o = 1'b1; 
                     end
                 end
+                else begin
+                    read_clk_en_n = 1'b1;
+                end
             end
             DATA_R: begin
                 en_ddr_in = 1'b1;
+                read_clk_en_n = 1'b1;
             end
             WAIT_R: begin
+                clock_enable = 1'b0;
                 en_ddr_in = 1'b1;
+                read_clk_en_n = 1'b1;
             end
             DATA_W: begin
                 hyper_dq_oe_o = 1'b1;
@@ -357,13 +399,22 @@ module hyperbus_phy #(
                 tx_ready_o <= 1'b1;
                 mode_write = 1'b1;
             end
-
             END: begin
                 clock_enable = 1'b0;
+                rst_read_fifo = 1'b0;
                 en_cs = 1'b0;
                 en_read_transaction = 1'b1;
+                // flush_read_fifo = 1'b1;
             end
         endcase
+    end
+
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_read_clk_en
+        if(~rst_ni) begin
+            read_clk_en <= 0;
+        end else begin
+            read_clk_en <= read_clk_en_n;
+        end
     end
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_local_transaction

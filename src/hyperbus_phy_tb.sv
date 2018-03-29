@@ -339,7 +339,7 @@ module hyperbus_phy_tb;
         doTransaction(stimuli);
 
         result.check(expectedResultAt05FFF3);
-        result.checkTimeOfFirstByte(60, 80);
+        result.checkTimeOfFirstByte(100,120);
         result.printResult();
 
     endtask : testVariableLatency
@@ -426,6 +426,7 @@ module hyperbus_phy_tb;
     task readData(transactionStimuli stimuli, realtime starttime);
 
         //read data from phy
+        cb_hyper_phy.rx_ready_i <= 1;
         wait(cb_hyper_phy.rx_valid_o);
         result.time_to_first_byte = $time - starttime;
 
@@ -439,7 +440,7 @@ module hyperbus_phy_tb;
                 cb_hyper_phy.rx_ready_i <= 1;
             end 
 
-            cb_hyper_phy.rx_ready_i <= 1;
+            // cb_hyper_phy.rx_ready_i <= 1;
 
             if(cb_hyper_phy.rx_valid_o) begin
                 result.setReceivedData(i, cb_hyper_phy.rx_data_o);
