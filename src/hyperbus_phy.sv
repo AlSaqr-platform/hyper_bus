@@ -174,7 +174,6 @@ module hyperbus_phy #(
             0: CA_out = cmd_addr[47:32];
             1: CA_out = cmd_addr[31:16];
             2: CA_out = cmd_addr[15:0];
-            3: CA_out = write_data;
             default: CA_out = 16'b0;
         endcase // cmd_addr_sel
     end
@@ -204,29 +203,34 @@ module hyperbus_phy #(
                     hyper_trans_state <= CMD_ADDR;
                 end    
                 CMD_ADDR: begin
-                    cmd_addr_sel <= cmd_addr_sel + 1;
                     if(cmd_addr_sel == 3) begin
+                        if (local_write) begin
+                            wait_cnt <= WAIT_CYCLES - 2;
+                        end else begin
+                            wait_cnt <= WAIT_CYCLES - 1; //Data is delayed by one clock in ddr_in
+                        end
+                        additional_latency <= hyper_rwds_i; //Sample RWDS
+                        if(hyper_rwds_i) begin //Check if additinal latency is nesessary
+                            hyper_trans_state <= WAIT2;
+                        end else begin
+                            hyper_trans_state <= WAIT;
+                        end
+                    end else begin
+                        cmd_addr_sel <= cmd_addr_sel + 1;
+                    end
+                    if(cmd_addr_sel == 2) begin
                         if (local_address_space && local_write) begin //Write to memory config register
-                            burst_cnt <= local_burst - 1;
+                            wait_cnt <= 1;
                             hyper_trans_state <= REG_WRITE;
-                        end else begin 
-                            if (local_write) begin
-                                wait_cnt <= WAIT_CYCLES - 2;
-                            end else begin
-                                wait_cnt <= WAIT_CYCLES - 1; //Data is delayed by one clock in ddr_in
-                            end
-                            additional_latency <= hyper_rwds_i; //Sample RWDS
-                            if(hyper_rwds_i) begin
-                                hyper_trans_state <= WAIT2;
-                            end else begin
-                                hyper_trans_state <= WAIT;
-                            end
                         end
                     end
-                end  
+                end 
                 REG_WRITE: begin
-                    wait_cnt <= WAIT_CYCLES - 1;
-                    hyper_trans_state <= END;
+                    wait_cnt <= wait_cnt - 1;
+                    if(wait_cnt == 4'h0) begin
+                        wait_cnt <= WAIT_CYCLES - 1;
+                        hyper_trans_state <= END;
+                    end
                 end
                 WAIT2: begin  //Additional latency (If RWDS HIGH)
                     wait_cnt <= wait_cnt - 1;
@@ -329,13 +333,18 @@ module hyperbus_phy #(
             REG_WRITE: begin
                 hyper_dq_oe_o = 1'b1;
                 tx_ready_o = 1'b1;
+                mode_write = 1'b1;
             end
             WAIT: begin  //t_ACC
                 if(local_write == 1'b1) begin
                     hyper_rwds_oe_o = 1'b1;
-                    mode_write = 1'b1;
+                    if(wait_cnt == 4'b0001) begin
+                        hyper_dq_oe_o = 1'b1;
+                    end
                     if (wait_cnt == 4'b0000) begin 
                         tx_ready_o = 1'b1; 
+                        hyper_dq_oe_o = 1'b1;
+                        mode_write = 1'b1;
                     end
                 end
                 else begin
