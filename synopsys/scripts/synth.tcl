@@ -31,6 +31,10 @@ elaborate hyperbus_phy
 
 # Setting the clock period.
 create_clock clk_i -period 3
+create_generated_clock -source clk_i -divide_by 2  [get_pins ddr_clk/clk0_o] 
+create_generated_clock -source clk_i -divide_by 2  -edge_shift {1.5 1.5} [get_pins ddr_clk/clk90_o] 
+create_generated_clock -source clk_i -divide_by 2  -edge_shift {3 3} [get_pins ddr_clk/clk180_o] 
+create_generated_clock -source clk_i -divide_by 2  -edge_shift {4.5 4.5} [get_pins ddr_clk/clk270_o] 
 
 # Setting input and output delays.
 set_input_delay  0.4 -clock clk_i [all_inputs]
