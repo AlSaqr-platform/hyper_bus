@@ -74,7 +74,6 @@ module hyperbus_phy #(
     logic read_clk_en;
     logic read_clk_en_n;
     logic read_fifo_rst;
-    // logic flush_read_fifo;
 
     logic clk0;
     logic clk90;
@@ -218,17 +217,8 @@ module hyperbus_phy #(
                 end    
                 CMD_ADDR: begin
                     if(cmd_addr_sel == 3) begin
-                        if (local_write) begin
-                            wait_cnt <= WAIT_CYCLES - 2;
-                        end else begin
-                            wait_cnt <= WAIT_CYCLES - 1; //Data is delayed by one clock in ddr_in
-                        end
-                        additional_latency <= hyper_rwds_i; //Sample RWDS
-                        if(hyper_rwds_i) begin //Check if additinal latency is nesessary
-                            hyper_trans_state <= WAIT2;
-                        end else begin
-                            hyper_trans_state <= WAIT;
-                        end
+                        wait_cnt <= WAIT_CYCLES - 2;
+                        hyper_trans_state <= WAIT2;
                     end else begin
                         cmd_addr_sel <= cmd_addr_sel + 1;
                     end
@@ -251,6 +241,14 @@ module hyperbus_phy #(
                     if(wait_cnt == 4'h0) begin
                         wait_cnt <= WAIT_CYCLES - 1;
                         hyper_trans_state <= WAIT;
+                    end
+                    if(wait_cnt == WAIT_CYCLES -2) begin
+                        additional_latency <= hyper_rwds_i_syn; //Sample RWDS
+                        if(hyper_rwds_i_syn) begin //Check if additinal latency is nesessary
+                            hyper_trans_state <= WAIT2;
+                        end else begin
+                            hyper_trans_state <= WAIT;
+                        end
                     end
                 end
                 WAIT: begin  //t_ACC
@@ -328,7 +326,6 @@ module hyperbus_phy #(
         hyper_rwds_oe_o = 1'b0;
         en_read_transaction = 1'b0;
         read_clk_en_n = 1'b0;
-        // flush_read_fifo = 1'b0;
         read_fifo_rst = 1'b0;
         mode_write = 1'b0;
         en_rwds = 1'b0;
@@ -344,7 +341,9 @@ module hyperbus_phy #(
             end
             CMD_ADDR: begin
                 hyper_dq_oe_o = 1'b1;
-                en_rwds = 1'b1;
+                if (cmd_addr_sel == 3) begin
+                    en_rwds = 1'b1;
+                end
             end
             REG_WRITE: begin
                 hyper_dq_oe_o = 1'b1;
@@ -394,7 +393,6 @@ module hyperbus_phy #(
                 read_fifo_rst = 1'b1;
                 en_cs = 1'b0;
                 en_read_transaction = 1'b1;
-                // flush_read_fifo = 1'b1;
             end
         endcase
     end

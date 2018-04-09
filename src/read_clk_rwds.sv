@@ -34,17 +34,17 @@ module read_clk_rwds #(
     logic [15:0] src_data;
 
     cdc_fifo_gray  #(.T(logic[15:0]), .LOG_DEPTH(5)) i_cdc_fifo_hyper ( 
-      .src_rst_ni  ( rst_ni  ), 
-      .src_clk_i   ( clk_rwds                  ), 
-      .src_data_i  ( src_data                  ), 
-      .src_valid_i ( read_in_valid             ), 
-      .src_ready_o ( cdc_input_fifo_ready      ), 
+      .src_rst_ni  ( rst_ni               ), 
+      .src_clk_i   ( clk_rwds             ), 
+      .src_data_i  ( src_data             ), 
+      .src_valid_i ( read_in_valid        ), 
+      .src_ready_o ( cdc_input_fifo_ready ), 
  
       .dst_rst_ni  ( rst_ni  ), 
-      .dst_clk_i   ( clk0                      ), 
-      .dst_data_o  ( data_o                    ), 
-      .dst_valid_o ( valid_o                   ), 
-      .dst_ready_i ( ready_i                   ) 
+      .dst_clk_i   ( clk0    ), 
+      .dst_data_o  ( data_o  ), 
+      .dst_valid_o ( valid_o ), 
+      .dst_ready_i ( ready_i ) 
     ); 
 
     always @(negedge cdc_input_fifo_ready) begin
