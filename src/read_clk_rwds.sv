@@ -20,7 +20,6 @@ module read_clk_rwds #(
     input logic [7:0]              hyper_dq_i,
     input logic                    read_clk_en_i,
     input logic                    en_ddr_in_i,
-    input logic                    rst_read_fifo_i,
     input logic                    ready_i, //Clock to FIFO
     //input logic                  delay_config, //Configuration of delay line
 

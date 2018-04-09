@@ -167,6 +167,9 @@ module hyperbus_phy_tb;
         endfunction
 
         task setReceivedData(int index, int data);
+            if(index >= this.burst)
+                $error("Received to many words, received %p expected %p words", index+1, this.burst);
+
             this.received_data[index] = data;
         endtask
 
@@ -356,7 +359,7 @@ module hyperbus_phy_tb;
         doTransaction(stimuli);
 
         result.check(expectedResultAt05FFF3);
-        result.checkTimeOfFirstByte(110,130);
+        result.checkTimeOfFirstByte(80,90);
         result.printResult();
 
     endtask : testVariableLatency
@@ -449,7 +452,7 @@ module hyperbus_phy_tb;
         result.time_to_first_byte = $time - starttime;
 
         i = 0;
-        while(i<stimuli.burst) begin
+        while(i<stimuli.burst || cb_hyper_phy.rx_valid_o) begin
 
             //Simulate not ready to receive data
             if(stimuli.doInterrupt(i-1)) begin
@@ -467,8 +470,6 @@ module hyperbus_phy_tb;
 
             ##2; //One clock in clk0
         end
-
-##6; //ToDo Get left data... Do not send more words than expected!
 
       cb_hyper_phy.rx_ready_i <= 0;
     

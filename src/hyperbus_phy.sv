@@ -73,7 +73,7 @@ module hyperbus_phy #(
     logic mode_write;
     logic read_clk_en;
     logic read_clk_en_n;
-    logic rst_read_fifo;
+    logic read_fifo_rst;
     // logic flush_read_fifo;
 
     logic clk0;
@@ -155,20 +155,22 @@ module hyperbus_phy #(
     assign write_data = tx_data_i;
     assign write_strb = tx_strb_i;
 
+    logic read_fifo_valid;
+
     //Takes output from hyperram, includes CDC FIFO
     read_clk_rwds i_read_clk_rwds (
-        .clk0                   ( clk0          ),
-        .rst_ni                 ( rst_ni        ),   // Asynchronous reset active low
-        .hyper_rwds_i           ( hyper_rwds_i  ),
-        .hyper_dq_i             ( hyper_dq_i    ),
-        .read_clk_en_i          ( read_clk_en   ),
-        .en_ddr_in_i            ( en_ddr_in     ),
-        .rst_read_fifo_i        ( rst_read_fifo ),
-        .ready_i                ( rx_ready_i    ),
-
-        .data_o                 ( rx_data_o     ),
-        .valid_o                ( rx_valid_o    )
+        .clk0          ( clk0                        ),
+        .rst_ni        ( rst_ni                      ),   // Asynchronous reset active low
+        .hyper_rwds_i  ( hyper_rwds_i                ),
+        .hyper_dq_i    ( hyper_dq_i                  ),
+        .read_clk_en_i ( read_clk_en                 ),
+        .en_ddr_in_i   ( en_ddr_in                   ),
+        .ready_i       ( rx_ready_i || read_fifo_rst ),
+        .data_o        ( rx_data_o                   ),
+        .valid_o       ( read_fifo_valid             )
     );
+
+    assign rx_valid_o = read_fifo_valid && !read_fifo_rst;
 
     logic hyper_rwds_i_syn;
     logic en_rwds;
@@ -327,7 +329,7 @@ module hyperbus_phy #(
         en_read_transaction = 1'b0;
         read_clk_en_n = 1'b0;
         // flush_read_fifo = 1'b0;
-        rst_read_fifo = 1'b1;
+        read_fifo_rst = 1'b0;
         mode_write = 1'b0;
         en_rwds = 1'b0;
 
@@ -389,7 +391,7 @@ module hyperbus_phy #(
             end
             END: begin
                 clock_enable = 1'b0;
-                rst_read_fifo = 1'b0;
+                read_fifo_rst = 1'b1;
                 en_cs = 1'b0;
                 en_read_transaction = 1'b1;
                 // flush_read_fifo = 1'b1;
