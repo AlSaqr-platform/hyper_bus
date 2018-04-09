@@ -368,7 +368,7 @@ module hyperbus_phy_tb;
 
         stimuli = new(32'h05FFF3, 16);
         stimuli.name("Test with multiple interruptions");
-        stimuli.addInterruptHandshake(-1, 10);
+        stimuli.addInterruptHandshake(-1, 20);
         stimuli.addInterruptHandshake(3, 5);
         stimuli.addInterruptHandshake(8, 8);
 
@@ -406,8 +406,7 @@ module hyperbus_phy_tb;
 
         stimuli.name("Test reading with different burst lengths");
 
-        //ToDo burst length of 1 not working
-        for(int burst=2; burst < 48; burst++) begin
+        for(int burst=1; burst < 48; burst++) begin
             stimuli = new(32'h3000, burst);
 
             doTransaction(stimuli);
@@ -446,26 +445,29 @@ module hyperbus_phy_tb;
     task readData(transactionStimuli stimuli, realtime starttime);
         int i;
 
-        //read data from phy
+        //wait at the beginning
+        if(stimuli.doInterrupt(-1)) begin
+            ##(2*stimuli.doInterrupt(-1));
+        end
+
         cb_hyper_phy.rx_ready_i <= 1;
+
         wait(cb_hyper_phy.rx_valid_o);
         result.time_to_first_byte = $time - starttime;
 
         i = 0;
         while(i<stimuli.burst || cb_hyper_phy.rx_valid_o) begin
 
-            //Simulate not ready to receive data
-            if(stimuli.doInterrupt(i-1)) begin
-                cb_hyper_phy.rx_ready_i <= 0;
-                ##(2*stimuli.doInterrupt(i-1));
-                cb_hyper_phy.rx_ready_i <= 1;
-            end 
-
-            // cb_hyper_phy.rx_ready_i <= 1;
-
             if(cb_hyper_phy.rx_valid_o) begin
                 result.setReceivedData(i, cb_hyper_phy.rx_data_o);
                 i++;
+            end
+
+            //Simulate not ready to receive data
+            if(stimuli.doInterrupt(i)) begin
+                cb_hyper_phy.rx_ready_i <= 0;
+                ##(2*stimuli.doInterrupt(i));
+                cb_hyper_phy.rx_ready_i <= 1;
             end
 
             ##2; //One clock in clk0
