@@ -110,7 +110,7 @@ module hyperbus_phy #(
     assign hyper_reset_no = 1;
 
     //selecting ram must be in sync with future hyper_ck_o
-    always_ff @(posedge clk270 or negedge rst_ni) begin : proc_hyper_cs_no
+    always_ff @(posedge clk90 or negedge rst_ni) begin : proc_hyper_cs_no
         if(~rst_ni) begin
             hyper_cs_no <= {NR_CS{1'b1}};
         end else begin
@@ -155,6 +155,7 @@ module hyperbus_phy #(
     assign write_data = tx_data_i;
     assign write_strb = tx_strb_i;
 
+    //Takes output from hyperram, includes CDC FIFO
     read_clk_rwds i_read_clk_rwds (
         .clk0                   ( clk0          ),
         .rst_ni                 ( rst_ni        ),   // Asynchronous reset active low
@@ -168,6 +169,17 @@ module hyperbus_phy #(
         .data_o                 ( rx_data_o     ),
         .valid_o                ( rx_valid_o    )
     );
+
+    logic hyper_rwds_i_syn;
+    logic en_rwds;
+
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_rwds_i
+        if(~rst_ni) begin
+            hyper_rwds_i_syn <= 0;
+        end else if (en_rwds) begin
+            hyper_rwds_i_syn <= hyper_rwds_i;
+        end
+    end
 
     always @* begin
         case(cmd_addr_sel)
@@ -317,6 +329,7 @@ module hyperbus_phy #(
         // flush_read_fifo = 1'b0;
         rst_read_fifo = 1'b1;
         mode_write = 1'b0;
+        en_rwds = 1'b0;
 
         case(hyper_trans_state)
             STANDBY: begin
@@ -329,6 +342,7 @@ module hyperbus_phy #(
             end
             CMD_ADDR: begin
                 hyper_dq_oe_o = 1'b1;
+                en_rwds = 1'b1;
             end
             REG_WRITE: begin
                 hyper_dq_oe_o = 1'b1;
