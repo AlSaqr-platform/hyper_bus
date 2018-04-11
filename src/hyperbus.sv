@@ -16,8 +16,9 @@ module hyperbus #(
 )(
     input logic                    clk_i,          // Clock
     input logic                    rst_ni,         // Asynchronous reset active low
-    // AXI Bus
-    // ....
+
+    REG_BUS.in                     cfg_i,
+    AXI_BUS.in                     axi_i,
     // physical interface
     output logic [NR_CS-1:0]       hyper_cs_no,
     output logic                   hyper_ck_o,
@@ -31,6 +32,12 @@ module hyperbus #(
     output logic                   hyper_reset_no
 );
 
+    assign axi_i.aw_ready = 1;
+    assign axi_i.w_ready = 1;
+    assign axi_i.b_valid = 1;
+    assign axi_i.ar_ready = 1;
+    assign axi_i.r_valid = 1;
 
+    assign cfg_i.ready = 1;
 
 endmodule
