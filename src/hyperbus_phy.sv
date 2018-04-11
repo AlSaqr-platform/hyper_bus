@@ -27,6 +27,8 @@ module hyperbus_phy #(
     input  logic                   trans_write_i,     // transaction is a write
     input  logic [BURST_WIDTH-1:0] trans_burst_i,
     input  logic                   trans_address_space_i,
+    output logic                   trans_error,
+    input  logic [15:0]            config_cs_max,
     // transmitting
     input  logic                   tx_valid_i,
     output logic                   tx_ready_o,
@@ -56,6 +58,7 @@ module hyperbus_phy #(
     logic [1:0]  cmd_addr_sel;
     logic [15:0] write_data;
     logic [1:0]  write_strb;
+    logic [15:0] cs_max;
 
     //local copy of transaction
     logic [31:0]            local_address;
@@ -81,7 +84,7 @@ module hyperbus_phy #(
     logic clk270;
     logic address_space;
 
-    typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, END} hyper_trans_t;
+    typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END} hyper_trans_t;
 
     hyper_trans_t hyper_trans_state;
 
@@ -300,6 +303,12 @@ module hyperbus_phy #(
                         hyper_trans_state <= DATA_W;
                     end
                 end
+                ERROR: begin
+                    if (~rx_valid_o && ~tx_valid_i) begin
+                        wait_cnt <= WAIT_CYCLES - 1;
+                        hyper_trans_state <= END;
+                    end
+                end
                 END: begin
                     if(wait_cnt == 4'h0) begin //t_RWR
                         if (~rx_valid_o) begin
@@ -310,6 +319,9 @@ module hyperbus_phy #(
                     end
                 end
             endcase
+            if(cs_max == 1) begin
+                hyper_trans_state <= ERROR;
+            end
             if(~trans_valid_i) begin
                 trans_ready_o <= 1'b0;
             end 
@@ -329,6 +341,7 @@ module hyperbus_phy #(
         read_fifo_rst = 1'b0;
         mode_write = 1'b0;
         en_rwds = 1'b0;
+        trans_error = 1'b0;
 
         case(hyper_trans_state)
             STANDBY: begin
@@ -378,15 +391,22 @@ module hyperbus_phy #(
             DATA_W: begin
                 hyper_dq_oe_o = 1'b1;
                 hyper_rwds_oe_o = 1'b1;
-                tx_ready_o <= 1'b1;
+                tx_ready_o = 1'b1;
                 mode_write = 1'b1;
             end
             WAIT_W: begin
                 clock_enable = 1'b0;
                 hyper_dq_oe_o = 1'b1;
                 hyper_rwds_oe_o = 1'b1;
-                tx_ready_o <= 1'b1;
+                tx_ready_o = 1'b1;
                 mode_write = 1'b1;
+            end
+            ERROR: begin
+                trans_error = 1'b1;
+                clock_enable = 1'b0;
+                read_fifo_rst = 1'b1;
+                en_cs = 1'b0;
+                //Flush write FIFO
             end
             END: begin
                 clock_enable = 1'b0;
@@ -402,6 +422,16 @@ module hyperbus_phy #(
             read_clk_en <= 0;
         end else begin
             read_clk_en <= read_clk_en_n;
+        end
+    end
+
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cs_max
+        if(~rst_ni) begin
+            cs_max <= config_cs_max;
+        end else if (en_cs) begin
+            cs_max --;
+        end else begin
+            cs_max <= config_cs_max;
         end
     end
 

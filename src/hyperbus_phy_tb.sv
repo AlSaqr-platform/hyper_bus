@@ -26,6 +26,8 @@ module hyperbus_phy_tb;
   logic                   trans_write_i;
   logic [BURST_WIDTH-1:0] trans_burst_i;
   logic                   trans_address_space_i;
+  logic                   trans_error;
+  logic [15:0]            config_cs_max;
   logic                   tx_valid_i;
   logic                   tx_ready_o;
   logic [15:0]            tx_data_i;
@@ -58,6 +60,8 @@ module hyperbus_phy_tb;
     .trans_write_i        ( trans_write_i         ),
     .trans_burst_i        ( trans_burst_i         ),
     .trans_address_space_i( trans_address_space_i ),
+    .trans_error          ( trans_error           ),
+    .config_cs_max        ( config_cs_max         ),
     .tx_valid_i           ( tx_valid_i            ),
     .tx_ready_o           ( tx_ready_o            ),
     .tx_data_i            ( tx_data_i             ),
@@ -295,6 +299,7 @@ module hyperbus_phy_tb;
         tx_data_i = 0;
         tx_strb_i = 0;
         rx_ready_i = 0;
+        config_cs_max = 70;
 
         // Will be applied on negedge of clock!
         cb_hyper_phy.rst_ni <= 0;
