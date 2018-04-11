@@ -82,7 +82,6 @@ module hyperbus_phy #(
     logic clk90;
     logic clk180;
     logic clk270;
-    logic address_space;
 
     typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END} hyper_trans_t;
 
@@ -401,12 +400,12 @@ module hyperbus_phy #(
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
             end
-            ERROR: begin
+            ERROR: begin //Recover state after timeout for t_CSM 
                 trans_error = 1'b1;
                 clock_enable = 1'b0;
                 read_fifo_rst = 1'b1;
                 en_cs = 1'b0;
-                //Flush write FIFO
+                tx_ready_o = 1'b1;
             end
             END: begin
                 clock_enable = 1'b0;

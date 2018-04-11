@@ -16,6 +16,7 @@ module hyperbus_phy_tb;
   localparam TCLK = 3ns;
   localparam NR_CS = 2;
   localparam BURST_WIDTH = 12;
+  localparam CS_MAX = 666;
 
   logic                   clk_i;
   logic                   rst_ni;
@@ -163,6 +164,7 @@ module hyperbus_phy_tb;
 
         int burst;
         int received_data[];
+        int timeoutAfter = -1;
         logic testPassed = 1'bx;
 
         function new (int burst);
@@ -175,6 +177,10 @@ module hyperbus_phy_tb;
                 $error("Received to many words, received %p expected %p words", index+1, this.burst);
 
             this.received_data[index] = data;
+        endtask
+
+        task setTestPassed(logic passed = 1'b1);
+            this.testPassed = (this.testPassed === 1'bx || this.testPassed === 1'b1) && passed == 1'b1;
         endtask
 
         task check(int expectedResult[]);
@@ -199,6 +205,13 @@ module hyperbus_phy_tb;
                 this.testPassed = 1'b0;
             end
         endtask : checkTimeOfFirstByte
+
+        task assertTimeoutOccured();
+            assert(this.timeoutAfter > -1) else begin
+                $error("A timeout was expected, but no timeout occured");
+            end
+            setTestPassed(this.timeoutAfter > -1);
+        endtask : assertTimeoutOccured
 
         task printResult();
             $display("%4s | %4d ns | %4d words", this.testPassed ? "Pass" : "Fail", this.time_to_first_byte, this.received_data.size(), );
@@ -271,7 +284,7 @@ module hyperbus_phy_tb;
       output negedge rst_ni;
 
       output trans_valid_i, trans_address_i, trans_cs_i, trans_write_i, trans_burst_i, trans_address_space_i;
-      input trans_ready_o;
+      input trans_ready_o, trans_error;
 
       output tx_valid_i, tx_data_i, tx_strb_i;
       input tx_ready_o;
@@ -299,7 +312,7 @@ module hyperbus_phy_tb;
         tx_data_i = 0;
         tx_strb_i = 0;
         rx_ready_i = 0;
-        config_cs_max = 70;
+        config_cs_max = CS_MAX;
 
         // Will be applied on negedge of clock!
         cb_hyper_phy.rst_ni <= 0;
@@ -314,7 +327,9 @@ module hyperbus_phy_tb;
         testWriteWithMask();
         testVariableLatency();
         testWithMultipleInterruptions();
+        testTimeoutError();
         testLongTransaction();
+        testReadIdRegister();
         testDifferentBurstRead(); 
         
 
@@ -384,6 +399,31 @@ module hyperbus_phy_tb;
 
     endtask : testWithMultipleInterruptions
 
+    task testTimeoutError();
+        
+        config_cs_max = 50;
+
+        stimuli = new(32'h3000, 64);
+        stimuli.name("Timeout for CS");
+
+        doTransaction(stimuli);
+
+        result.assertTimeoutOccured();
+        result.printResult();
+
+        //check if following transaction valid (all buffers cleard)
+        stimuli = new(32'h3000, 8);
+
+        doTransaction(stimuli);
+
+        result.check(expectedResultSimple);
+        result.printResult();
+
+        //reset to default value
+        config_cs_max = CS_MAX;
+
+    endtask : testTimeoutError
+
     task testLongTransaction();
         automatic int expectedResult[64];
 
@@ -406,6 +446,19 @@ module hyperbus_phy_tb;
         result.printResult();
 
     endtask : testLongTransaction
+
+    task testReadIdRegister();
+
+        stimuli = new(32'h0,1);
+        stimuli.name("Read identification register");
+        stimuli.address_space = 1;
+
+        doTransaction(stimuli);
+
+        result.check('{16'h1ff1});
+        result.printResult();
+
+    endtask 
 
     task testDifferentBurstRead();
 
@@ -462,6 +515,11 @@ module hyperbus_phy_tb;
 
         i = 0;
         while(i<stimuli.burst || cb_hyper_phy.rx_valid_o) begin
+
+            if(cb_hyper_phy.trans_error) begin
+                result.timeoutAfter = i;
+                break;
+            end
 
             if(cb_hyper_phy.rx_valid_o) begin
                 result.setReceivedData(i, cb_hyper_phy.rx_data_o);
