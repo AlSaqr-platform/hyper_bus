@@ -20,6 +20,11 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/common_cells/src/cdc_fifo_gray.sv \
     ../src/common_cells/src/cdc_2phase.sv \
     ../src/common_cells/src/graycode.sv \
+    ../src/axi/src/axi_pkg.sv \
+    ../src/axi/src/axi_intf.sv \
+    ../src/axi/src/axi_test.sv \
+    ../src/register_interface/src/reg_intf.sv \
+    ../src/register_interface/src/reg_test.sv \
     ../src/clk_gen.sv \
     ../src/ddr_out.sv \
     ../src/pad_simulation.sv \
