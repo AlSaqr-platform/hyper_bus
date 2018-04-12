@@ -25,6 +25,9 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/axi/src/axi_test.sv \
     ../src/register_interface/src/reg_intf.sv \
     ../src/register_interface/src/reg_test.sv \
+    ../src/register_interface/src/reg_uniform.sv \
+    ../src/config_registers.sv \
+    ../src/config_registers_tb.sv \
     ../src/clk_gen.sv \
     ../src/ddr_out.sv \
     ../src/pad_simulation.sv \
