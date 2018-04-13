@@ -16,18 +16,20 @@ module read_clk_rwds #(
 )(
     input logic                    clk0,
     input logic                    rst_ni,   // Asynchronous reset active low
+
+    input logic [31:0]             config_t_rwds_delay_line,
+
     input logic                    hyper_rwds_i,
     input logic [7:0]              hyper_dq_i,
     input logic                    read_clk_en_i,
     input logic                    en_ddr_in_i,
     input logic                    ready_i, //Clock to FIFO
-    //input logic                  delay_config, //Configuration of delay line
 
     output logic                   valid_o,
     output logic [15:0]            data_o
 );
 
-    assign #2000 hyper_rwds_i_d = hyper_rwds_i; //Delay of rwds for center aligned read
+    assign #(config_t_rwds_delay_line) hyper_rwds_i_d = hyper_rwds_i; //Delay of rwds for center aligned read
 
     logic cdc_input_fifo_ready;
     logic read_in_valid;

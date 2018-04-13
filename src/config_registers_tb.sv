@@ -20,6 +20,7 @@ module config_registers_tb;
     logic [31:0]                   config_t_latency_additional;
     logic [31:0]                   config_t_cs_max;
     logic [31:0]                   config_t_read_write_recovery;
+    logic [31:0]                   config_t_rwds_delay_line;
     logic [ADDR_MAPPING_WIDTH-1:0] config_addr_mapping;
 
     REG_BUS #(
@@ -49,6 +50,7 @@ module config_registers_tb;
         .config_t_latency_additional  ( config_t_latency_additional  ),
         .config_t_cs_max              ( config_t_cs_max              ),
         .config_t_read_write_recovery ( config_t_read_write_recovery ),
+        .config_t_rwds_delay_line     ( config_t_rwds_delay_line     ),
         .config_addr_mapping          ( config_addr_mapping          )
     );
 
@@ -95,21 +97,25 @@ module config_registers_tb;
         assert(data == 'h29a);
         repeat(3) @(posedge clk_i);
 
-        cfg_drv.send_read('h10, data, error);
+        cfg_drv.send_read('h14, data, error);
         assert(data == '0);
         repeat(3) @(posedge clk_i);
 
-        cfg_drv.send_read('h14, data, error);
+        cfg_drv.send_read('h18, data, error);
         assert(data == 'h3FFFFF);
         repeat(3) @(posedge clk_i);
-        cfg_drv.send_write('h14, 'h7AFFB0, '1, error);
+        cfg_drv.send_write('h18, 'h7AFFB0, '1, error);
         repeat(3) @(posedge clk_i);
         assert(config_addr_mapping[127:0] == 'h7FFFFF00400000007AFFB000000000);
-        cfg_drv.send_read('h14, data, error);
+        cfg_drv.send_read('h18, data, error);
         assert(data == 'h7AFFB0);
         repeat(3) @(posedge clk_i);
 
+        assert(config_t_rwds_delay_line == 2000);
+
+
         repeat(10) @(posedge clk_i);
+        $display("\nFinished test");
         done = 1;
 
     end

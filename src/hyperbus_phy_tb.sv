@@ -19,6 +19,7 @@ module hyperbus_phy_tb;
   localparam DEFAULT_LATENCY = 6;
   localparam CS_MAX = 666;
   localparam READ_WRITE_RECOVERY = 6;
+  localparam RWDS_DELAY_LINE = 2000;
 
   logic                   clk_i;
   logic                   rst_ni;
@@ -26,6 +27,7 @@ module hyperbus_phy_tb;
   logic [31:0]            config_t_latency_additional;
   logic [31:0]            config_t_cs_max;
   logic [31:0]            config_t_read_write_recovery;
+  logic [31:0]            config_t_rwds_delay_line;
   logic                   trans_valid_i;
   logic                   trans_ready_o;
   logic [31:0]            trans_address_i;
@@ -63,6 +65,7 @@ module hyperbus_phy_tb;
     .config_t_latency_additional  ( config_t_latency_additional  ),
     .config_t_cs_max              ( config_t_cs_max              ),
     .config_t_read_write_recovery ( config_t_read_write_recovery ),
+    .config_t_rwds_delay_line     ( config_t_rwds_delay_line     ),
     .trans_valid_i                ( trans_valid_i                ),
     .trans_ready_o                ( trans_ready_o                ),
     .trans_address_i              ( trans_address_i              ),
@@ -315,6 +318,7 @@ module hyperbus_phy_tb;
         config_t_latency_additional = DEFAULT_LATENCY;
         config_t_cs_max = CS_MAX;
         config_t_read_write_recovery = READ_WRITE_RECOVERY;
+        config_t_rwds_delay_line = RWDS_DELAY_LINE;
 
         trans_valid_i = 0;
         trans_address_i = 0;

@@ -25,6 +25,7 @@ module hyperbus_phy #(
     input  logic [31:0]            config_t_latency_additional,
     input  logic [31:0]            config_t_cs_max,
     input  logic [31:0]            config_t_read_write_recovery,
+    input  logic [31:0]            config_t_rwds_delay_line,
 
     // transactions
     input  logic                   trans_valid_i,
@@ -166,15 +167,16 @@ module hyperbus_phy #(
 
     //Takes output from hyperram, includes CDC FIFO
     read_clk_rwds i_read_clk_rwds (
-        .clk0          ( clk0                        ),
-        .rst_ni        ( rst_ni                      ),   // Asynchronous reset active low
-        .hyper_rwds_i  ( hyper_rwds_i                ),
-        .hyper_dq_i    ( hyper_dq_i                  ),
-        .read_clk_en_i ( read_clk_en                 ),
-        .en_ddr_in_i   ( en_ddr_in                   ),
-        .ready_i       ( rx_ready_i || read_fifo_rst ),
-        .data_o        ( rx_data_o                   ),
-        .valid_o       ( read_fifo_valid             )
+        .clk0                     ( clk0                        ),
+        .rst_ni                   ( rst_ni                      ),
+        .config_t_rwds_delay_line ( config_t_rwds_delay_line    ),
+        .hyper_rwds_i             ( hyper_rwds_i                ),
+        .hyper_dq_i               ( hyper_dq_i                  ),
+        .read_clk_en_i            ( read_clk_en                 ),
+        .en_ddr_in_i              ( en_ddr_in                   ),
+        .ready_i                  ( rx_ready_i || read_fifo_rst ),
+        .data_o                   ( rx_data_o                   ),
+        .valid_o                  ( read_fifo_valid             )
     );
 
     assign rx_valid_o = read_fifo_valid && !read_fifo_rst;
