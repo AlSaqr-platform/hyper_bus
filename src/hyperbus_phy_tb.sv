@@ -16,10 +16,16 @@ module hyperbus_phy_tb;
   localparam TCLK = 3ns;
   localparam NR_CS = 2;
   localparam BURST_WIDTH = 12;
+  localparam DEFAULT_LATENCY = 6;
   localparam CS_MAX = 666;
+  localparam READ_WRITE_RECOVERY = 6;
 
   logic                   clk_i;
   logic                   rst_ni;
+  logic [31:0]            config_t_latency_access;
+  logic [31:0]            config_t_latency_additional;
+  logic [31:0]            config_t_cs_max;
+  logic [31:0]            config_t_read_write_recovery;
   logic                   trans_valid_i;
   logic                   trans_ready_o;
   logic [31:0]            trans_address_i;
@@ -28,7 +34,6 @@ module hyperbus_phy_tb;
   logic [BURST_WIDTH-1:0] trans_burst_i;
   logic                   trans_address_space_i;
   logic                   trans_error;
-  logic [15:0]            config_cs_max;
   logic                   tx_valid_i;
   logic                   tx_ready_o;
   logic [15:0]            tx_data_i;
@@ -52,34 +57,37 @@ module hyperbus_phy_tb;
     .NR_CS(NR_CS),
     .BURST_WIDTH(BURST_WIDTH)
   ) dut_i (
-    .clk_i                ( clk_i                 ),
-    .rst_ni               ( rst_ni                ),
-    .trans_valid_i        ( trans_valid_i         ),
-    .trans_ready_o        ( trans_ready_o         ),
-    .trans_address_i      ( trans_address_i       ),
-    .trans_cs_i           ( trans_cs_i            ),
-    .trans_write_i        ( trans_write_i         ),
-    .trans_burst_i        ( trans_burst_i         ),
-    .trans_address_space_i( trans_address_space_i ),
-    .trans_error          ( trans_error           ),
-    .config_cs_max        ( config_cs_max         ),
-    .tx_valid_i           ( tx_valid_i            ),
-    .tx_ready_o           ( tx_ready_o            ),
-    .tx_data_i            ( tx_data_i             ),
-    .tx_strb_i            ( tx_strb_i             ),
-    .rx_valid_o           ( rx_valid_o            ),
-    .rx_ready_i           ( rx_ready_i            ),
-    .rx_data_o            ( rx_data_o             ),
-    .hyper_cs_no          ( hyper_cs_no           ),
-    .hyper_ck_o           ( hyper_ck_o            ),
-    .hyper_ck_no          ( hyper_ck_no           ),
-    .hyper_rwds_o         ( hyper_rwds_o          ),
-    .hyper_rwds_i         ( hyper_rwds_i          ),
-    .hyper_rwds_oe_o      ( hyper_rwds_oe_o       ),
-    .hyper_dq_i           ( hyper_dq_i            ),
-    .hyper_dq_o           ( hyper_dq_o            ),
-    .hyper_dq_oe_o        ( hyper_dq_oe_o   ),
-    .hyper_reset_no       ( hyper_reset_no  )
+    .clk_i                        ( clk_i                        ),
+    .rst_ni                       ( rst_ni                       ),
+    .config_t_latency_access      ( config_t_latency_access      ),
+    .config_t_latency_additional  ( config_t_latency_additional  ),
+    .config_t_cs_max              ( config_t_cs_max              ),
+    .config_t_read_write_recovery ( config_t_read_write_recovery ),
+    .trans_valid_i                ( trans_valid_i                ),
+    .trans_ready_o                ( trans_ready_o                ),
+    .trans_address_i              ( trans_address_i              ),
+    .trans_cs_i                   ( trans_cs_i                   ),
+    .trans_write_i                ( trans_write_i                ),
+    .trans_burst_i                ( trans_burst_i                ),
+    .trans_address_space_i        ( trans_address_space_i        ),
+    .trans_error                  ( trans_error                  ),
+    .tx_valid_i                   ( tx_valid_i                   ),
+    .tx_ready_o                   ( tx_ready_o                   ),
+    .tx_data_i                    ( tx_data_i                    ),
+    .tx_strb_i                    ( tx_strb_i                    ),
+    .rx_valid_o                   ( rx_valid_o                   ),
+    .rx_ready_i                   ( rx_ready_i                   ),
+    .rx_data_o                    ( rx_data_o                    ),
+    .hyper_cs_no                  ( hyper_cs_no                  ),
+    .hyper_ck_o                   ( hyper_ck_o                   ),
+    .hyper_ck_no                  ( hyper_ck_no                  ),
+    .hyper_rwds_o                 ( hyper_rwds_o                 ),
+    .hyper_rwds_i                 ( hyper_rwds_i                 ),
+    .hyper_rwds_oe_o              ( hyper_rwds_oe_o              ),
+    .hyper_dq_i                   ( hyper_dq_i                   ),
+    .hyper_dq_o                   ( hyper_dq_o                   ),
+    .hyper_dq_oe_o                ( hyper_dq_oe_o                ),
+    .hyper_reset_no               ( hyper_reset_no               )
   );
 
     //simulate pad delays
@@ -143,7 +151,7 @@ module hyperbus_phy_tb;
   int expectedResultAll1234[8] = '{default: 16'h1234};
   int expectedResultSimple[47] = '{16'h0001, 16'h0002, 16'h0003, 16'h0004, 16'h0005, 16'h0006, 16'h0007, 16'h0008, 16'h0009, 16'h000A, 16'h000B, 16'h000C, 16'h000D, 16'h000E, 16'h000F, 16'h0010, 16'h0011, 16'h0012, 16'h0013, 16'h0014, 16'h0015, 16'h0016, 16'h0017, 16'h0018, 16'h0019, 16'h001A, 16'h001B, 16'h001C, 16'h001D, 16'h001E, 16'h001F, 16'h0020, 16'h0021, 16'h0022, 16'h0023, 16'h0024, 16'h0025, 16'h0026, 16'h0027, 16'h0028, 16'h0029, 16'h002A, 16'h002B, 16'h002C, 16'h002D, 16'h002E, 16'h002F};
 
-  int writeData8[8] = '{16'h1001, 16'h2002, 16'h3003, 16'h40FF, 16'h5555, 16'h6006, 16'h7007, 16'h8008};
+  int writeData8[8] = '{16'h1001, 16'h2002, 16'h3003, 16'h40EE, 16'h5555, 16'h6006, 16'h7007, 16'h8008};
   logic [1:0] maskAll8[8] = '{3: 2'b01, 4: 2'b10, default: 2'b00 };
   int expectedResultWrite[8] = '{16'h1001, 16'h2002, 16'h3003, 16'h4004, 16'h0055, 16'h6006, 16'h7007, 16'h8008};
 
@@ -214,7 +222,7 @@ module hyperbus_phy_tb;
         endtask : assertTimeoutOccured
 
         task printResult();
-            $display("%4s | %4d ns | %4d words", this.testPassed ? "Pass" : "Fail", this.time_to_first_byte, this.received_data.size(), );
+            $display("Time: %p ns", $time, "  | %4s | %4d ns | %4d words", this.testPassed ? "Pass" : "Fail", this.time_to_first_byte, this.received_data.size() );
         
         endtask : printResult
 
@@ -238,6 +246,7 @@ module hyperbus_phy_tb;
         int writeData[];
         logic[1:0] writeMask[];
         transactionResult result;
+        string testName;
 
         InterruptHandshake interruptions[$];
 
@@ -257,6 +266,7 @@ module hyperbus_phy_tb;
             $display("-------------------------------------");
             $display("Test ", name);
             $display("-------------------------------------");
+            this.testName = name;
         endtask : name
 
         task addInterruptHandshake(int afterByte, int cycles);
@@ -301,6 +311,11 @@ module hyperbus_phy_tb;
         $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model); 
 
         // Set all inputs at the beginning    
+        config_t_latency_access = DEFAULT_LATENCY;
+        config_t_latency_additional = DEFAULT_LATENCY;
+        config_t_cs_max = CS_MAX;
+        config_t_read_write_recovery = READ_WRITE_RECOVERY;
+
         trans_valid_i = 0;
         trans_address_i = 0;
         trans_cs_i = 0;
@@ -312,7 +327,7 @@ module hyperbus_phy_tb;
         tx_data_i = 0;
         tx_strb_i = 0;
         rx_ready_i = 0;
-        config_cs_max = CS_MAX;
+        
 
         // Will be applied on negedge of clock!
         cb_hyper_phy.rst_ni <= 0;
@@ -328,6 +343,7 @@ module hyperbus_phy_tb;
         testVariableLatency();
         testWithMultipleInterruptions();
         testTimeoutError();
+        testDifferentLatency();
         testLongTransaction();
         testReadIdRegister();
         testDifferentBurstRead(); 
@@ -382,6 +398,8 @@ module hyperbus_phy_tb;
         result.checkTimeOfFirstByte(80,90);
         result.printResult();
 
+        //ToDo test with write
+
     endtask : testVariableLatency
 
     task testWithMultipleInterruptions();
@@ -401,7 +419,7 @@ module hyperbus_phy_tb;
 
     task testTimeoutError();
         
-        config_cs_max = 50;
+        config_t_cs_max = 50;
 
         stimuli = new(32'h3000, 64);
         stimuli.name("Timeout for CS");
@@ -420,9 +438,40 @@ module hyperbus_phy_tb;
         result.printResult();
 
         //reset to default value
-        config_cs_max = CS_MAX;
+        config_t_cs_max = CS_MAX;
 
     endtask : testTimeoutError
+
+    task testDifferentLatency();
+        automatic int expectedResult[8];
+
+        config_t_latency_access = 3;
+        config_t_latency_additional = 3;
+        doConfig0Write(16'h8fE7); // set latency to 3
+
+        stimuli = new(32'h30FFFF, 8);
+        stimuli.name("latency of 3 cycles");
+        stimuli.write(writeData8, maskAll8);
+        stimuli.addInterruptHandshake(3, 6);
+
+        doTransaction(stimuli);
+
+        //Read written data
+        stimuli.isWrite = 0;
+
+        doTransaction(stimuli);
+
+        expectedResult = expectedResultWrite; expectedResult[3] = 16'h40FF; expectedResult[4] = 16'hFF55;
+
+        result.check(expectedResult);
+        result.printResult();
+
+        //reset config
+        config_t_latency_access = DEFAULT_LATENCY;
+        config_t_latency_additional = DEFAULT_LATENCY;
+        doConfig0Write(16'h8f17);
+    
+    endtask : testDifferentLatency
 
     task testLongTransaction();
         automatic int expectedResult[64];

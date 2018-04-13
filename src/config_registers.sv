@@ -32,8 +32,8 @@ module config_registers #(
     logic [ADDR_MAPPING_WIDTH-1:0] init_addr_mapping;
 
     for (genvar i = 0; i < NR_CS; i++) begin
-        assign init_addr_mapping[2*i*32+31:2*i*32]    =  'h400000 * i;
-        assign init_addr_mapping[2*i*32+63:2*i*32+32] = ('h400000 * i) + 'h3FFFFF;
+        assign init_addr_mapping[2*i*32+31 : 2*i*32]    =  'h400000 * i;
+        assign init_addr_mapping[2*i*32+63 : 2*i*32+32] = ('h400000 * i) + 'h3FFFFF;
     end
 
     reg_uniform #(

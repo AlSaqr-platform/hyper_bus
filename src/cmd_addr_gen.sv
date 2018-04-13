@@ -29,4 +29,3 @@ module cmd_addr_gen #(
 	assign cmd_addr_o[2:0] = address_i[2:0];
 
 endmodule
-

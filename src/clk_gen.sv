@@ -14,7 +14,7 @@ module clk_gen (
     output logic clk0_o,    // have the input clock - 0deg phase shift
     output logic clk90_o,   // have the input clock - 90deg phase shift
     output logic clk180_o,  // have the input clock - 180deg phase shift
-    output logic clk270_o  // have the input clock - 270deg phase shift
+    output logic clk270_o   // have the input clock - 270deg phase shift
 );
 
 `ifndef PULP_FPGA_EMUL

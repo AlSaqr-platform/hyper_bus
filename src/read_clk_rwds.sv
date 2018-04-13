@@ -61,11 +61,11 @@ module read_clk_rwds #(
 
     //Takes 8 bit ddr data from hyperram to 16 bit
     ddr_in i_ddr_in (
-        .hyper_rwds_i_d  ( clk_rwds    ), 
-        .hyper_dq_i      ( hyper_dq_i  ), 
-        .data_o          ( src_data      ), 
-        .enable          ( en_ddr_in_i ), 
-        .rst_ni          ( rst_ni      )
+        .clk_i  ( clk_rwds    ), 
+        .rst_ni ( rst_ni      ),
+        .data_i ( hyper_dq_i  ), 
+        .enable ( en_ddr_in_i ),
+        .data_o ( src_data    ) 
     ); 
 
     //Clock gating resulting in clk_rwds

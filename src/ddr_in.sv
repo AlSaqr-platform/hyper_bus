@@ -13,36 +13,36 @@
 
 module ddr_in #(
 )(
-	input logic 			 hyper_rwds_i_d,
-	input logic  [7:0]       hyper_dq_i,
-	input logic 			 rst_ni,
-	input logic 			 enable,
-	
-	output logic [15:0]      data_o
+    input logic              clk_i,
+    input logic  [7:0]       data_i,
+    input logic              rst_ni,
+    input logic              enable,
+    
+    output logic [15:0]      data_o
 );
-	logic [7:0] ddr_neg;
-	logic [7:0] ddr_pos;
+    logic [7:0] ddr_neg;
+    logic [7:0] ddr_pos;
 
-    always_ff @(posedge hyper_rwds_i_d or negedge rst_ni) begin : proc_ddr_pos
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ddr_pos
         if(~rst_ni) begin
             ddr_pos <= 8'h0;
         end else if (enable) begin
-            ddr_pos <= hyper_dq_i;
+            ddr_pos <= data_i;
         end
     end
     
-    always_ff @(negedge hyper_rwds_i_d or negedge rst_ni) begin : proc_ddr_neg
+    always_ff @(negedge clk_i or negedge rst_ni) begin : proc_ddr_neg
         if(~rst_ni) begin
             ddr_neg <= 8'h0;
         end else if (enable) begin
-            ddr_neg <= hyper_dq_i;
+            ddr_neg <= data_i;
         end
     end
 
     assign data_o[7:0]  = ddr_neg;
     assign data_o[15:8] = ddr_pos;
 
-    // always_ff @(posedge hyper_rwds_i_d or negedge rst_ni) begin : proc_data_i //not on clk0, delayed rwds
+    // always_ff @(posedge clk_i or negedge rst_ni) begin : proc_data_i //not on clk0, delayed rwds
     //     if(~rst_ni) begin
     //         data_o <= 16'h0;
     //     end else if (enable) begin
