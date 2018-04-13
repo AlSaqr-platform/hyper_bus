@@ -218,7 +218,6 @@ module hyperbus_phy #(
                     if(trans_valid_i) begin
                         hyper_trans_state <= SET_CMD_ADDR;
                         cmd_addr_sel <= 1'b0;
-                        trans_ready_o <= 1'b1;
                     end
                 end
                 SET_CMD_ADDR: begin
@@ -279,7 +278,7 @@ module hyperbus_phy #(
                 DATA_R: begin
                     if(rx_valid_o && rx_ready_i) begin
                         if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                            wait_cnt <= config_t_read_write_recovery - 1;
+                            wait_cnt <= config_t_read_write_recovery - 2;
                             hyper_trans_state <= END;
                         end else begin
                             burst_cnt <= burst_cnt - 1;
@@ -291,7 +290,7 @@ module hyperbus_phy #(
                 DATA_W: begin
                     burst_cnt <= burst_cnt - 1;
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                        wait_cnt <= config_t_read_write_recovery - 1;
+                        wait_cnt <= config_t_read_write_recovery - 2;
                         hyper_trans_state <= END;
                     end else if (~tx_valid_i) begin
                         hyper_trans_state <= WAIT_W;
@@ -312,15 +311,13 @@ module hyperbus_phy #(
                 end
                 ERROR: begin
                     if (~rx_valid_o && ~tx_valid_i) begin
-                        wait_cnt <= config_t_read_write_recovery - 1;
+                        wait_cnt <= config_t_read_write_recovery - 2;
                         hyper_trans_state <= END;
                     end
                 end
                 END: begin
                     if(wait_cnt == 4'h0) begin //t_RWR
-                        if (~rx_valid_o) begin
-                            hyper_trans_state <= STANDBY;
-                        end
+                        hyper_trans_state <= STANDBY;
                     end else begin
                         wait_cnt <= wait_cnt - 1;
                     end
@@ -329,9 +326,6 @@ module hyperbus_phy #(
             if(cs_max == 1) begin
                 hyper_trans_state <= ERROR;
             end
-            if(~trans_valid_i) begin
-                trans_ready_o <= 1'b0;
-            end 
         end
     end
 
@@ -340,6 +334,7 @@ module hyperbus_phy #(
         clock_enable = 1'b1;
         en_cs = 1'b1;
         en_ddr_in = 1'b0;
+        trans_ready_o = 1'b0;
         tx_ready_o = 1'b0;
         hyper_dq_oe_o = 1'b0;
         hyper_rwds_oe_o = 1'b0;
@@ -358,6 +353,7 @@ module hyperbus_phy #(
             end
             SET_CMD_ADDR: begin
                 clock_enable = 1'b0;
+                trans_ready_o = 1'b1;
             end
             CMD_ADDR: begin
                 hyper_dq_oe_o = 1'b1;
