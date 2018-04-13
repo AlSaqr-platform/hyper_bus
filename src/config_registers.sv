@@ -12,44 +12,49 @@
 // Description: Configuration for hyperbus
 
 module config_registers #(
-  parameter NR_CS = 2
+  parameter NR_CS = 2,
+  parameter ADDR_MAPPING_WIDTH = 64 * NR_CS
 )(
     input logic           clk_i,          // Clock
     input logic           rst_ni,         // Asynchronous reset active low
 
     REG_BUS.in            cfg_i,
 
-    output logic [31:0]   config_t_latency_access,
-    output logic [31:0]   config_t_latency_additional,
-    output logic [31:0]   config_t_cs_max,
-    output logic [31:0]   config_t_read_write_recovery,
-    output logic [31:0]   config_addr_mapping_cs0_start,
-    output logic [31:0]   config_addr_mapping_cs0_end
+    output logic [31:0]                     config_t_latency_access,      //Address 'h00
+    output logic [31:0]                     config_t_latency_additional,  //Address 'h04
+    output logic [31:0]                     config_t_cs_max,              //Address 'h08
+    output logic [31:0]                     config_t_read_write_recovery, //Address 'h0C
+    output logic [ADDR_MAPPING_WIDTH-1:0]   config_addr_mapping           //Address 'h10
 );
 
+    //Order of registers is inversed
 
-    //Order or registers is inversed
+    logic [ADDR_MAPPING_WIDTH-1:0] init_addr_mapping;
+
+    for (genvar i = 0; i < NR_CS; i++) begin
+        assign init_addr_mapping[2*i*32+31:2*i*32]    =  'h400000 * i;
+        assign init_addr_mapping[2*i*32+63:2*i*32+32] = ('h400000 * i) + 'h3FFFFF;
+    end
 
     reg_uniform #(
         .ADDR_WIDTH ( 32 ),
         .DATA_WIDTH ( 32 ),
-        .NUM_REG    ( 6  ),
+        .NUM_REG    ( 4 + 2 * NR_CS ),
         .REG_WIDTH  ( 32 )
     ) registers (
-        .clk_i      ( clk_i ),
+        .clk_i      ( clk_i  ),
         .rst_ni     ( rst_ni ),
         .init_val_i ( {
-                32'h3FFFFF,     //config_addr_mapping_cs0_end
-                32'h0,          //config_addr_mapping_cs0_start
-                32'h6,          //config_t_read_write_recovery
-                32'd666,        //config_t_cs_max
-                32'h6,          //config_t_latency_additional
-                32'h6           //config_t_latency_access
+                init_addr_mapping, //config_addr_mapping
+                32'h6,             //config_t_read_write_recovery
+                32'd666,           //config_t_cs_max
+                32'h6,             //config_t_latency_additional
+                32'h6              //config_t_latency_access
             } ),
-        .rd_val_i   ( { config_addr_mapping_cs0_end, config_addr_mapping_cs0_start, config_t_read_write_recovery, config_t_cs_max, config_t_latency_additional, config_t_latency_access } ),
-        .wr_val_o   ( { config_addr_mapping_cs0_end, config_addr_mapping_cs0_start, config_t_read_write_recovery, config_t_cs_max, config_t_latency_additional, config_t_latency_access } ),
+        .rd_val_i   ( { config_addr_mapping, config_t_read_write_recovery, config_t_cs_max, config_t_latency_additional, config_t_latency_access } ),
+        .wr_val_o   ( { config_addr_mapping, config_t_read_write_recovery, config_t_cs_max, config_t_latency_additional, config_t_latency_access } ),
+        .wr_evt_o   (       ),
         .reg_i      ( cfg_i )
     );
-
 
 endmodule

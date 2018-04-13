@@ -11,16 +11,16 @@ module config_registers_tb;
 
     localparam TCLK = 3ns;
     localparam NR_CS = 2;
+    localparam ADDR_MAPPING_WIDTH = 64 * NR_CS;
 
     logic             clk_i = 0;         
     logic             rst_ni = 1;
 
-    logic [31:0]      config_t_latency_access;
-    logic [31:0]      config_t_latency_additional;
-    logic [31:0]      config_t_cs_max;
-    logic [31:0]      config_t_read_write_recovery;
-    logic [31:0]      config_addr_mapping_cs0_start;
-    logic [31:0]      config_addr_mapping_cs0_end;
+    logic [31:0]                   config_t_latency_access;
+    logic [31:0]                   config_t_latency_additional;
+    logic [31:0]                   config_t_cs_max;
+    logic [31:0]                   config_t_read_write_recovery;
+    logic [ADDR_MAPPING_WIDTH-1:0] config_addr_mapping;
 
     REG_BUS #(
         .ADDR_WIDTH ( 32 ),
@@ -40,17 +40,16 @@ module config_registers_tb;
 
 
     config_registers #(
-        .NR_CS(2)
+        .NR_CS(NR_CS)
     ) dut (
-        .clk_i                         ( clk_i                         ),
-        .rst_ni                        ( rst_ni                        ),
-        .cfg_i                         ( cfg_i                         ),
-        .config_t_latency_access       ( config_t_latency_access       ),
-        .config_t_latency_additional   ( config_t_latency_additional   ),
-        .config_t_cs_max               ( config_t_cs_max               ),
-        .config_t_read_write_recovery  ( config_t_read_write_recovery  ),
-        .config_addr_mapping_cs0_start ( config_addr_mapping_cs0_start ),
-        .config_addr_mapping_cs0_end   ( config_addr_mapping_cs0_end   )
+        .clk_i                        ( clk_i                        ),
+        .rst_ni                       ( rst_ni                       ),
+        .cfg_i                        ( cfg_i                        ),
+        .config_t_latency_access      ( config_t_latency_access      ),
+        .config_t_latency_additional  ( config_t_latency_additional  ),
+        .config_t_cs_max              ( config_t_cs_max              ),
+        .config_t_read_write_recovery ( config_t_read_write_recovery ),
+        .config_addr_mapping          ( config_addr_mapping          )
     );
 
     initial begin
@@ -76,9 +75,18 @@ module config_registers_tb;
         @(posedge rst_ni);
         repeat(3) @(posedge clk_i);
 
+        //Test default generation of address mapping
+        assert(config_addr_mapping[127:0] == 'h7FFFFF00400000003FFFFF00000000);
+
         // Access the register interface.
+
+        cfg_drv.send_read('h0, data, error);
+        assert(data == 'h6);
+        repeat(3) @(posedge clk_i);
+
         cfg_drv.send_write('h4, 'h3, '1, error);
         repeat(3) @(posedge clk_i);
+        assert(config_t_latency_additional == 'h3);
         cfg_drv.send_read('h4, data, error);
         assert(data == 'h3);
         repeat(3) @(posedge clk_i);
@@ -91,11 +99,15 @@ module config_registers_tb;
         assert(data == '0);
         repeat(3) @(posedge clk_i);
 
-        cfg_drv.send_read('h0, data, error);
-        assert(data == 'h6);
+        cfg_drv.send_read('h14, data, error);
+        assert(data == 'h3FFFFF);
         repeat(3) @(posedge clk_i);
-
-
+        cfg_drv.send_write('h14, 'h7AFFB0, '1, error);
+        repeat(3) @(posedge clk_i);
+        assert(config_addr_mapping[127:0] == 'h7FFFFF00400000007AFFB000000000);
+        cfg_drv.send_read('h14, data, error);
+        assert(data == 'h7AFFB0);
+        repeat(3) @(posedge clk_i);
 
         repeat(10) @(posedge clk_i);
         done = 1;
