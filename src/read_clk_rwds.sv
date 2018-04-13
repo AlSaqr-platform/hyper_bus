@@ -29,13 +29,16 @@ module read_clk_rwds #(
     output logic [15:0]            data_o
 );
 
+    logic hyper_rwds_i_d;
+    logic clk_rwds;
+
     assign #(config_t_rwds_delay_line) hyper_rwds_i_d = hyper_rwds_i; //Delay of rwds for center aligned read
 
     logic cdc_input_fifo_ready;
     logic read_in_valid;
     logic [15:0] src_data;
 
-    cdc_fifo_gray  #(.T(logic[15:0]), .LOG_DEPTH(5)) i_cdc_fifo_hyper ( 
+    cdc_fifo_gray  #(.T(logic[15:0]), .LOG_DEPTH(3)) i_cdc_fifo_hyper ( 
       .src_rst_ni  ( rst_ni               ), 
       .src_clk_i   ( clk_rwds             ), 
       .src_data_i  ( src_data             ), 
@@ -49,12 +52,17 @@ module read_clk_rwds #(
       .dst_ready_i ( ready_i ) 
     ); 
 
+    `ifndef SYNTHESIS
     always @(negedge cdc_input_fifo_ready) begin
         assert(cdc_input_fifo_ready) else $error("FIFO i_cdc_fifo_hyper should always be ready");
     end
+    `endif
 
-    always_ff @(posedge clk_rwds or negedge rst_ni or negedge read_clk_en_i) begin : proc_read_in_valid
-        if(~rst_ni || ~read_clk_en_i) begin
+    logic resetReadModule;
+    assign resetReadModule = ~rst_ni || ~read_clk_en_i; //todo: second async reset!!!! okay?
+
+    always_ff @(posedge clk_rwds or posedge resetReadModule) begin : proc_read_in_valid
+        if(resetReadModule) begin
             read_in_valid <= 0;
         end else begin
             read_in_valid <= 1;

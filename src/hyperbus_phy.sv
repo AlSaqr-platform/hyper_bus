@@ -433,7 +433,7 @@ module hyperbus_phy #(
         if(~rst_ni) begin
             cs_max <= config_t_cs_max;
         end else if (en_cs) begin
-            cs_max --;
+            cs_max <= cs_max - 1;
         end else begin
             cs_max <= config_t_cs_max;
         end

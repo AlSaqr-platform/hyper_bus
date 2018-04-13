@@ -31,7 +31,6 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/clk_gen.sv \
     ../src/ddr_out.sv \
     ../src/pad_simulation.sv \
-    ../src/input_fifo.sv \
     ../src/read_clk_rwds.sv \
     ../src/hyperbus.sv \
     ../src/hyperbus_phy.sv \

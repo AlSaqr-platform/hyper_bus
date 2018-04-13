@@ -1,3 +1,6 @@
+
+set UNIT "hyperbus_phy"
+
 # ------------------------------------------------------------------------------
 # Remove all current designs and the directory of the library.
 # ------------------------------------------------------------------------------
@@ -8,16 +11,23 @@ sh rm -rf WORK/*
 # Analyze Design
 # ------------------------------------------------------------------------------
 analyze -library WORK -format sverilog {
-	../src/output_fifo.sv 
-	../src/input_fifo.sv 
-	../src/hyperbus_phy.sv 
-	../src/ddr_out.sv 
-	../src/ddr_in.sv 
-	../src/cmd_addr_gen.sv 
-	../src/clk_gen.sv 
-	../src/tech_cells_generic/pulp_clock_gating.sv 
-	../src/tech_cells_generic/pulp_clock_inverter.sv 
-	../src/tech_cells_generic/pulp_clock_mux2.sv 
+	../src/tech_cells_generic/pulp_clock_xor2.sv
+    ../src/tech_cells_generic/pulp_clock_mux2.sv
+    ../src/tech_cells_generic/pulp_clock_gating.sv
+    ../src/tech_cells_generic/pulp_clock_inverter.sv
+    ../src/common_cells/src/cdc_fifo_gray.sv
+    ../src/common_cells/src/cdc_2phase.sv
+    ../src/common_cells/src/graycode.sv
+    ../src/register_interface/src/reg_intf.sv
+    ../src/register_interface/src/reg_uniform.sv
+    ../src/config_registers.sv
+    ../src/clk_gen.sv
+    ../src/ddr_out.sv
+    ../src/read_clk_rwds.sv
+    ../src/hyperbus.sv
+    ../src/hyperbus_phy.sv
+    ../src/cmd_addr_gen.sv
+    ../src/ddr_in.sv
 }
 
 # ------------------------------------------------------------------------------
@@ -60,3 +70,12 @@ report_timing -from [all_inputs]                 -to [all_registers -data_pins] 
 report_timing -from [all_registers -output_pins] -to [all_outputs]              > reports/hyperbus_phy_tso.rpt
 report_timing -from [all_inputs]                 -to [all_outputs]              > reports/hyperbus_phy_tio.rpt
 
+
+# ---------------------------------------------------------
+# save
+# ---------------------------------------------------------
+write_file -format ddc -hierarchy -output ./DDC/${UNIT}.ddc
+
+define_name_rules verilog -add_dummy_nets 
+change_names -rules verilog -hier
+write_file -format verilog -hierarchy -output ./netlists/${UNIT}.v
