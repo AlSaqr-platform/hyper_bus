@@ -103,21 +103,21 @@ module hyperbus_phy_tb;
     wire        wire_ck_no;
     wire        wire_reset_no;
 
-    pad_simulation pad_sim (
+    pad_io pad_sim (
         .data_i   (hyper_rwds_o),   
         .oe_i     (hyper_rwds_oe_o),
         .data_o   (hyper_rwds_i),  
         .pad_io   (wire_rwds) 
     );
 
-    pad_simulation #(8) pad_sim_data (
+    pad_io #(8) pad_sim_data (
         .data_i   (hyper_dq_o),   
         .oe_i     (hyper_dq_oe_o),
         .data_o   (hyper_dq_i),  
         .pad_io   (wire_dq_io) 
     );
 
-    pad_simulation #(4) pad_sim_others (
+    pad_io #(4) pad_sim_others (
         .data_i   ({hyper_cs_no, hyper_ck_o, hyper_ck_no}),   
         .oe_i     (1'b1),
         .data_o   (),  

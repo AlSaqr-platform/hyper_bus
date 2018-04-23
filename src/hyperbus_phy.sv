@@ -103,16 +103,23 @@ module hyperbus_phy #(
         .clk270_o ( clk270 )
     );
 
-    pulp_clock_gating hyper_ck_gating (
-        .clk_i      ( clk90        ),
-        .en_i       ( clock_enable ),
-        .test_en_i  ( 1'b0         ),
-        .clk_o      ( hyper_ck_o   )
-    ); 
+    // pulp_clock_gating hyper_ck_gating (
+    //     .clk_i      ( clk90        ),
+    //     .en_i       ( clock_enable ),
+    //     .test_en_i  ( 1'b0         ),
+    //     .clk_o      ( hyper_ck_o   )
+    // ); 
 
-    pulp_clock_inverter hyper_ck_no_inv (
-        .clk_i ( hyper_ck_o  ),
-        .clk_o ( hyper_ck_no )
+    // pulp_clock_inverter hyper_ck_no_inv (
+    //     .clk_i ( hyper_ck_o  ),
+    //     .clk_o ( hyper_ck_no )
+    // );
+
+    out_buffer_diff out_buffer_diff_i (
+        .in_i   ( clk90        ),
+        .en_i   ( clock_enable ),
+        .out_o  ( hyper_ck_o   ),
+        .out_no ( hyper_ck_no  )
     );
 
     assign hyper_reset_no = 1;
@@ -322,6 +329,9 @@ module hyperbus_phy #(
                         wait_cnt <= wait_cnt - 1;
                     end
                 end
+                default: begin
+                    hyper_trans_state <= STANDBY;
+                end
             endcase
             if(cs_max == 1) begin
                 hyper_trans_state <= ERROR;
@@ -418,6 +428,9 @@ module hyperbus_phy #(
                 en_cs = 1'b0;
                 en_read_transaction = 1'b1;
             end
+            default: begin
+                clock_enable = 1'b0;
+            end
         endcase
     end
 
@@ -431,11 +444,13 @@ module hyperbus_phy #(
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cs_max
         if(~rst_ni) begin
-            cs_max <= config_t_cs_max;
-        end else if (en_cs) begin
-            cs_max <= cs_max - 1;
-        end else begin
-            cs_max <= config_t_cs_max;
+            cs_max <= 'b0;
+        end else begin 
+            if (en_cs) begin
+                cs_max <= cs_max - 1;
+            end else begin
+                cs_max <= config_t_cs_max;
+            end
         end
     end
 
