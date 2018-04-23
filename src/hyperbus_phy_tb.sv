@@ -22,6 +22,8 @@ module hyperbus_phy_tb;
   localparam RWDS_DELAY_LINE = 2000;
 
   logic                   clk_i;
+  logic                   clk0;
+  logic                   clk90;
   logic                   rst_ni;
   logic [31:0]            config_t_latency_access;
   logic [31:0]            config_t_latency_additional;
@@ -34,6 +36,7 @@ module hyperbus_phy_tb;
   logic [NR_CS-1:0]       trans_cs_i;
   logic                   trans_write_i;
   logic [BURST_WIDTH-1:0] trans_burst_i;
+  logic                   trans_burst_type_i;
   logic                   trans_address_space_i;
   logic                   trans_error;
   logic                   tx_valid_i;
@@ -59,7 +62,8 @@ module hyperbus_phy_tb;
     .NR_CS(NR_CS),
     .BURST_WIDTH(BURST_WIDTH)
   ) dut_i (
-    .clk_i                        ( clk_i                        ),
+    .clk0                         ( clk0                         ),
+    .clk90                        ( clk90                        ),
     .rst_ni                       ( rst_ni                       ),
     .config_t_latency_access      ( config_t_latency_access      ),
     .config_t_latency_additional  ( config_t_latency_additional  ),
@@ -72,8 +76,9 @@ module hyperbus_phy_tb;
     .trans_cs_i                   ( trans_cs_i                   ),
     .trans_write_i                ( trans_write_i                ),
     .trans_burst_i                ( trans_burst_i                ),
+    .trans_burst_type_i           ( trans_burst_type_i           ),
     .trans_address_space_i        ( trans_address_space_i        ),
-    .trans_error                  ( trans_error                  ),
+    .trans_error_o                ( trans_error                  ),
     .tx_valid_i                   ( tx_valid_i                   ),
     .tx_ready_o                   ( tx_ready_o                   ),
     .tx_data_i                    ( tx_data_i                    ),
@@ -92,6 +97,15 @@ module hyperbus_phy_tb;
     .hyper_dq_oe_o                ( hyper_dq_oe_o                ),
     .hyper_reset_no               ( hyper_reset_no               )
   );
+
+    clk_gen ddr_clk (
+        .clk_i    ( clk_i  ),
+        .rst_ni   ( rst_ni ),
+        .clk0_o   ( clk0   ),
+        .clk90_o  ( clk90  ),
+        .clk180_o (        ),
+        .clk270_o (        )
+    );
 
     //simulate pad delays
     //-------------------
@@ -296,7 +310,7 @@ module hyperbus_phy_tb;
       default input #1step output #1ns;
       output negedge rst_ni;
 
-      output trans_valid_i, trans_address_i, trans_cs_i, trans_write_i, trans_burst_i, trans_address_space_i;
+      output trans_valid_i, trans_address_i, trans_cs_i, trans_write_i, trans_burst_i, trans_burst_type_i, trans_address_space_i;
       input trans_ready_o, trans_error;
 
       output tx_valid_i, tx_data_i, tx_strb_i;
@@ -325,6 +339,7 @@ module hyperbus_phy_tb;
         trans_cs_i = 0;
         trans_write_i = 0;
         trans_burst_i = 0;
+        trans_burst_type_i = 1;
         trans_address_space_i = 0;
 
         tx_valid_i = 0;

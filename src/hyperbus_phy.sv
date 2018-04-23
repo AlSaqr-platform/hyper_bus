@@ -10,13 +10,16 @@
 // Author:
 // Date:
 // Description: Connect the AXI interface with the actual HyperBus
+`timescale 1ps/1ps
 
 module hyperbus_phy #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
     parameter WAIT_CYCLES = 6
 )(
-    input  logic                   clk_i,    // Clock
+    input  logic                   clk0,    // Clock
+    input  logic                   clk90,    // Clock
+
     input  logic                   rst_ni,   // Asynchronous reset active low
 
     // configuration
@@ -36,7 +39,6 @@ module hyperbus_phy #(
     input  logic                   trans_burst_type_i,
     input  logic                   trans_address_space_i,
     output logic                   trans_error_o,
-    input  logic [15:0]            config_cs_max_i,
     // transmitting
     input  logic                   tx_valid_i,
     output logic                   tx_ready_o,
@@ -46,6 +48,7 @@ module hyperbus_phy #(
     output logic                   rx_valid_o,
     input  logic                   rx_ready_i,
     output logic [15:0]            rx_data_o,
+    output logic                   rx_last_o, //signals the last transfer in a read burst 
     // physical interface
     output logic [NR_CS-1:0]       hyper_cs_no,
     output logic                   hyper_ck_o,
@@ -87,23 +90,9 @@ module hyperbus_phy #(
     logic read_clk_en_n;
     logic read_fifo_rst;
 
-    logic clk0;
-    logic clk90;
-    logic clk180;
-    logic clk270;
-
     typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END} hyper_trans_t;
 
     hyper_trans_t hyper_trans_state;
-
-    clk_gen ddr_clk (
-        .clk_i    ( clk_i  ),
-        .rst_ni   ( rst_ni ),
-        .clk0_o   ( clk0   ),
-        .clk90_o  ( clk90  ),
-        .clk180_o ( clk180 ),
-        .clk270_o ( clk270 )
-    );
 
     pulp_clock_gating hyper_ck_gating (
         .clk_i      ( clk90        ),
@@ -340,12 +329,13 @@ module hyperbus_phy #(
         tx_ready_o = 1'b0;
         hyper_dq_oe_o = 1'b0;
         hyper_rwds_oe_o = 1'b0;
-        en_read_transaction = 1'b0;
+        en_read_transaction = 1'b0; //Read the transaction
         read_clk_en_n = 1'b0;
         read_fifo_rst = 1'b0;
         mode_write = 1'b0;
         en_rwds = 1'b0;
         trans_error_o = 1'b0;
+        rx_last_o = 1'b0;
 
         case(hyper_trans_state)
             STANDBY: begin
@@ -388,6 +378,9 @@ module hyperbus_phy #(
             DATA_R: begin
                 en_ddr_in = 1'b1;
                 read_clk_en_n = 1'b1;
+                if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
+                    rx_last_o = 1'b1;
+                end
             end
             WAIT_R: begin
                 clock_enable = 1'b0;
@@ -433,11 +426,11 @@ module hyperbus_phy #(
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cs_max
         if(~rst_ni) begin
-            cs_max <= config_cs_max_i;
+            cs_max <= config_t_cs_max;
         end else if (en_cs) begin
             cs_max <= cs_max - 1;
         end else begin
-            cs_max <= config_cs_max_i;
+            cs_max <= config_t_cs_max;
         end
     end
 
@@ -448,12 +441,13 @@ module hyperbus_phy #(
             local_write <= 1'b0;
             local_burst <= {BURST_WIDTH{1'b0}};
             local_address_space <= 1'b0;
+            local_burst_type <= 1'b1;
         end else if(en_read_transaction) begin
             local_address <= trans_address_i;
             local_cs <= trans_cs_i;
             local_write <= trans_write_i;
             local_burst <= trans_burst_i;
-            local_burst_type <= trans_burst_type_i
+            local_burst_type <= trans_burst_type_i;
             local_address_space <= trans_address_space_i;
         end
     end

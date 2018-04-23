@@ -6,6 +6,7 @@
 // the University of Bologna, and may contain confidential and/or unpublished
 // work. Any reuse/redistribution is strictly forbidden without written
 // permission from ETH Zurich.
+`timescale 1ps/1ps
 
 module hyperbus_tb;
 
@@ -76,6 +77,56 @@ module hyperbus_tb;
     .hyper_dq_oe_o   ( hyper_dq_oe_o   ),
     .hyper_reset_no  ( hyper_reset_no  )
   );
+    //simulate pad delays
+    //-------------------
+    
+    wire        wire_rwds;
+    wire [7:0 ] wire_dq_io;
+    wire [1:0]  wire_cs_no;
+    wire        wire_ck_o;
+    wire        wire_ck_no;
+    wire        wire_reset_no;
+
+    pad_simulation pad_sim (
+        .data_i   (hyper_rwds_o),   
+        .oe_i     (hyper_rwds_oe_o),
+        .data_o   (hyper_rwds_i),  
+        .pad_io   (wire_rwds) 
+    );
+
+    pad_simulation #(8) pad_sim_data (
+        .data_i   (hyper_dq_o),   
+        .oe_i     (hyper_dq_oe_o),
+        .data_o   (hyper_dq_i),  
+        .pad_io   (wire_dq_io) 
+    );
+
+    pad_simulation #(4) pad_sim_others (
+        .data_i   ({hyper_cs_no, hyper_ck_o, hyper_ck_no}),   
+        .oe_i     (1'b1),
+        .data_o   (),  
+        .pad_io   ({wire_cs_no, wire_ck_o, wire_ck_no}) 
+    );
+
+    assign wire_reset_no = hyper_reset_no; //if delayed, a hold violation occures 
+
+
+  s27ks0641 #(.mem_file_name("../src/s27ks0641.mem"), .TimingModel("S27KS0641DPBHI020")) hyperram_model
+  (
+    .DQ7      (wire_dq_io[7]),
+    .DQ6      (wire_dq_io[6]),
+    .DQ5      (wire_dq_io[5]),
+    .DQ4      (wire_dq_io[4]),
+    .DQ3      (wire_dq_io[3]),
+    .DQ2      (wire_dq_io[2]),
+    .DQ1      (wire_dq_io[1]),
+    .DQ0      (wire_dq_io[0]),
+    .RWDS     (wire_rwds),
+    .CSNeg    (wire_cs_no[0]),
+    .CK       (wire_ck_o),
+    .CKNeg    (wire_ck_no),
+    .RESETNeg (wire_reset_no)    
+  );
 
   // TODO: Instantiate model of HyperRAM/HyperFlash.
 
@@ -95,8 +146,11 @@ module hyperbus_tb;
     end
   end
 
+  int expectedResultAt05FFF3[16] = '{16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h1001, 16'h2002, 16'h3003};
+
   initial begin
-    automatic logic [31:0] data;
+    automatic logic [31:0] data [5];
+    automatic logic [31:0] data_num [5];
     automatic logic error;
     automatic axi_driver_t::ax_beat_t ax;
     automatic axi_driver_t::w_beat_t w;
@@ -107,27 +161,67 @@ module hyperbus_tb;
     cfg_drv.reset_master();
     axi_drv.reset_master();
     @(posedge rst_ni);
-    repeat(3) @(posedge clk_i);
+    #150us; //Wait for RAM to initalize
 
-    // Access the register interface.
-    cfg_drv.send_write('hdeadbeef, 'hfacefeed, '1, error);
-    repeat(3) @(posedge clk_i);
-    cfg_drv.send_read('hdeadbeef, data, error);
-    repeat(3) @(posedge clk_i);
+    // // Access the register interface.
+    // cfg_drv.send_write('hdeadbeef, 'hfacefeed, '1, error);
+    // repeat(3) @(posedge clk_i);
+    // cfg_drv.send_read('hdeadbeef, data, error);
+    // repeat(3) @(posedge clk_i);
 
-    // Access the AXI interface.
+    // // Access the AXI interface.
+    // ax = new;
+    // ax.ax_addr = 'b1;
+    // axi_drv.send_aw(ax);
+
+    // w = new;
+    // // w.w_last = 1; //?
+    // axi_drv.send_w(w);
+    // axi_drv.recv_b(b);
+    // repeat(3) @(posedge clk_i);
+
+    // axi_drv.send_ar(ax);
+    // axi_drv.recv_r(r);
+
+    // repeat(10) @(posedge clk_i);
+    // done = 1;
+
     ax = new;
-    axi_drv.send_aw(ax);
-    w = new;
-    w.w_last = 1;
-    axi_drv.send_w(w);
-    axi_drv.recv_b(b);
-    repeat(3) @(posedge clk_i);
-
+    ax.ax_addr = 'h05FFF3;
+    ax.ax_len = 'd5;
+    ax.ax_burst = 'b01;
     axi_drv.send_ar(ax);
-    axi_drv.recv_r(r);
+    for(int i = 0; i < 5; i++) begin
+      axi_drv.recv_r(r);
+      data[i]=r.r_data;
+    end
+    
+    $display("%p", data);
 
     repeat(10) @(posedge clk_i);
+    
+    axi_drv.send_aw(ax);
+        w = new;
+    w.w_strb = 1;
+    w.w_last = 0;
+    w.w_data = 'hFF3;
+    w.w_burst = 'b01;
+    for(int i = 0; i < 5; i++) begin
+      if(i==4) begin
+        w.w_last = 1;
+      end
+      axi_drv.send_w(w);
+    end
+    axi_drv.recv_b(b);
+    
+    repeat(10) @(posedge clk_i);
+
+    axi_drv.send_ar(ax);
+    for(int i = 0; i < 5; i++) begin
+      axi_drv.recv_r(r);
+      data[i]=r.r_data;
+    end
+    $display("%p", data);
     done = 1;
 
   end
