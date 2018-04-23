@@ -10,7 +10,6 @@
 // Author:
 // Date:
 // Description: Connect the AXI interface with the actual HyperBus
-`timescale 1 ps/1 ps
 
 module hyperbus_phy #(
     parameter BURST_WIDTH = 12,
@@ -34,8 +33,10 @@ module hyperbus_phy #(
     input  logic [NR_CS-1:0]       trans_cs_i,        // chipselect
     input  logic                   trans_write_i,     // transaction is a write
     input  logic [BURST_WIDTH-1:0] trans_burst_i,
+    input  logic                   trans_burst_type_i,
     input  logic                   trans_address_space_i,
-    output logic                   trans_error,
+    output logic                   trans_error_o,
+    input  logic [15:0]            config_cs_max_i,
     // transmitting
     input  logic                   tx_valid_i,
     output logic                   tx_ready_o,
@@ -72,6 +73,7 @@ module hyperbus_phy #(
     logic [NR_CS-1:0]       local_cs;
     logic                   local_write;
     logic [BURST_WIDTH-1:0] local_burst;
+    logic                   local_burst_type;
     logic                   local_address_space;
 
     logic clock_enable;
@@ -155,7 +157,7 @@ module hyperbus_phy #(
     cmd_addr_gen cmd_addr_gen (
         .rw_i            ( ~local_write        ),
         .address_space_i ( local_address_space ),
-        .burst_type_i    ( 1'b1                ),
+        .burst_type_i    ( local_burst_type    ),
         .address_i       ( local_address       ),
         .cmd_addr_o      ( cmd_addr            )
     );
@@ -343,7 +345,7 @@ module hyperbus_phy #(
         read_fifo_rst = 1'b0;
         mode_write = 1'b0;
         en_rwds = 1'b0;
-        trans_error = 1'b0;
+        trans_error_o = 1'b0;
 
         case(hyper_trans_state)
             STANDBY: begin
@@ -406,7 +408,7 @@ module hyperbus_phy #(
                 mode_write = 1'b1;
             end
             ERROR: begin //Recover state after timeout for t_CSM 
-                trans_error = 1'b1;
+                trans_error_o = 1'b1;
                 clock_enable = 1'b0;
                 read_fifo_rst = 1'b1;
                 en_cs = 1'b0;
@@ -431,11 +433,11 @@ module hyperbus_phy #(
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cs_max
         if(~rst_ni) begin
-            cs_max <= config_t_cs_max;
+            cs_max <= config_cs_max_i;
         end else if (en_cs) begin
             cs_max <= cs_max - 1;
         end else begin
-            cs_max <= config_t_cs_max;
+            cs_max <= config_cs_max_i;
         end
     end
 
@@ -451,6 +453,7 @@ module hyperbus_phy #(
             local_cs <= trans_cs_i;
             local_write <= trans_write_i;
             local_burst <= trans_burst_i;
+            local_burst_type <= trans_burst_type_i
             local_address_space <= trans_address_space_i;
         end
     end

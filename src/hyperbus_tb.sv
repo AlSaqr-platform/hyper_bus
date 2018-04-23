@@ -12,7 +12,7 @@ module hyperbus_tb;
   localparam TCLK = 3ns;
   localparam NR_CS = 2;
 
-  logic             clk_i = 0;         
+  logic             clk_i = 0;
   logic             rst_ni = 1;
 
   REG_BUS #(
@@ -61,8 +61,8 @@ module hyperbus_tb;
   hyperbus #(
     .NR_CS(NR_CS)
   ) dut_i (
-    .clk_i           ( clk_i           ),          
-    .rst_ni          ( rst_ni          ),         
+    .clk_i           ( clk_i           ),
+    .rst_ni          ( rst_ni          ),
     .cfg_i           ( cfg_i           ),
     .axi_i           ( axi_i           ),
     .hyper_cs_no     ( hyper_cs_no     ),
