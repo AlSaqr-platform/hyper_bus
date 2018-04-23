@@ -9,7 +9,7 @@
 
 `timescale 1ps/1ps
 
-module pad_simulation #(
+module pad_io #(
   parameter WIDTH = 1
   )(
     input  logic [WIDTH-1:0] data_i,
