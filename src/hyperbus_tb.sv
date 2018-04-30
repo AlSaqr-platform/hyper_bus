@@ -23,7 +23,7 @@ module hyperbus_tb;
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( 32 ),
-    .AXI_DATA_WIDTH ( 32 ),
+    .AXI_DATA_WIDTH ( 16 ),
     .AXI_ID_WIDTH   ( 4  ),
     .AXI_USER_WIDTH ( 0  )
   ) axi_i(clk_i);
@@ -37,7 +37,7 @@ module hyperbus_tb;
 
   typedef axi_test::axi_driver #(
     .AW ( 32       ),
-    .DW ( 32       ),
+    .DW ( 16       ),
     .IW ( 4        ),
     .UW ( 0        ),
     .TA ( TCLK*0.2 ),
@@ -81,7 +81,7 @@ module hyperbus_tb;
     //-------------------
     
     wire        wire_rwds;
-    wire [7:0 ] wire_dq_io;
+    wire [7:0]  wire_dq_io;
     wire [1:0]  wire_cs_no;
     wire        wire_ck_o;
     wire        wire_ck_no;
@@ -146,17 +146,19 @@ module hyperbus_tb;
     end
   end
 
-  int expectedResultAt05FFF3[16] = '{16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h1001, 16'h2002, 16'h3003};
+  int expectedResultAt05FFF3[8] = '{16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a};
+  int expectedResulth0f03 = 16'h0f03;
+  int expectedResulth0001 = 16'h0001;
 
   initial begin
-    automatic logic [31:0] data [5];
-    automatic logic [31:0] data_num [5];
+
+    automatic logic [31:0] data [5000];
     automatic logic error;
     automatic axi_driver_t::ax_beat_t ax;
     automatic axi_driver_t::w_beat_t w;
     automatic axi_driver_t::b_beat_t b;
     automatic axi_driver_t::r_beat_t r;
-
+    $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model); 
     @(negedge rst_ni);
     cfg_drv.reset_master();
     axi_drv.reset_master();
@@ -188,42 +190,105 @@ module hyperbus_tb;
 
     ax = new;
     ax.ax_addr = 'h05FFF3;
-    ax.ax_len = 'd5;
+    ax.ax_len = 'd7;
     ax.ax_burst = 'b01;
     axi_drv.send_ar(ax);
-    for(int i = 0; i < 5; i++) begin
+
+    for(int i = 0; i < ax.ax_len+1; i++) begin
       axi_drv.recv_r(r);
       data[i]=r.r_data;
+      if(i==4) begin
+        repeat(100) @(posedge clk_i);
+      end
+      $display("%4h", data[i]);
+      assert(data[i] == expectedResultAt05FFF3[i]) else $error("Received %4h at index %p, but expected %4h", data[i], i, expectedResultAt05FFF3[i]);
     end
     
-    $display("%p", data);
-
-    repeat(10) @(posedge clk_i);
-    
     axi_drv.send_aw(ax);
-        w = new;
-    w.w_strb = 1;
+    w = new;
     w.w_last = 0;
-    w.w_data = 'hFF3;
+    w.w_data = 'h0f03;
     w.w_burst = 'b01;
-    for(int i = 0; i < 5; i++) begin
+    w.w_strb = 2'b11;
+
+    for(int i = 0; i < ax.ax_len+1; i++) begin
       if(i==4) begin
+        repeat(100) @(posedge clk_i);
+      end
+      if(i==7) begin
         w.w_last = 1;
       end
       axi_drv.send_w(w);
     end
     axi_drv.recv_b(b);
     
-    repeat(10) @(posedge clk_i);
-
     axi_drv.send_ar(ax);
-    for(int i = 0; i < 5; i++) begin
+    for(int i = 0; i < ax.ax_len+1; i++) begin
+      if(i==4) begin
+        repeat(100) @(posedge clk_i);
+      end
       axi_drv.recv_r(r);
       data[i]=r.r_data;
+      $display("%4h", data[i]);
+      assert(data[i] == expectedResulth0f03) else $error("Received %4h at index %p, but expected %4h", data[i], i, expectedResulth0f03);
     end
-    $display("%p", data);
-    done = 1;
+    //TODO: Long transactions
+    //With break during write
 
+    done = 1;
   end
 
 endmodule
+
+    // //Without break
+    // //Write
+    // axi_drv.send_aw(ax);
+    // w = new;
+    // w.w_last = 0;
+    // w.w_data = expectedResulth0001;
+    // w.w_burst = 'b01;
+    // w.w_strb = 2'b11;
+
+    // for(int i = 0; i < ax.ax_len+1; i++) begin
+    //   if(i==7) begin
+    //     w.w_last = 1;
+    //   end
+    //   axi_drv.send_w(w);
+    // end
+    // axi_drv.recv_b(b);
+
+    // //Read
+    // axi_drv.send_ar(ax);
+    // for(int i = 0; i < ax.ax_len+1; i++) begin
+    //   axi_drv.recv_r(r);
+    //   data[i]=r.r_data;
+    //   $display("%h", data[i]);
+    //   assert(data[i] == expectedResulth0001) else $error("Received %4h at index %p, but expected %4h", data[i], i, expectedResulth0001);
+    // end
+
+    // //Short transactions
+    // //Write
+    // ax.ax_len = 'd0;
+    // ax.ax_burst = 'b01;
+    // axi_drv.send_aw(ax);
+    // w.w_last = 0;
+    // w.w_data = 'h1111;
+    // w.w_burst = 'b01;
+    // w.w_strb = 2'b11;
+
+    // for(int i = 0; i < ax.ax_len+1; i++) begin
+    //   if(i==0) begin
+    //     w.w_last = 1;
+    //   end
+    //   axi_drv.send_w(w);
+    // end
+    // axi_drv.recv_b(b);
+
+    // //Read
+    // axi_drv.send_ar(ax);
+    // for(int i = 0; i < ax.ax_len+1; i++) begin
+    //   axi_drv.recv_r(r);
+    //   data[i]=r.r_data;
+    //   $display("%4h", data[i]);
+    //   assert(data[i] == 'h1111) else $error("Received %4h at index %p, but expected %4h", data[i], i, 'h1111);
+    // end

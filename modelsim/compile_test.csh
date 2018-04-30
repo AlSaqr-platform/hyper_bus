@@ -35,6 +35,7 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/read_clk_rwds.sv \
     ../src/hyperbus.sv \
     ../src/hyperbus_phy.sv \
+    ../src/hyperbus_axi.sv \
     ../src/cmd_addr_gen.sv \
     ../src/ddr_in.sv \
     ../src/hyperbus_tb.sv \

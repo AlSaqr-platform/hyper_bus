@@ -1,0 +1,17 @@
+add wave -position end  sim:/hyperbus_tb/axi_i/aw_valid
+add wave -position end  sim:/hyperbus_tb/axi_i/aw_ready
+add wave -position end  sim:/hyperbus_tb/axi_i/w_valid
+add wave -position end  sim:/hyperbus_tb/axi_i/w_ready
+add wave -position end  sim:/hyperbus_tb/axi_i/b_valid
+add wave -position end  sim:/hyperbus_tb/axi_i/b_ready
+add wave -position end  sim:/hyperbus_tb/axi_i/ar_valid
+add wave -position end  sim:/hyperbus_tb/axi_i/ar_ready
+add wave -position end  sim:/hyperbus_tb/axi_i/r_valid
+add wave -position end  sim:/hyperbus_tb/axi_i/r_ready
+add wave -position end  sim:/hyperbus_tb/axi_i/r_user
+add wave -position 2  sim:/hyperbus_tb/axi_i/w_last
+add wave -position end  sim:/hyperbus_tb/axi_i/r_last
+add wave -position end  sim:/hyperbus_tb/dut_i/hyperbus_axi_i/hyper_axi_state
+add wave -position end  sim:/hyperbus_tb/dut_i/hyperbus_phy_i/hyper_trans_state
+add wave -position 12  sim:/hyperbus_tb/axi_i/r_data
+add wave -position 5  sim:/hyperbus_tb/axi_i/w_data
