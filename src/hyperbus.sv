@@ -15,6 +15,7 @@
 module hyperbus #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2
+
 )(
     input logic                    clk_i,          // Clock
     input logic                    rst_ni,         // Asynchronous reset active low
@@ -38,36 +39,67 @@ module hyperbus #(
     //TODO: cdc_fifo_gray for TX/RX from axi to phy
     logic                          axi_tx_valid_o;
     logic                          axi_tx_ready;
-    logic [15:0]                   axi_tx_data;
-    logic [1:0]                    axi_tx_strb;   // mask data
+
     // receiving channel
     logic                          axi_rx_valid;
     logic                          axi_rx_ready;
     logic [15:0]                   axi_rx_data;
     logic                          axi_rx_last;
+    logic                          axi_rx_error;
 
     //Connecting phy to TX
-    logic [15:0]                   phy_tx_data;
-    logic [1:0]                    phy_tx_strb;
-    logic [15:0]                   phy_rx_data;
-    logic                          phy_rx_last;
-    logic                          phy_rx_valid;
-    logic                          phy_rx_ready;
     logic                          phy_tx_valid;
     logic                          phy_tx_ready;
+
+    logic                          phy_rx_valid;
+    logic                          phy_rx_ready;
  
     //Direct trans to phy
-    logic                          trans_valid;
-    logic                          trans_ready;
-    logic [31:0]                   trans_address;
-    logic [NR_CS-1:0]              trans_cs;        // chipselect
-    logic                          trans_write;     // transaction is a write
-    logic [BURST_WIDTH-1:0]        trans_burst;
-    logic                          trans_burst_type;
-    logic                          trans_address_space;
-    logic                          trans_error;
+
+    logic                          axi_trans_valid;
+    logic                          axi_trans_ready;                    
+
+    logic                          phy_trans_valid;
+    logic                          phy_trans_ready;
+
+    logic                          phy_write_last;
+    logic                          phy_write_last_valid;
+    //logic                          phy_write_last_ready;
+    logic                          axi_write_last;
+    //logic                          axi_write_last_valid;
+    //logic                          axi_write_last_ready;
+
     logic [15:0]                   config_cs_max;
     
+    typedef struct packed{ 
+        logic [NR_CS-1:0]          cs;        // chipselect
+        logic                      write;     // transaction is a write
+        logic [BURST_WIDTH-1:0]    burst;
+        logic                      burst_type;
+        logic                      address_space;
+        logic [31:0]               address;
+    }trans_struct;
+
+    typedef struct packed{ 
+        logic [15:0]               data;
+        logic [1:0]                strb;   // mask data
+    }tx_data;
+
+    typedef struct packed {
+        logic                      last;
+        logic                      error;
+        logic [15:0]               data;
+    }rx_data;
+
+    trans_struct axi_trans;
+    trans_struct phy_trans;
+
+    tx_data    axi_tx;
+    tx_data    phy_tx;
+
+    rx_data     axi_rx;
+    rx_data     phy_rx;
+
     clk_gen ddr_clk (
         .clk_i    ( clk_i  ),
         .rst_ni   ( rst_ni ),
@@ -77,31 +109,34 @@ module hyperbus #(
         .clk270_o (        )
     );
 
+
     hyperbus_axi hyperbus_axi_i (
-        .clk_i                  ( clk_i                 ),
-        .rst_ni                 ( rst_ni                ),
-        .axi_i                  ( axi_i                 ),  
+        .clk_i                  ( clk_i                   ),
+        .rst_ni                 ( rst_ni                  ),
+        .axi_i                  ( axi_i                   ),  
 
-        .rx_data_i              ( axi_rx_data           ),
-        .rx_last_i              ( axi_rx_last           ),
-        .rx_valid_i             ( axi_rx_valid          ),
-        .rx_ready_o             ( axi_rx_ready          ),
+        .rx_data_i              ( axi_rx.data             ),
+        .rx_last_i              ( axi_rx.last             ),
+        .rx_error_i             ( axi_rx.error            ),
+        .rx_valid_i             ( axi_rx_valid            ),
+        .rx_ready_o             ( axi_rx_ready            ),
 
-        .tx_data_o              ( axi_tx_data           ),
-        .tx_strb_o              ( axi_tx_strb           ),
-        .tx_valid_o             ( axi_tx_valid          ),
-        .tx_ready_i             ( axi_tx_ready          ),
+        .tx_data_o              ( axi_tx.data   ),
+        .tx_strb_o              ( axi_tx.strb   ),
+        .tx_valid_o             ( axi_tx_valid            ),
+        .tx_ready_i             ( axi_tx_ready            ),
 
-        .trans_valid_o          ( trans_valid           ),
-        .trans_ready_i          ( trans_ready           ),
-        .trans_address_o        ( trans_address         ),
-        .trans_cs_o             ( trans_cs              ),
-        .trans_write_o          ( trans_write           ),
-        .trans_burst_o          ( trans_burst           ),
-        .trans_burst_type_o     ( trans_burst_type      ),
-        .trans_address_space_o  ( trans_address_space   ),
-        .trans_error_i          ( trans_error           ),
-        .config_cs_max_o        ( config_cs_max         )
+        .write_last_i           ( axi_write_last          ),
+
+        .trans_valid_o          ( axi_trans_valid         ),
+        .trans_ready_i          ( axi_trans_ready         ),
+        .trans_address_o        ( axi_trans.address       ),
+        .trans_cs_o             ( axi_trans.cs            ),
+        .trans_write_o          ( axi_trans.write         ),
+        .trans_burst_o          ( axi_trans.burst         ),
+        .trans_burst_type_o     ( axi_trans.burst_type    ),
+        .trans_address_space_o  ( axi_trans.address_space ),
+        .config_cs_max_o        ( config_cs_max           )
     );
 
     hyperbus_phy hyperbus_phy_i (
@@ -115,25 +150,28 @@ module hyperbus #(
         .config_t_read_write_recovery ( 32'h6                 ),
         .config_t_rwds_delay_line     ( 32'd2000              ),
 
-        .trans_valid_i                ( trans_valid           ),
-        .trans_ready_o                ( trans_ready           ),
-        .trans_address_i              ( trans_address         ),
-        .trans_cs_i                   ( trans_cs              ),
-        .trans_write_i                ( trans_write           ),
-        .trans_burst_i                ( trans_burst           ),
-        .trans_burst_type_i           ( trans_burst_type      ),
-        .trans_address_space_i        ( trans_address_space   ),
-        .trans_error_o                ( trans_error           ),
+        .trans_valid_i                ( phy_trans_valid           ),
+        .trans_ready_o                ( phy_trans_ready           ),
+        .trans_address_i              ( phy_trans.address       ),
+        .trans_cs_i                   ( phy_trans.cs            ),
+        .trans_write_i                ( phy_trans.write         ),
+        .trans_burst_i                ( phy_trans.burst         ),
+        .trans_burst_type_i           ( phy_trans.burst_type    ),
+        .trans_address_space_i        ( phy_trans.address_space ),
 
         .tx_valid_i                   ( phy_tx_valid          ),
         .tx_ready_o                   ( phy_tx_ready          ),
-        .tx_data_i                    ( phy_tx_data           ),
-        .tx_strb_i                    ( phy_tx_strb           ),
+        .tx_data_i                    ( phy_tx.data ),
+        .tx_strb_i                    ( phy_tx.strb ),
 
         .rx_valid_o                   ( phy_rx_valid          ),
         .rx_ready_i                   ( phy_rx_ready          ),
-        .rx_data_o                    ( phy_rx_data           ),
-        .rx_last_o                    ( phy_rx_last           ),
+        .rx_data_o                    ( phy_rx.data           ),
+        .rx_error_o                   ( phy_rx.error          ),
+        .rx_last_o                    ( phy_rx.last           ),
+
+        .write_last_valid_o           ( phy_write_last_valid  ),
+        .write_last_o                 ( phy_write_last        ),
 
         .hyper_cs_no                  ( hyper_cs_no           ),
         .hyper_ck_o                   ( hyper_ck_o            ),
@@ -146,36 +184,62 @@ module hyperbus #(
         .hyper_dq_oe_o                ( hyper_dq_oe_o         ),
         .hyper_reset_no               ( hyper_reset_no        )
     );
+
+    cdc_2phase #(.T(trans_struct)) i_cdc_2phase_trans_signals (
+        .src_rst_ni  ( rst_ni ),
+        .src_clk_i   ( clk_i  ),
+        .src_data_i  ( axi_trans ),
+        .src_valid_i ( axi_trans_valid          ),
+        .src_ready_o ( axi_trans_ready          ),
+        .dst_rst_ni  ( rst_ni ),
+        .dst_clk_i   ( clk0   ),
+        .dst_data_o  ( phy_trans ),
+        .dst_valid_o ( phy_trans_valid          ),
+        .dst_ready_i ( phy_trans_ready          )
+    );
+
+    cdc_2phase #(.T(logic)) i_cdc_2phase_write_last (
+        .src_rst_ni  ( rst_ni         ),
+        .src_clk_i   ( clk0           ),
+        .src_data_i  ( phy_write_last ),
+        .src_valid_i ( phy_write_last_valid           ),
+        .src_ready_o (                ),
+        .dst_rst_ni  ( rst_ni         ),
+        .dst_clk_i   ( clk_i          ),
+        .dst_data_o  ( axi_write_last ),
+        .dst_valid_o (                ),
+        .dst_ready_i ( 1'b1           )
+    );
     // TODO: Check if FSM is correct
     // TODO:     axi_i.b_valid, Write done
 
     //Write data, TX CDC FIFO
-    cdc_fifo_gray  #(.T(logic[17:0]), .LOG_DEPTH(3)) i_cdc_TX_fifo ( 
+    cdc_fifo_gray  #(.T(tx_data), .LOG_DEPTH(3)) i_cdc_TX_fifo ( 
         .src_rst_ni  ( rst_ni                     ),
         .src_clk_i   ( clk_i                      ),
-        .src_data_i  ( {axi_tx_data, axi_tx_strb} ),
+        .src_data_i  ( axi_tx           ),
         .src_valid_i ( axi_tx_valid               ),
         .src_ready_o ( axi_tx_ready               ),
     
         .dst_rst_ni  ( rst_ni                     ),
         .dst_clk_i   ( clk0                       ),
-        .dst_data_o  ( {phy_tx_data, phy_tx_strb} ),
+        .dst_data_o  ( phy_tx         ),
         .dst_valid_o ( phy_tx_valid               ),
         .dst_ready_i ( phy_tx_ready               )
     ); 
 
     //Read data, RX CDC FIFO
-    cdc_fifo_gray  #(.T(logic[16:0]), .LOG_DEPTH(3)) i_cdc_RX_fifo ( 
-        .src_rst_ni  ( rst_ni                     ),
-        .src_clk_i   ( clk0                       ),
-        .src_data_i  ( {phy_rx_data, phy_rx_last} ),
-        .src_valid_i ( phy_rx_valid               ),
-        .src_ready_o ( phy_rx_ready               ),
+    cdc_fifo_gray  #(.T(rx_data), .LOG_DEPTH(3)) i_cdc_RX_fifo ( 
+        .src_rst_ni  ( rst_ni                                   ),
+        .src_clk_i   ( clk0                                     ),
+        .src_data_i  ( phy_rx                                   ),
+        .src_valid_i ( phy_rx_valid                             ),
+        .src_ready_o ( phy_rx_ready                             ),
     
-        .dst_rst_ni  ( rst_ni                     ),
-        .dst_clk_i   ( clk_i                      ),
-        .dst_data_o  ( {axi_rx_data, axi_rx_last} ),
-        .dst_valid_o ( axi_rx_valid               ),
-        .dst_ready_i ( axi_rx_ready               )
+        .dst_rst_ni  ( rst_ni                                   ),  
+        .dst_clk_i   ( clk_i                                    ),  
+        .dst_data_o  ( axi_rx ),
+        .dst_valid_o ( axi_rx_valid                             ),  
+        .dst_ready_i ( axi_rx_ready                             )
     );   
 endmodule

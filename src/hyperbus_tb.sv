@@ -146,7 +146,7 @@ module hyperbus_tb;
     end
   end
 
-  int expectedResultAt05FFF3[8] = '{16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a};
+  int expectedResultAt05FFF3[16] = '{16'h0f03, 16'h0f04, 16'h0f05, 16'h0f06, 16'h0f07, 16'h0f08, 16'h0f09, 16'h0f0a, 16'h0f0b, 16'h0f0c, 16'h0f0d, 16'h0f0e, 16'h0f0f, 16'h1001, 16'h2002, 16'h3003};
   int expectedResulth0f03 = 16'h0f03;
   int expectedResulth0001 = 16'h0001;
 
@@ -188,34 +188,32 @@ module hyperbus_tb;
     // repeat(10) @(posedge clk_i);
     // done = 1;
 
+    //TODO: Long transactions
+    //With break during write
+
     ax = new;
     ax.ax_addr = 'h05FFF3;
-    ax.ax_len = 'd7;
+    ax.ax_len = 'd15;
     ax.ax_burst = 'b01;
     axi_drv.send_ar(ax);
 
     for(int i = 0; i < ax.ax_len+1; i++) begin
       axi_drv.recv_r(r);
       data[i]=r.r_data;
-      if(i==4) begin
-        repeat(100) @(posedge clk_i);
-      end
       $display("%4h", data[i]);
       assert(data[i] == expectedResultAt05FFF3[i]) else $error("Received %4h at index %p, but expected %4h", data[i], i, expectedResultAt05FFF3[i]);
     end
     
     axi_drv.send_aw(ax);
+
     w = new;
-    w.w_last = 0;
     w.w_data = 'h0f03;
     w.w_burst = 'b01;
     w.w_strb = 2'b11;
 
     for(int i = 0; i < ax.ax_len+1; i++) begin
-      if(i==4) begin
-        repeat(100) @(posedge clk_i);
-      end
-      if(i==7) begin
+      w.w_data = data[i+1];
+      if(i==w.w_len) begin
         w.w_last = 1;
       end
       axi_drv.send_w(w);
@@ -224,13 +222,10 @@ module hyperbus_tb;
     
     axi_drv.send_ar(ax);
     for(int i = 0; i < ax.ax_len+1; i++) begin
-      if(i==4) begin
-        repeat(100) @(posedge clk_i);
-      end
       axi_drv.recv_r(r);
       data[i]=r.r_data;
       $display("%4h", data[i]);
-      assert(data[i] == expectedResulth0f03) else $error("Received %4h at index %p, but expected %4h", data[i], i, expectedResulth0f03);
+      assert(data[i] == expectedResultAt05FFF3[i+1]) else $error("Received %4h at index %p, but expected %4h", data[i], i, expectedResulth0f03);
     end
     //TODO: Long transactions
     //With break during write
