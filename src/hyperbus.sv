@@ -16,10 +16,15 @@ module hyperbus #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2
 )(
-    input logic                    clk_i,          // Clock
+`ifdef FPGA
+    input  logic                   clk0,    // Clock
+    input  logic                   clk90,    // Clock
+`else
+    input  logic                   clk_i,
+`endif
     input logic                    rst_ni,         // Asynchronous reset active low
 
-    REG_BUS.in                     cfg_i,
+    //REG_BUS.in                     cfg_i,
     AXI_BUS.in                     axi_i,
     // physical interface
     output logic [NR_CS-1:0]       hyper_cs_no,
@@ -33,8 +38,25 @@ module hyperbus #(
     output logic                   hyper_dq_oe_o,
     output logic                   hyper_reset_no
 );
-    logic                          clk0;        //Clk for phy and FIFOS
-    logic                          clk90;
+
+    //FGPA uses global clocking with MMCM
+`ifdef FPGA
+    logic clk_i;
+    assign clk_i = clk0;
+`else
+    logic clk0;   //Clk for phy and FIFOS 
+    logic clk90;
+
+    clk_gen ddr_clk (
+        .clk_i    ( clk_i  ),
+        .rst_ni   ( rst_ni ),
+        .clk0_o   ( clk0   ),
+        .clk90_o  ( clk90  ),
+        .clk180_o (        ),
+        .clk270_o (        )
+    );
+`endif
+    
     //TODO: cdc_fifo_gray for TX/RX from axi to phy
     logic                          axi_tx_valid_o;
     logic                          axi_tx_ready;
@@ -68,16 +90,7 @@ module hyperbus #(
     logic                          trans_error;
     logic [15:0]                   config_cs_max;
     
-    clk_gen ddr_clk (
-        .clk_i    ( clk_i  ),
-        .rst_ni   ( rst_ni ),
-        .clk0_o   ( clk0   ),
-        .clk90_o  ( clk90  ),
-        .clk180_o (        ),
-        .clk270_o (        )
-    );
-
-    hyperbus_axi hyperbus_axi_i (
+    hyperbus_axi axi2phy_i (
         .clk_i                  ( clk_i                 ),
         .rst_ni                 ( rst_ni                ),
         .axi_i                  ( axi_i                 ),  
@@ -100,11 +113,10 @@ module hyperbus #(
         .trans_burst_o          ( trans_burst           ),
         .trans_burst_type_o     ( trans_burst_type      ),
         .trans_address_space_o  ( trans_address_space   ),
-        .trans_error_i          ( trans_error           ),
-        .config_cs_max_o        ( config_cs_max         )
+        .trans_error_i          ( trans_error           )
     );
 
-    hyperbus_phy hyperbus_phy_i (
+    hyperbus_phy phy_i (
         .clk0                         ( clk0                  ),
         .clk90                        ( clk90                 ),
         .rst_ni                       ( rst_ni                ),
@@ -165,7 +177,7 @@ module hyperbus #(
     ); 
 
     //Read data, RX CDC FIFO
-    cdc_fifo_gray  #(.T(logic[16:0]), .LOG_DEPTH(3)) i_cdc_RX_fifo ( 
+    cdc_fifo_gray  #(.T(logic[16:0]), .LOG_DEPTH(2)) i_cdc_RX_fifo ( 
         .src_rst_ni  ( rst_ni                     ),
         .src_clk_i   ( clk0                       ),
         .src_data_i  ( {phy_rx_data, phy_rx_last} ),

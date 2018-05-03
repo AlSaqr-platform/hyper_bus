@@ -16,10 +16,10 @@ module hyperbus_tb;
   logic             clk_i = 0;
   logic             rst_ni = 1;
 
-  REG_BUS #(
-    .ADDR_WIDTH ( 32 ),
-    .DATA_WIDTH ( 32 )
-  ) cfg_i(clk_i);
+  // REG_BUS #(
+  //   .ADDR_WIDTH ( 32 ),
+  //   .DATA_WIDTH ( 32 )
+  // ) cfg_i(clk_i);
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( 32 ),
@@ -28,12 +28,12 @@ module hyperbus_tb;
     .AXI_USER_WIDTH ( 0  )
   ) axi_i(clk_i);
 
-  typedef reg_test::reg_driver #(
-    .AW ( 32       ),
-    .DW ( 32       ),
-    .TA ( TCLK*0.2 ),
-    .TT ( TCLK*0.8 )
-  ) cfg_driver_t;
+  // typedef reg_test::reg_driver #(
+  //   .AW ( 32       ),
+  //   .DW ( 32       ),
+  //   .TA ( TCLK*0.2 ),
+  //   .TT ( TCLK*0.8 )
+  // ) cfg_driver_t;
 
   typedef axi_test::axi_driver #(
     .AW ( 32       ),
@@ -44,7 +44,7 @@ module hyperbus_tb;
     .TT ( TCLK*0.8 )
   ) axi_driver_t;
 
-  cfg_driver_t cfg_drv = new(cfg_i);
+  // cfg_driver_t cfg_drv = new(cfg_i);
   axi_driver_t axi_drv = new(axi_i);
 
   logic [NR_CS-1:0] hyper_cs_no;
@@ -64,7 +64,7 @@ module hyperbus_tb;
   ) dut_i (
     .clk_i           ( clk_i           ),
     .rst_ni          ( rst_ni          ),
-    .cfg_i           ( cfg_i           ),
+    //.cfg_i           ( cfg_i           ),
     .axi_i           ( axi_i           ),
     .hyper_cs_no     ( hyper_cs_no     ),
     .hyper_ck_o      ( hyper_ck_o      ),
@@ -160,7 +160,7 @@ module hyperbus_tb;
     automatic axi_driver_t::r_beat_t r;
     $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model); 
     @(negedge rst_ni);
-    cfg_drv.reset_master();
+    // cfg_drv.reset_master();
     axi_drv.reset_master();
     @(posedge rst_ni);
     #150us; //Wait for RAM to initalize

@@ -40,8 +40,7 @@ module hyperbus_axi #(
     output logic [BURST_WIDTH-1:0]  trans_burst_o,
     output logic                    trans_burst_type_o,
     output logic                    trans_address_space_o,
-    input logic                     trans_error_i,
-    output logic [15:0]             config_cs_max_o
+    input logic                     trans_error_i
 
 );
 
@@ -61,7 +60,11 @@ module hyperbus_axi #(
     assign rx_ready_o = axi_i.r_ready;
     //Required signals
     assign axi_i.r_id = 1'b0;
-    assign axi_i.r_user = 1'b0;
+    assign axi_i.r_user = 1'b0;    
+    assign axi_i.r_resp = 1'b0;
+    assign axi_i.b_id = 1'b0;
+    assign axi_i.b_resp = '0;
+    assign axi_i.b_user = '0;
 
     //AX signals to PHY (trans)
     //axi_i.ar_id

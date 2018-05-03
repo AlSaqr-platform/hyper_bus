@@ -37,6 +37,7 @@ module ddr_in #(
       for(i=0; i<=7; i++)
       begin: ddr_in
         IDDR #(
+        .DDR_CLK_EDGE("SAME_EDGE"),
         .SRTYPE("ASYNC")
         ) iddr_i (
           .C  (clk_i),

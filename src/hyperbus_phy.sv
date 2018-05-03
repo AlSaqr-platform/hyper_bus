@@ -67,7 +67,6 @@ module hyperbus_phy #(
     logic [1:0]  data_rwds_out;
     logic [15:0] CA_out;
     logic [1:0]  cmd_addr_sel;
-    logic [15:0] write_data;
     logic [1:0]  write_strb;
     logic [15:0] cs_max;
 
@@ -85,6 +84,8 @@ module hyperbus_phy #(
     logic en_read_transaction;
     logic [15:0] data_i;
     logic hyper_rwds_i_d;
+    logic hyper_rwds_oe_n;
+    logic hyper_dq_oe_n;
     logic mode_write;
     logic read_clk_en;
     logic read_clk_en_n;
@@ -92,11 +93,13 @@ module hyperbus_phy #(
 
     typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END} hyper_trans_t;
 
-    hyper_trans_t hyper_trans_state;
+    (* keep = "true" *) hyper_trans_t hyper_trans_state;
+
+    logic clock_enable_270;
 
     clock_diff_out clock_diff_out_i (
         .in_i   ( clk90        ),
-        .en_i   ( clock_enable ),
+        .en_i   ( clock_enable_270 ),
         .out_o  ( hyper_ck_o   ),
         .out_no ( hyper_ck_no  )
     );
@@ -110,6 +113,18 @@ module hyperbus_phy #(
         end else begin
             hyper_cs_no[0] <= ~ (en_cs && local_cs[0]);
             hyper_cs_no[1] <= ~ (en_cs && local_cs[1]); //ToDo Use NR_CS
+        end
+    end
+
+    always_ff @(negedge clk90 or negedge rst_ni) begin : proc_hyper_rwds_oe
+        if(~rst_ni) begin
+            hyper_rwds_oe_o <= 0;
+            hyper_dq_oe_o <= 0;
+            clock_enable_270 <= 0;
+        end else begin
+            hyper_rwds_oe_o <= hyper_rwds_oe_n;
+            hyper_dq_oe_o <= hyper_dq_oe_n;
+            clock_enable_270 <= clock_enable;
         end
     end
  
@@ -127,7 +142,7 @@ module hyperbus_phy #(
       end
     endgenerate
 
-    assign data_out = mode_write ? write_data : CA_out;
+    assign data_out = mode_write ? tx_data_i : CA_out;
     assign data_rwds_out = mode_write ? write_strb : 2'b00; //RWDS low before end of initial latency
 
     ddr_out ddr_data_strb (
@@ -146,7 +161,6 @@ module hyperbus_phy #(
         .cmd_addr_o      ( cmd_addr            )
     );
 
-    assign write_data = tx_data_i;
     assign write_strb = tx_strb_i;
 
     logic read_fifo_valid;
@@ -187,7 +201,7 @@ module hyperbus_phy #(
         endcase // cmd_addr_sel
     end
 
-    logic [3:0] wait_cnt;
+    (* keep = "true" *) logic [3:0] wait_cnt;
     logic [BURST_WIDTH-1:0] burst_cnt;
     logic additional_latency;
 
@@ -325,8 +339,8 @@ module hyperbus_phy #(
         en_ddr_in = 1'b0;
         trans_ready_o = 1'b0;
         tx_ready_o = 1'b0;
-        hyper_dq_oe_o = 1'b0;
-        hyper_rwds_oe_o = 1'b0;
+        hyper_dq_oe_n = 1'b0;
+        hyper_rwds_oe_n = 1'b0;
         en_read_transaction = 1'b0; //Read the transaction
         read_clk_en_n = 1'b0;
         read_fifo_rst = 1'b0;
@@ -342,29 +356,29 @@ module hyperbus_phy #(
                 en_read_transaction = 1'b1;
             end
             SET_CMD_ADDR: begin
-                clock_enable = 1'b0;
                 trans_ready_o = 1'b1;
+                hyper_dq_oe_n = 1'b1;
             end
             CMD_ADDR: begin
-                hyper_dq_oe_o = 1'b1;
+                hyper_dq_oe_n = 1'b1;
                 if (cmd_addr_sel == 3) begin
                     en_rwds = 1'b1;
                 end
             end
             REG_WRITE: begin
-                hyper_dq_oe_o = 1'b1;
+                hyper_dq_oe_n = 1'b1;
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
             end
             WAIT: begin  //t_ACC
                 if(local_write == 1'b1) begin
                     if(wait_cnt == 4'b0001) begin
-                        hyper_rwds_oe_o = 1'b1;
-                        hyper_dq_oe_o = 1'b1;
+                        hyper_rwds_oe_n = 1'b1;
+                        hyper_dq_oe_n = 1'b1;
                     end
                     if (wait_cnt == 4'b0000) begin 
-                        hyper_rwds_oe_o = 1'b1;
-                        hyper_dq_oe_o = 1'b1;
+                        hyper_rwds_oe_n = 1'b1;
+                        hyper_dq_oe_n = 1'b1;
                         tx_ready_o = 1'b1; 
                         mode_write = 1'b1;
                     end
@@ -386,15 +400,15 @@ module hyperbus_phy #(
                 read_clk_en_n = 1'b1;
             end
             DATA_W: begin
-                hyper_dq_oe_o = 1'b1;
-                hyper_rwds_oe_o = 1'b1;
+                hyper_dq_oe_n = 1'b1;
+                hyper_rwds_oe_n = 1'b1;
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
             end
             WAIT_W: begin
                 clock_enable = 1'b0;
-                hyper_dq_oe_o = 1'b1;
-                hyper_rwds_oe_o = 1'b1;
+                hyper_dq_oe_n = 1'b1;
+                hyper_rwds_oe_n = 1'b1;
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
             end
