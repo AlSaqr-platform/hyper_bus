@@ -38,7 +38,6 @@ module hyperbus_phy_tb;
   logic [BURST_WIDTH-1:0] trans_burst_i;
   logic                   trans_burst_type_i;
   logic                   trans_address_space_i;
-  logic                   trans_error;
   logic                   tx_valid_i;
   logic                   tx_ready_o;
   logic [15:0]            tx_data_i;
@@ -46,6 +45,8 @@ module hyperbus_phy_tb;
   logic                   rx_valid_o;
   logic                   rx_ready_i;
   logic [15:0]            rx_data_o;
+  logic                   rx_last_o;
+  logic                   rx_error_o;
   logic [NR_CS-1:0]       hyper_cs_no;
   logic                   hyper_ck_o;
   logic                   hyper_ck_no;
@@ -78,7 +79,6 @@ module hyperbus_phy_tb;
     .trans_burst_i                ( trans_burst_i                ),
     .trans_burst_type_i           ( trans_burst_type_i           ),
     .trans_address_space_i        ( trans_address_space_i        ),
-    .trans_error_o                ( trans_error                  ),
     .tx_valid_i                   ( tx_valid_i                   ),
     .tx_ready_o                   ( tx_ready_o                   ),
     .tx_data_i                    ( tx_data_i                    ),
@@ -86,6 +86,8 @@ module hyperbus_phy_tb;
     .rx_valid_o                   ( rx_valid_o                   ),
     .rx_ready_i                   ( rx_ready_i                   ),
     .rx_data_o                    ( rx_data_o                    ),
+    .rx_last_o                    ( rx_last_o                    ),
+    .rx_error_o                   ( rx_error_o                   ),
     .hyper_cs_no                  ( hyper_cs_no                  ),
     .hyper_ck_o                   ( hyper_ck_o                   ),
     .hyper_ck_no                  ( hyper_ck_no                  ),
@@ -311,13 +313,13 @@ module hyperbus_phy_tb;
       output negedge rst_ni;
 
       output trans_valid_i, trans_address_i, trans_cs_i, trans_write_i, trans_burst_i, trans_burst_type_i, trans_address_space_i;
-      input trans_ready_o, trans_error;
+      input trans_ready_o;
 
       output tx_valid_i, tx_data_i, tx_strb_i;
       input tx_ready_o;
 
       output rx_ready_i;
-      input rx_valid_o, rx_data_o;
+      input rx_valid_o, rx_data_o, rx_last_o, rx_error_o;
     endclocking
 
     transactionStimuli stimuli;
@@ -584,7 +586,7 @@ module hyperbus_phy_tb;
         i = 0;
         while(i<stimuli.burst || cb_hyper_phy.rx_valid_o) begin
 
-            if(cb_hyper_phy.trans_error) begin
+            if(cb_hyper_phy.rx_error_o) begin
                 result.timeoutAfter = i;
                 break;
             end
