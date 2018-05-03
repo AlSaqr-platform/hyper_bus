@@ -32,7 +32,8 @@ module hyperbus_axi #(
     output logic                    tx_valid_o,
     input logic                     tx_ready_i,
 
-    input logic                     write_last_i,
+    input logic                     tx_last_i,
+    input logic                     tx_error_i,
 
     //Direct trans to phy
     output logic                    trans_valid_o,
@@ -70,7 +71,7 @@ module hyperbus_axi #(
                 READ: begin
                     if(~(rx_last_i && rx_valid_i)) begin //rx_valid_i && axi_i.r_ready &&
                         hyper_axi_state <= READ;
-                    end else begin //TODO: better logic also for WRITE
+                    end else begin 
                         hyper_axi_state <= READY;
                     end
                 end
@@ -80,11 +81,11 @@ module hyperbus_axi #(
                     end
                 end
                 WRITE: begin
-                    if(~rx_error_i) begin // && axi_i.w_valid && 
+                    if(~tx_error_i) begin // && axi_i.w_valid && 
                         hyper_axi_state <= WRITE;
-                    end if (write_last_i) begin //TODO: tx_ready, end write
+                    end if (tx_last_i) begin
                         hyper_axi_state <= WRITE_RESPONSE;
-                    end else if (rx_error_i) begin //TODO: Deal with error
+                    end else if (tx_error_i) begin 
                         hyper_axi_state <= WRITE_ERROR;
                     end
                 end
@@ -94,7 +95,7 @@ module hyperbus_axi #(
                     end
                 end
                 WRITE_ERROR: begin
-                    if(~rx_error_i) begin
+                    if(~tx_error_i) begin
                         hyper_axi_state <= READY;
                     end
                 end
@@ -171,7 +172,7 @@ module hyperbus_axi #(
                 trans_burst_type_o = axi_i.aw_burst[0];
                 trans_address_space_o = axi_i.aw_addr[31]; //Memory space
                 trans_write_o = mode_write;
-                if (rx_error_i) begin
+                if (tx_error_i) begin
                     axi_i.r_resp = 2'b10;
                 end
             end

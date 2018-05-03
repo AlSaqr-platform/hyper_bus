@@ -51,8 +51,9 @@ module hyperbus_phy #(
     output logic                   rx_last_o, //signals the last transfer in a read burst 
     output logic                   rx_error_o,
 
-    output logic                   write_last_valid_o,
-    output logic                   write_last_o,
+    output logic                   tx_last_valid_o,
+    output logic                   tx_last_o,
+    output logic                   tx_error_o,
 
     // physical interface
     output logic [NR_CS-1:0]       hyper_cs_no,
@@ -361,8 +362,8 @@ module hyperbus_phy #(
         rx_error_o = 1'b0;
         rx_last_o = 1'b0;
         read_error = 1'b0;
-        write_last_valid_o = 1'b0;
-        write_last_o = 1'b0;
+        tx_last_valid_o = 1'b0;
+        tx_last_o = 1'b0;
 
         case(hyper_trans_state)
             STANDBY: begin
@@ -420,8 +421,8 @@ module hyperbus_phy #(
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
                 if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                    write_last_valid_o = 1'b1;
-                    write_last_o = 1'b1;
+                    tx_last_valid_o = 1'b1;
+                    tx_last_o = 1'b1;
                 end
             end
             WAIT_W: begin
@@ -432,17 +433,19 @@ module hyperbus_phy #(
                 mode_write = 1'b1;
             end
             ERROR: begin //Recover state after timeout for t_CSM 
-                rx_error_o = 1'b1;
                 clock_enable = 1'b0;
                 read_fifo_rst = 1'b1;
                 en_cs = 1'b0;
                 tx_ready_o = 1'b1;
                 if(~mode_write) begin
                     read_error = 1'b1;
+                    rx_error_o = 1'b1;
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
                         rx_last_o = 1'b1;
                     end
-                end     
+                end else begin
+                    tx_error_o = 1'b1;   
+                end
             end
             END: begin
                 clock_enable = 1'b0;
