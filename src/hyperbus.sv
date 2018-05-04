@@ -14,7 +14,10 @@
 
 module hyperbus #(
     parameter BURST_WIDTH = 12,
-    parameter NR_CS = 2
+    parameter NR_CS = 2,
+
+    parameter AXI_IW = 10
+
 
 )(
 `ifdef FPGA
@@ -84,7 +87,7 @@ module hyperbus #(
     logic                          phy_trans_ready;
 
     logic                          phy_tx_last;
-    logic                          phy_tx_last_valid;
+    logic                          phy_tx_resp_valid;
     logic                          phy_tx_error;
 
     logic                          axi_tx_error;
@@ -125,6 +128,7 @@ module hyperbus #(
 
     tx_resp     axi_tx_resp;
     tx_resp     phy_tx_resp;
+
     hyperbus_axi axi2phy_i (
         .clk_i                  ( clk_i                   ),
         .rst_ni                 ( rst_ni                  ),
@@ -141,8 +145,8 @@ module hyperbus #(
         .tx_valid_o             ( axi_tx_valid            ),
         .tx_ready_i             ( axi_tx_ready            ),
 
-        .tx_last_i              ( axi_tx_resp.last        ),
-        .tx_error_i             ( axi_tx_resp.error       ),
+        .b_last_i              ( axi_tx_resp.last        ),
+        .b_error_i             ( axi_tx_resp.error       ),
 
         .trans_valid_o          ( axi_trans_valid         ),
         .trans_ready_i          ( axi_trans_ready         ),
@@ -185,7 +189,7 @@ module hyperbus #(
         .rx_error_o                   ( phy_rx.error          ),
         .rx_last_o                    ( phy_rx.last           ),
 
-        .tx_last_valid_o              ( phy_tx_last_valid     ),
+        .tx_resp_valid_o              ( phy_tx_resp_valid     ),
         .tx_last_o                    ( phy_tx_resp.last      ),
         .tx_error_o                   ( phy_tx_resp.error     ),
 
@@ -214,11 +218,11 @@ module hyperbus #(
         .dst_ready_i ( phy_trans_ready )
     );
 
-    cdc_2phase #(.T(tx_resp)) i_cdc_2phase_tx_last (
+    cdc_2phase #(.T(tx_resp)) i_cdc_2phase_tx_resp (
         .src_rst_ni  ( rst_ni               ),
         .src_clk_i   ( clk0                 ),
         .src_data_i  ( phy_tx_resp          ),
-        .src_valid_i ( phy_tx_last_valid    ),
+        .src_valid_i ( phy_tx_resp_valid    ),
         .src_ready_o (                      ),
         .dst_rst_ni  ( rst_ni               ),
         .dst_clk_i   ( clk_i                ),
@@ -228,7 +232,7 @@ module hyperbus #(
     );
 
     //Write data, TX CDC FIFO
-    cdc_fifo_gray  #(.T(tx_data), .LOG_DEPTH(3)) i_cdc_TX_fifo ( 
+    cdc_fifo_gray  #(.T(tx_data), .LOG_DEPTH(2)) i_cdc_TX_fifo ( 
         .src_rst_ni  ( rst_ni       ),
         .src_clk_i   ( clk_i        ),
         .src_data_i  ( axi_tx       ),
@@ -244,11 +248,11 @@ module hyperbus #(
 
     //Read data, RX CDC FIFO
     cdc_fifo_gray  #(.T(rx_data), .LOG_DEPTH(2)) i_cdc_RX_fifo ( 
-        .src_rst_ni  ( rst_ni                                   ),
-        .src_clk_i   ( clk0                                     ),
-        .src_data_i  ( phy_rx                                   ),
-        .src_valid_i ( phy_rx_valid                             ),
-        .src_ready_o ( phy_rx_ready                             ),
+        .src_rst_ni  ( rst_ni       ),
+        .src_clk_i   ( clk0         ),
+        .src_data_i  ( phy_rx       ),
+        .src_valid_i ( phy_rx_valid ),
+        .src_ready_o ( phy_rx_ready ),
     
         .dst_rst_ni  ( rst_ni       ),  
         .dst_clk_i   ( clk_i        ),  

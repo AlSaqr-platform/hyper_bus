@@ -51,7 +51,7 @@ module hyperbus_phy #(
     output logic                   rx_last_o, //signals the last transfer in a read burst 
     output logic                   rx_error_o,
 
-    output logic                   tx_last_valid_o,
+    output logic                   tx_resp_valid_o,
     output logic                   tx_last_o,
     output logic                   tx_error_o,
 
@@ -77,7 +77,7 @@ module hyperbus_phy #(
     logic [15:0] cs_max;
 
     //local copy of transaction
-    logic [31:0]            local_address;
+    (* dont_touch = "true" *) logic [31:0]            local_address;
     logic [NR_CS-1:0]       local_cs;
     logic                   local_write;
     logic [BURST_WIDTH-1:0] local_burst;
@@ -99,7 +99,7 @@ module hyperbus_phy #(
 
     typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END} hyper_trans_t;
 
-    (* keep = "true" *) hyper_trans_t hyper_trans_state;
+    hyper_trans_t hyper_trans_state;
 
     logic clock_enable_270;
 
@@ -170,7 +170,6 @@ module hyperbus_phy #(
     assign write_strb = tx_strb_i;
 
     logic read_fifo_valid;
-    logic read_error;
 
     //Takes output from hyperram, includes CDC FIFO
     read_clk_rwds i_read_clk_rwds (
@@ -186,7 +185,7 @@ module hyperbus_phy #(
         .valid_o                  ( read_fifo_valid             )
     );
 
-    assign rx_valid_o = (read_fifo_valid && !read_fifo_rst) || read_error;
+    assign rx_valid_o = (read_fifo_valid && !read_fifo_rst) || rx_error_o;
 
     logic hyper_rwds_i_syn;
     logic en_rwds;
@@ -361,9 +360,9 @@ module hyperbus_phy #(
         en_rwds = 1'b0;
         rx_error_o = 1'b0;
         rx_last_o = 1'b0;
-        read_error = 1'b0;
-        tx_last_valid_o = 1'b0;
+        tx_resp_valid_o = 1'b0;
         tx_last_o = 1'b0;
+        tx_error_o = 1'b0;
 
         case(hyper_trans_state)
             STANDBY: begin
@@ -385,6 +384,8 @@ module hyperbus_phy #(
                 hyper_dq_oe_n = 1'b1;
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
+                tx_resp_valid_o = 1'b1;
+                tx_last_o = 1'b1;
             end
             WAIT: begin  //t_ACC
                 if(local_write == 1'b1) begin
@@ -421,7 +422,7 @@ module hyperbus_phy #(
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
                 if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                    tx_last_valid_o = 1'b1;
+                    tx_resp_valid_o = 1'b1;
                     tx_last_o = 1'b1;
                 end
             end
@@ -437,13 +438,13 @@ module hyperbus_phy #(
                 read_fifo_rst = 1'b1;
                 en_cs = 1'b0;
                 tx_ready_o = 1'b1;
-                if(~mode_write) begin
-                    read_error = 1'b1;
+                if(~local_write) begin
                     rx_error_o = 1'b1;
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
                         rx_last_o = 1'b1;
                     end
                 end else begin
+                    tx_resp_valid_o = 1'b1;
                     tx_error_o = 1'b1;   
                 end
             end
