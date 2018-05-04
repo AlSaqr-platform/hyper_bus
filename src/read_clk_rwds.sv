@@ -34,7 +34,7 @@ module read_clk_rwds #(
 
 
     //Delay of rwds for center aligned read
-    delay_line delay_line_i (
+    hyperbus_delay_line delay_line_i (
         .in  (hyper_rwds_i),
         .out (hyper_rwds_i_d),
         .delay(config_t_rwds_delay_line)

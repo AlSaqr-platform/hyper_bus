@@ -1,0 +1,34 @@
+hyperbus:
+
+  files: [
+    src/tech_cells_generic/pulp_clock_xor2.sv,
+    src/tech_cells_generic/pulp_clock_mux2.sv,
+    src/tech_cells_generic/pulp_clock_gating.sv,
+    src/tech_cells_generic/pulp_clock_inverter.sv,
+    src/common_cells/src/cdc_fifo_gray.sv,
+    src/common_cells/src/cdc_2phase.sv,
+    src/common_cells/src/graycode.sv,
+    src/register_interface/src/reg_uniform.sv,
+    src/config_registers.sv,
+    src/hyperbus_delay_line.sv,
+    src/clk_gen.sv,
+    src/clock_diff_out.sv,
+    src/ddr_out.sv,
+    src/hyperbus_axi.sv,
+    src/read_clk_rwds.sv,
+    src/hyperbus.sv,
+    src/hyperbus_phy.sv,
+    src/cmd_addr_gen.sv,
+    src/ddr_in.sv,
+  ]
+
+hyperbus_sim:
+  flags:
+    - skip_synthesis
+  files: [
+    src/pad_simulation.sv,
+    models/s27ks0641/s27ks0641.v,
+    models/s27ks0641/s27ks0641_bmod_wrapper.v,
+    models/s26ks512s/s26ks512s.v,
+    models/s25fs256s/s25fs256s.v,
+  ]
