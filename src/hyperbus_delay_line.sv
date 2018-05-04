@@ -10,7 +10,7 @@
 /// A single to double data rate converter.
 `timescale 1 ps/1 ps
 
-module delay_line (
+module hyperbus_delay_line (
     input        in,
     output       out,
     input [31:0] delay
