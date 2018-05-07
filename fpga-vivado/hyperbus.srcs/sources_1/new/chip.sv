@@ -56,7 +56,7 @@ module chip #(
     assign debug[1] = hyper_rwds_i;
     assign debug[9:2] = hyper_dq_i[7:0];
 
-    clk_generation clk_generation_i (
+    clk_generation_slow clk_generation_i (
         .clk_phy_0  ( clk_phy_0               ),
         .clk_phy_90 ( clk_phy_90              ),
         .clk_sys    ( clk_sys                 ),
