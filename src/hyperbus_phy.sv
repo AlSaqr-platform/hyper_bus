@@ -84,7 +84,7 @@ module hyperbus_phy #(
     logic                   local_burst_type;
     logic                   local_address_space;
 
-    logic clock_enable;
+    (* keep = "true" *) logic clock_enable;
     logic en_cs;
     logic en_ddr_in;
     logic en_read_transaction;
@@ -95,11 +95,11 @@ module hyperbus_phy #(
     logic mode_write;
     logic read_clk_en;
     logic read_clk_en_n;
-    logic read_fifo_rst;
+    (* keep = "true" *) logic read_fifo_rst;
 
     typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END} hyper_trans_t;
 
-    hyper_trans_t hyper_trans_state;
+    (* keep = "true" *) hyper_trans_t hyper_trans_state;
 
     logic clock_enable_270;
 
@@ -188,7 +188,7 @@ module hyperbus_phy #(
     assign rx_valid_o = (read_fifo_valid && !read_fifo_rst) || rx_error_o;
 
     logic hyper_rwds_i_syn;
-    logic en_rwds;
+    (* keep = "true" *) logic en_rwds;
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_rwds_i
         if(~rst_ni) begin
