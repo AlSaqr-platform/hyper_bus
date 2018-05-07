@@ -51,9 +51,9 @@ module hyperbus_phy #(
     output logic                   rx_last_o, //signals the last transfer in a read burst 
     output logic                   rx_error_o,
 
-    output logic                   tx_resp_valid_o,
-    output logic                   tx_last_o,
-    output logic                   tx_error_o,
+    output logic                   b_resp_valid_o,
+    output logic                   b_last_o,
+    output logic                   b_error_o,
 
     // physical interface
     output logic [NR_CS-1:0]       hyper_cs_no,
@@ -360,9 +360,9 @@ module hyperbus_phy #(
         en_rwds = 1'b0;
         rx_error_o = 1'b0;
         rx_last_o = 1'b0;
-        tx_resp_valid_o = 1'b0;
-        tx_last_o = 1'b0;
-        tx_error_o = 1'b0;
+        b_resp_valid_o = 1'b0;
+        b_last_o = 1'b0;
+        b_error_o = 1'b0;
 
         case(hyper_trans_state)
             STANDBY: begin
@@ -384,8 +384,8 @@ module hyperbus_phy #(
                 hyper_dq_oe_n = 1'b1;
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
-                tx_resp_valid_o = 1'b1;
-                tx_last_o = 1'b1;
+                b_resp_valid_o = 1'b1;
+                b_last_o = 1'b1;
             end
             WAIT: begin  //t_ACC
                 if(local_write == 1'b1) begin
@@ -422,8 +422,8 @@ module hyperbus_phy #(
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
                 if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                    tx_resp_valid_o = 1'b1;
-                    tx_last_o = 1'b1;
+                    b_resp_valid_o = 1'b1;
+                    b_last_o = 1'b1;
                 end
             end
             WAIT_W: begin
@@ -444,8 +444,8 @@ module hyperbus_phy #(
                         rx_last_o = 1'b1;
                     end
                 end else begin
-                    tx_resp_valid_o = 1'b1;
-                    tx_error_o = 1'b1;   
+                    b_resp_valid_o = 1'b1;
+                    b_error_o = 1'b1;   
                 end
             end
             END: begin

@@ -145,7 +145,7 @@ module hyperbus_axi #(
     
         //Required signals
         axi_i.r_user = 1'b0;
-
+        axi_i.b_user = 1'b0;
 
         case(hyper_axi_state)
             READY: begin

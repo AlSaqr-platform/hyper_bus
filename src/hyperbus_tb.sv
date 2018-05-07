@@ -237,11 +237,8 @@ module hyperbus_tb;
     b = new;
     RegisterReadWriteRead(ax, w, b, r, reg_data);
     repeat(10) @(posedge clk_i);
-    $display("RegisterReadWriteRead Finished");
-    ax = new;
-    w = new;
-    r = new;
-    b = new;
+    ShortWrite(ax, w, b);
+    ShortRead(ax,r);
     WriteWithBreak(ax, w, b);
     done = 1;
   end
@@ -271,11 +268,13 @@ module hyperbus_tb;
     axi_drv.recv_r(r);
     $display("%4h", r.r_data);
     assert(r.r_data == w.w_data) else $error("Received %4h, but expected %4h", r.r_data, w.w_data);
+    $display("RegisterReadWriteRead Finished");
+
   endtask : RegisterReadWriteRead
 
   task WriteWithBreak(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b);
     ax.ax_addr = 'h0;
-    ax.ax_len = 'd60;
+    ax.ax_len = 'd15;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
     axi_drv.send_aw(ax);
@@ -288,12 +287,13 @@ module hyperbus_tb;
       if(i==ax.ax_len) begin
         w.w_last = 1;
       end
-      if (i==50) begin
-        repeat(300) @(posedge clk_i);
+      if (i==10) begin
+        repeat(15) @(posedge clk_i);
       end
       axi_drv.send_w(w);
     end
     axi_drv.recv_b(b);
+    $display("WriteWithBreak Finished");
   endtask : WriteWithBreak
 
   task LongWrite(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b);
@@ -331,11 +331,14 @@ module hyperbus_tb;
       axi_drv.recv_r(r);
       $display("%h", r.r_data);
     end
+    $display("Long read finished");
+
   endtask : LongRead
 
   task ShortWrite(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b);
     //Short transactions
     //Write
+    ax.ax_addr = 'h0;
     ax.ax_len = 'd0;
     ax.ax_burst = 'b01;
     axi_drv.send_aw(ax);
@@ -350,11 +353,12 @@ module hyperbus_tb;
       axi_drv.send_w(w);
     end
     axi_drv.recv_b(b);
+    $display("Short write finished");
   endtask : ShortWrite
 
   task ShortRead(axi_driver_t::ax_beat_t ax, axi_driver_t::r_beat_t r);
     //Read
-    ax.ax_addr = 'h80000800;
+    ax.ax_addr = 'h0;
     ax.ax_len = 'd0;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
@@ -364,5 +368,6 @@ module hyperbus_tb;
       axi_drv.recv_r(r);
       $display("%4h", r.r_data);
     end
+    $display("Short read finished");
   endtask : ShortRead
 endmodule
