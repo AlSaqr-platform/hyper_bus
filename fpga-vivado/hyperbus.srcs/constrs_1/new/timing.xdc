@@ -54,19 +54,17 @@ set_false_path -from [get_ports hyper_rwds_io] -to [get_ports hyper_rwds_io]
 #set_min_delay -from [get_pins hyperbus_i/phy_i/hyper_trans_state_reg[2]/C] -to [get_pins pad_sim_data/ddr_in[*].IOBUF_inst/OBUFT/I] 6 -quiet
 #set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/hyper_trans_state_reg[2]/C] -to [get_pins pad_sim_data/ddr_in[*].IOBUF_inst/OBUFT/I] 6
 
-set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/hyper_dq_oe_o_reg/C] -to [get_ports {hyper_dq_io[*]}] 5
-set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/hyper_rwds_oe_o_reg/C] -to [get_ports {hyper_rwds_io}] 5
+set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/hyper_dq_oe_o_reg/C] -to [get_ports {hyper_dq_io[*]}] 8
+set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/hyper_rwds_oe_o_reg/C] -to [get_ports {hyper_rwds_io}] 8
 
 set_max_delay -datapath_only -from [get_pins {hyperbus_i/phy_i/hyper_trans_state_reg[*]/C}] -to [get_pins {hyperbus_i/phy_i/hyper_cs_no_reg[*]/D}] 12.5
 set_max_delay -datapath_only -from [get_pins {hyperbus_i/phy_i/local_cs_reg[*]/C}] -to [get_pins {hyperbus_i/phy_i/hyper_cs_no_reg[*]/D}] 12.5
+set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/en_cs_reg/C] -to [get_pins {hyperbus_i/phy_i/hyper_cs_no_reg[*]/D}] 12.5
 #set_false_path -from [get_pins {hyperbus_i/phy_i/local_cs_reg[0]/C}] -to [get_pins {hyperbus_i/phy_i/hyper_cs_no_reg[*]/D}] -hold
 
 # Setting input and output delays.
+
 set_output_delay -clock clk_phy_90_clk_generation_slow [expr [expr $period/2 - 5] ]  [get_ports hyper_cs_*]
-#set_output_delay -clock clk0 -1 [get_ports hyper_dq_io*]
-#set_output_delay -clock clk_phy_0_clk_generation -1 [get_ports hyper_rwds_io]
-#set_output_delay -clock clk90 0 [get_ports hyper_ck_*]
-#set_input_delay -clock hyper_rwds_io 0.400 [get_ports {hyper_dq_io[*]}]
 
 
 
