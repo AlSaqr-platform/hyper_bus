@@ -14,7 +14,9 @@
 
 module hyperbus_axi #(
     parameter BURST_WIDTH = 12,
-    parameter NR_CS = 2
+    parameter NR_CS = 2,
+
+    parameter AXI_IW = 10
 )(
     input logic                     clk_i,          // Clock
     input logic                     rst_ni,         // Asynchronous reset active low
@@ -32,7 +34,8 @@ module hyperbus_axi #(
     output logic                    tx_valid_o,
     input logic                     tx_ready_i,
 
-    input logic                     write_last_i,
+    input logic                     b_last_i, //Valid
+    input logic                     b_error_i,
 
     //Direct trans to phy
     output logic                    trans_valid_o,
@@ -45,11 +48,24 @@ module hyperbus_axi #(
     output logic                    trans_address_space_o
 );
 
-    logic                           mode_write;
+    logic [AXI_IW-1:0]              axi_trans_id;
 
     typedef enum logic[3:0] {STANDBY, READY, READ_ADDR, READ, WRITE_ADDR, WRITE, WRITE_RESPONSE, WRITE_ERROR} hyper_axi_state_t;
     hyper_axi_state_t hyper_axi_state;
 
+    assign tx_data_o = axi_i.w_data;
+    assign axi_i.r_id = axi_trans_id;
+    assign axi_i.b_id = axi_trans_id;
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_axi_trans_id
+        if(~rst_ni) begin
+            axi_trans_id <= 'b0;
+        end else if (axi_i.aw_valid) begin
+            axi_trans_id <= axi_i.aw_id;
+        end else if (axi_i.ar_valid) begin
+            axi_trans_id <= axi_i.ar_id;
+        end
+    end
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_hyper_axi_state
         if(~rst_ni) begin
             hyper_axi_state <= READY;
@@ -70,7 +86,7 @@ module hyperbus_axi #(
                 READ: begin
                     if(~(rx_last_i && rx_valid_i)) begin //rx_valid_i && axi_i.r_ready &&
                         hyper_axi_state <= READ;
-                    end else begin //TODO: better logic also for WRITE
+                    end else begin 
                         hyper_axi_state <= READY;
                     end
                 end
@@ -80,21 +96,21 @@ module hyperbus_axi #(
                     end
                 end
                 WRITE: begin
-                    if(~rx_error_i) begin // && axi_i.w_valid && 
+                    if(~b_error_i) begin // && axi_i.w_valid && 
                         hyper_axi_state <= WRITE;
-                    end if (write_last_i) begin //TODO: tx_ready, end write
+                    end if (axi_i.w_last) begin
                         hyper_axi_state <= WRITE_RESPONSE;
-                    end else if (rx_error_i) begin //TODO: Deal with error
-                        hyper_axi_state <= WRITE_ERROR;
                     end
                 end
                 WRITE_RESPONSE: begin
-                    if(axi_i.b_ready == 1'b1) begin
+                    if(b_last_i == 1'b1) begin
                         hyper_axi_state <= READY;
+                    end if(b_error_i) begin
+                        hyper_axi_state <= WRITE_ERROR;
                     end
                 end
                 WRITE_ERROR: begin
-                    if(~rx_error_i) begin
+                     if(axi_i.b_ready == 1'b1) begin
                         hyper_axi_state <= READY;
                     end
                 end
@@ -104,8 +120,6 @@ module hyperbus_axi #(
 
     always @* begin
         //defaults
-        mode_write = 1'b1;
-
         axi_i.ar_ready = 1'b0; //Read address ready. (ready to accept an address)
         axi_i.r_valid = 1'b0; //Reset, Read valid. (channel is signaling the required read data)
         axi_i.r_data = 1'b0;
@@ -126,13 +140,12 @@ module hyperbus_axi #(
         trans_address_space_o = 1'b0;
         trans_write_o = 1'b0;
         
-        tx_data_o = 'b0;
         tx_valid_o = 1'b0;
         tx_strb_o = 2'b00;
     
         //Required signals
-        axi_i.r_id = 1'b0;
         axi_i.r_user = 1'b0;
+        axi_i.b_user = 1'b0;
 
         case(hyper_axi_state)
             READY: begin
@@ -140,53 +153,53 @@ module hyperbus_axi #(
                 //axi_i.ar_ready = 1'b1;
             end
             READ_ADDR: begin
-                mode_write = 1'b0;
                 trans_valid_o = 1'b1;
                 axi_i.ar_ready = trans_ready_i; 
                 trans_address_o = axi_i.ar_addr;
                 trans_burst_o = axi_i.ar_len + 1'b1;
                 trans_burst_type_o = axi_i.ar_burst[0];
                 trans_address_space_o = axi_i.ar_addr[31]; //Memory space  
-                trans_write_o = mode_write;
+                trans_write_o = 1'b0;
                 if (rx_error_i) begin
                     axi_i.r_resp = 2'b10;
                 end
             end
             READ: begin
-                mode_write = 1'b0;
                 axi_i.r_valid = rx_valid_i;
                 axi_i.r_data = rx_data_i;
                 axi_i.r_last = rx_last_i;
                 rx_ready_o = axi_i.r_ready;
+
                 if (rx_error_i) begin
                     axi_i.r_resp = 2'b10;
                 end
             end
             WRITE_ADDR: begin
-                mode_write = 1'b1;
                 trans_valid_o = 1'b1;
                 axi_i.aw_ready = trans_ready_i; 
                 trans_address_o = axi_i.aw_addr;
                 trans_burst_o = axi_i.aw_len + 1;
                 trans_burst_type_o = axi_i.aw_burst[0];
                 trans_address_space_o = axi_i.aw_addr[31]; //Memory space
-                trans_write_o = mode_write;
-                if (rx_error_i) begin
+                trans_write_o = 1'b1;
+                if (b_error_i) begin
+                    axi_i.r_valid = 1'b1;
                     axi_i.r_resp = 2'b10;
                 end
             end
             WRITE: begin
-                mode_write = 1'b1;
-                tx_data_o = axi_i.w_data; //Input to fifo
                 tx_valid_o = axi_i.w_valid;
                 tx_strb_o = ~axi_i.w_strb; //WSTRB HIGH, RWDS LOW -> valid
                 axi_i.w_ready = tx_ready_i;
             end
             WRITE_RESPONSE: begin
-                axi_i.b_valid = 1'b1;
+                if (b_last_i) begin
+                    axi_i.b_valid = 1'b1;
+                    axi_i.b_resp = 2'b00;
+                end
             end
             WRITE_ERROR: begin
-                mode_write = 1'b1;
+                axi_i.b_valid = 1'b1;
                 axi_i.b_resp = 2'b10;
             end
         endcase
