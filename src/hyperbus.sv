@@ -15,10 +15,7 @@
 module hyperbus #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
-
     parameter AXI_IW = 10
-
-
 )(
 `ifdef FPGA
     input  logic                   clk0,    // Clock
