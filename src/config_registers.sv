@@ -57,7 +57,7 @@ module config_registers #(
                 init_addr_mapping, //config_addr_mapping
                 32'd2000,          //config_t_rwds_delay_line
                 32'h6,             //config_t_read_write_recovery
-                32'd666,           //config_t_cs_max
+                32'd665,           //config_t_cs_max
                 32'h6,             //config_t_latency_additional
                 32'h6              //config_t_latency_access
             } ),
