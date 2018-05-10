@@ -189,7 +189,7 @@ module hyperbus #(
         .rx_error_o                   ( phy_rx.error          ),
         .rx_last_o                    ( phy_rx.last           ),
 
-        .b_resp_valid_o               ( phy_b_valid      ),
+        .b_resp_valid_o               ( phy_b_valid           ),
         .b_last_o                     ( phy_b_resp.last       ),
         .b_error_o                    ( phy_b_resp.error      ),
 
@@ -211,6 +211,7 @@ module hyperbus #(
         .src_data_i  ( axi_trans       ),
         .src_valid_i ( axi_trans_valid ),
         .src_ready_o ( axi_trans_ready ),
+
         .dst_rst_ni  ( rst_ni          ),
         .dst_clk_i   ( clk0            ),
         .dst_data_o  ( phy_trans       ),
@@ -224,6 +225,7 @@ module hyperbus #(
         .src_data_i  ( phy_b_resp  ),
         .src_valid_i ( phy_b_valid ),
         .src_ready_o (             ),
+
         .dst_rst_ni  ( rst_ni      ),
         .dst_clk_i   ( clk_i       ),
         .dst_data_o  ( axi_b_resp  ),

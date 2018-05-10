@@ -48,12 +48,195 @@ module hyperbus_axi #(
     output logic                    trans_address_space_o
 );
 
+    //Connect/MUX trans signals to address write and read channels 
+    assign trans_cs_o = 1'b1; //Address range
+
+    assign trans_address_o = trans_write_o ? axi_i.aw_addr : axi_i.ar_addr;
+    assign trans_burst_o = (trans_write_o ? axi_i.aw_len : axi_i.ar_len)+ 1;
+    assign trans_burst_type_o = trans_write_o ? axi_i.aw_burst[0] : axi_i.ar_burst[0];
+    assign trans_address_space_o = trans_write_o ? axi_i.aw_addr[31] : axi_i.ar_addr[31]; 
+
+    //Data not changed within this module
+    assign tx_data_o = axi_i.w_data;
+    assign axi_i.r_data = rx_data_i;
+    assign tx_strb_o = ~axi_i.w_strb; //WSTRB HIGH, RWDS LOW -> valid
+
+    //Directly to FIFO
+    assign tx_valid_o = axi_i.w_valid;
+    assign axi_i.w_ready = tx_ready_i;
+    assign axi_i.r_valid = rx_valid_i;
+    assign axi_i.r_last = rx_last_i;
+    assign rx_ready_o = axi_i.r_ready;
+
+    typedef enum logic[3:0] {WRITE_READY, WRITE, WRITE_RESP, WRITE_ERROR} write_t;
+    write_t write_state;
+
+    typedef enum logic[3:0] {READ_READY, READ, READ_RESP, READ_ERROR} read_t;
+    read_t read_state;
+
+    typedef enum logic[3:0] {TRANS_READY, TRANS_READ, TRANS_WRITE, TRANS_FULL} trans_t;
+    trans_t trans_state;
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_write_state
+        if(~rst_ni) begin
+            write_state <= WRITE_READY;
+        end else begin
+            case(write_state)
+                WRITE_READY: begin
+                    if(axi_i.aw_ready && axi_i.aw_valid) begin
+                        write_state <= WRITE;
+                    end
+                end
+                WRITE: begin
+                    if(b_error_i) begin
+                        write_state <= WRITE_ERROR;
+                    end if(axi_i.w_last) begin
+                        write_state <= WRITE_RESP;
+                    end
+                end
+                WRITE_RESP: begin
+                    if(b_last_i && axi_i.b_ready) begin
+                        write_state <= WRITE_READY;
+                    end if(b_error_i) begin
+                        write_state <= WRITE_ERROR;
+                    end
+                end
+                WRITE_ERROR: begin
+                     if(axi_i.b_ready) begin
+                        write_state <= WRITE_READY;
+                    end
+                end
+            endcase //write_state
+        end
+    end
+
+    always @* begin
+        //defaults
+        axi_i.b_valid = 1'b0;
+        axi_i.b_resp = 2'b00;
+        axi_i.b_user = 1'b0;
+        case(write_state)
+            WRITE_RESP: begin
+                if (b_last_i) begin
+                    axi_i.b_valid = 1'b1;
+                    axi_i.b_resp = 2'b00;
+                end
+            end
+            WRITE_ERROR: begin
+                axi_i.b_valid = 1'b1;
+                axi_i.b_resp = 2'b10;
+            end
+        endcase
+    end
+    
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_read_state
+        if(~rst_ni) begin
+            read_state <= READ_READY;
+        end else begin
+            case(read_state)
+                READ_READY: begin
+                    if(axi_i.ar_ready && axi_i.ar_valid) begin
+                        read_state <= READ;
+                    end
+                end
+                READ: begin
+                    if(rx_error_i) begin
+                        read_state <= READ_ERROR;
+                    end else  if(rx_last_i) begin //axi_i.r_ready && rx_valid_i
+                        read_state <= READ_READY;
+                    end
+                end
+                READ_ERROR: begin //Have to signal valid response with every read
+                    if(~rx_last_i) begin
+                        read_state <= READ_READY;
+                    end
+                end
+            endcase // read_state
+        end
+    end
+
+    always @* begin        
+    //defaults
+    axi_i.r_resp= 2'b00;
+    axi_i.r_user = 1'b0;      
+        case(read_state)
+            READ: begin
+                if(rx_error_i) begin
+                    axi_i.r_resp = 2'b10;
+                end
+            end
+            READ_ERROR: begin
+                axi_i.r_resp = 2'b10;
+            end
+        endcase
+    end
+
+    //ATM only to solve simultaneous access
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_trans_t
+        if(~rst_ni) begin
+            trans_state <= TRANS_READY;
+        end else begin
+            case(trans_state)
+                TRANS_READY: begin
+                    if(~trans_ready_i) begin
+                        trans_state <= TRANS_FULL;
+                    end else if(axi_i.aw_valid) begin
+                        trans_state <= TRANS_WRITE;
+                    end else if(axi_i.ar_valid) begin
+                        trans_state <= TRANS_READ;
+                    end
+                end
+                TRANS_READ: begin
+                    if(~trans_ready_i) begin
+                        trans_state <= TRANS_READY;
+                    end else begin
+                        trans_state <= TRANS_READ;
+                    end
+                end 
+                TRANS_WRITE: begin
+                    if(~trans_ready_i) begin
+                        trans_state <= TRANS_READY;
+                    end else begin
+                        trans_state <= TRANS_WRITE;
+                    end
+                end 
+                TRANS_FULL: begin
+                    if(trans_ready_i) begin
+                        trans_state <= TRANS_READY;
+                    end
+                end
+            endcase //trans_state
+        end
+    end
+
+    always @* begin        
+    //defaults     
+    trans_valid_o = 1'b0;
+    trans_write_o = 1'b0;
+    axi_i.aw_ready = 1'b0; 
+    axi_i.ar_ready = 1'b0;
+        case(trans_state)
+            TRANS_READY: begin
+            end 
+            TRANS_READ: begin
+                trans_write_o = 1'b0;
+                trans_valid_o = 1'b1;
+                axi_i.ar_ready = 1'b1;
+            end
+            TRANS_WRITE: begin
+                trans_write_o = 1'b1;
+                trans_valid_o = 1'b1;
+                axi_i.aw_ready = 1'b1;
+            end
+            TRANS_FULL: begin
+                axi_i.aw_ready = 1'b0;
+                axi_i.ar_ready = 1'b0; 
+            end
+        endcase
+    end
+
     logic [AXI_IW-1:0]              axi_trans_id;
 
-    typedef enum logic[3:0] {STANDBY, READY, READ_ADDR, READ, WRITE_ADDR, WRITE, WRITE_RESPONSE, WRITE_ERROR} hyper_axi_state_t;
-    hyper_axi_state_t hyper_axi_state;
-
-    assign tx_data_o = axi_i.w_data;
     assign axi_i.r_id = axi_trans_id;
     assign axi_i.b_id = axi_trans_id;
 
@@ -65,143 +248,5 @@ module hyperbus_axi #(
         end else if (axi_i.ar_valid) begin
             axi_trans_id <= axi_i.ar_id;
         end
-    end
-    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_hyper_axi_state
-        if(~rst_ni) begin
-            hyper_axi_state <= READY;
-        end else begin
-            case(hyper_axi_state)
-                READY: begin
-                    if(axi_i.ar_valid) begin
-                        hyper_axi_state <= READ_ADDR;
-                    end else if (axi_i.aw_valid) begin
-                        hyper_axi_state <= WRITE_ADDR;
-                    end
-                end
-                READ_ADDR: begin
-                    if(trans_ready_i) begin
-                        hyper_axi_state <= READ;
-                    end
-                end
-                READ: begin
-                    if(~(rx_last_i && rx_valid_i)) begin //rx_valid_i && axi_i.r_ready &&
-                        hyper_axi_state <= READ;
-                    end else begin 
-                        hyper_axi_state <= READY;
-                    end
-                end
-                WRITE_ADDR: begin
-                    if(trans_ready_i) begin
-                        hyper_axi_state <= WRITE;
-                    end
-                end
-                WRITE: begin
-                    if(~b_error_i) begin // && axi_i.w_valid && 
-                        hyper_axi_state <= WRITE;
-                    end if (axi_i.w_last) begin
-                        hyper_axi_state <= WRITE_RESPONSE;
-                    end
-                end
-                WRITE_RESPONSE: begin
-                    if(b_last_i == 1'b1) begin
-                        hyper_axi_state <= READY;
-                    end if(b_error_i) begin
-                        hyper_axi_state <= WRITE_ERROR;
-                    end
-                end
-                WRITE_ERROR: begin
-                     if(axi_i.b_ready == 1'b1) begin
-                        hyper_axi_state <= READY;
-                    end
-                end
-            endcase
-        end
-    end
-
-    always @* begin
-        //defaults
-        axi_i.ar_ready = 1'b0; //Read address ready. (ready to accept an address)
-        axi_i.r_valid = 1'b0; //Reset, Read valid. (channel is signaling the required read data)
-        axi_i.r_data = 1'b0;
-        axi_i.r_last = 1'b0;
-        axi_i.r_resp= 2'b00;
-        rx_ready_o = 1'b0;
-
-        axi_i.aw_ready = 1'b0; //Write address ready. (ready to accept an address)
-        axi_i.w_ready = 1'b0; //Write ready. (can accept the write data)
-        axi_i.b_valid = 1'b0; //Reset, Write response valid. (signaling valid write response)
-        axi_i.b_resp = 2'b00;
-   
-        trans_cs_o = 1'b1;
-        trans_valid_o = 1'b0;
-        trans_address_o = 'b0;
-        trans_burst_o = 1'b0;
-        trans_burst_type_o = 1'b0;
-        trans_address_space_o = 1'b0;
-        trans_write_o = 1'b0;
-        
-        tx_valid_o = 1'b0;
-        tx_strb_o = 2'b00;
-    
-        //Required signals
-        axi_i.r_user = 1'b0;
-        axi_i.b_user = 1'b0;
-
-        case(hyper_axi_state)
-            READY: begin
-                //axi_i.aw_ready = 1'b1; //A3.2.2 Specification recommends default HIGH.
-                //axi_i.ar_ready = 1'b1;
-            end
-            READ_ADDR: begin
-                trans_valid_o = 1'b1;
-                axi_i.ar_ready = trans_ready_i; 
-                trans_address_o = axi_i.ar_addr;
-                trans_burst_o = axi_i.ar_len + 1'b1;
-                trans_burst_type_o = axi_i.ar_burst[0];
-                trans_address_space_o = axi_i.ar_addr[31]; //Memory space  
-                trans_write_o = 1'b0;
-                if (rx_error_i) begin
-                    axi_i.r_resp = 2'b10;
-                end
-            end
-            READ: begin
-                axi_i.r_valid = rx_valid_i;
-                axi_i.r_data = rx_data_i;
-                axi_i.r_last = rx_last_i;
-                rx_ready_o = axi_i.r_ready;
-
-                if (rx_error_i) begin
-                    axi_i.r_resp = 2'b10;
-                end
-            end
-            WRITE_ADDR: begin
-                trans_valid_o = 1'b1;
-                axi_i.aw_ready = trans_ready_i; 
-                trans_address_o = axi_i.aw_addr;
-                trans_burst_o = axi_i.aw_len + 1;
-                trans_burst_type_o = axi_i.aw_burst[0];
-                trans_address_space_o = axi_i.aw_addr[31]; //Memory space
-                trans_write_o = 1'b1;
-                if (b_error_i) begin
-                    axi_i.r_valid = 1'b1;
-                    axi_i.r_resp = 2'b10;
-                end
-            end
-            WRITE: begin
-                tx_valid_o = axi_i.w_valid;
-                tx_strb_o = ~axi_i.w_strb; //WSTRB HIGH, RWDS LOW -> valid
-                axi_i.w_ready = tx_ready_i;
-            end
-            WRITE_RESPONSE: begin
-                if (b_last_i) begin
-                    axi_i.b_valid = 1'b1;
-                    axi_i.b_resp = 2'b00;
-                end
-            end
-            WRITE_ERROR: begin
-                axi_i.b_valid = 1'b1;
-                axi_i.b_resp = 2'b10;
-            end
-        endcase
     end
 endmodule // hyperbus_axi

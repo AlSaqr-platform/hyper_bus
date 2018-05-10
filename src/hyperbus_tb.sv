@@ -150,6 +150,7 @@ module hyperbus_tb;
   int expectedResulth0f03 = 16'h0f03;
   int expectedResulth0001 = 16'h0001;
   int expectedResultRegWrite = 16'h8f1f;
+  int expectedResultStrobe[16] = '{16'h3456, 16'hff56, 16'h34ff, 16'hffff, 16'h3456, 16'hff56, 16'h34ff, 16'hffff,16'h3456, 16'hff56, 16'h34ff, 16'hffff, 16'h3456, 16'hff56, 16'h34ff, 16'hffff};
 
   initial begin
 
@@ -236,12 +237,43 @@ module hyperbus_tb;
     r = new;
     b = new;
     RegisterReadWriteRead(ax, w, b, r, reg_data);
-    repeat(10) @(posedge clk_i);
-    ShortWrite(ax, w, b);
-    ShortRead(ax,r);
+    ax.ax_addr = 'h05FFF5;
     WriteWithBreak(ax, w, b);
+    ShortRead(ax,r);
+    WriteWithStrobe(ax,w,b,r);
     done = 1;
   end
+
+  task WriteWithStrobe(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
+
+    ax.ax_addr = 'h05000;
+    ax.ax_len = 'd15;
+    ax.ax_burst = 'b01;
+    ax.ax_id = 'b1001;
+    axi_drv.send_aw(ax);
+
+    w.w_data = 'h3456;
+    w.w_last = 0;
+    w.w_strb = 2'b11;
+
+    for(int i = 0; i < ax.ax_len+1; i++) begin
+      if(i==ax.ax_len) begin
+        w.w_last = 1;
+      end
+        w.w_strb = i%4;
+      axi_drv.send_w(w);
+    end
+    axi_drv.recv_b(b);
+    
+    //Read
+    axi_drv.send_ar(ax);
+    for(int i = 0; i < ax.ax_len+1; i++) begin
+      axi_drv.recv_r(r);
+      $display("%h", r.r_data);
+      assert(r.r_data == w.w_data) else $error("Received %4h, but expected %4h", r.r_data, w.w_data);
+    end
+    $display("WriteWithStrobe Finished");
+  endtask : WriteWithStrobe
 
   task RegisterReadWriteRead(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r, logic [31:0] reg_data);
     ax.ax_addr = 'h80000800;
@@ -288,18 +320,19 @@ module hyperbus_tb;
         w.w_last = 1;
       end
       if (i==10) begin
-        repeat(15) @(posedge clk_i);
+        $display("Break");
+        repeat(25) @(posedge clk_i);
       end
       axi_drv.send_w(w);
     end
     axi_drv.recv_b(b);
+
     $display("WriteWithBreak Finished");
   endtask : WriteWithBreak
 
   task LongWrite(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b);
     //Without break
     //Write
-    ax.ax_addr = 'h0;
     ax.ax_len = 'd222;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
@@ -321,7 +354,6 @@ module hyperbus_tb;
 
   task LongRead(axi_driver_t::ax_beat_t ax, axi_driver_t::r_beat_t r);
     //Read
-    ax.ax_addr = 'h0;
     ax.ax_len = 'd222;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
@@ -338,8 +370,7 @@ module hyperbus_tb;
   task ShortWrite(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b);
     //Short transactions
     //Write
-    ax.ax_addr = 'h0;
-    ax.ax_len = 'd0;
+    ax.ax_len = 'd5;
     ax.ax_burst = 'b01;
     axi_drv.send_aw(ax);
     w.w_last = 0;
@@ -353,13 +384,14 @@ module hyperbus_tb;
       axi_drv.send_w(w);
     end
     axi_drv.recv_b(b);
+
     $display("Short write finished");
   endtask : ShortWrite
 
   task ShortRead(axi_driver_t::ax_beat_t ax, axi_driver_t::r_beat_t r);
     //Read
-    ax.ax_addr = 'h0;
-    ax.ax_len = 'd0;
+    // ax.ax_addr = 'h0;
+    ax.ax_len = 'd5;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
 
