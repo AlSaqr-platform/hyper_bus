@@ -20,7 +20,7 @@
 //////////////////////////////////////////////////////////////////////////////////
 
 
-module delay_line (
+module hyperbus_delay_line (
     input        in,
     output       out,
     input [31:0] delay
