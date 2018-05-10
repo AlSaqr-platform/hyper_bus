@@ -47,6 +47,8 @@ module hyperbus_soc_axi_wrapper(
 
     );
 
+    axi_prober #(.AW(64), .DW(64), .UW(10), .IW(10)) hyper_axi_prober_i (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i));
+
     //le fun :)
     axi_size_conv_DOWNSIZE #(
         .AXI_ADDR_WIDTH         ( 64                       ),
