@@ -15,10 +15,7 @@
 module hyperbus #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
-
     parameter AXI_IW = 10
-
-
 )(
 `ifdef FPGA
     input  logic                   clk0,    // Clock
@@ -165,7 +162,7 @@ module hyperbus #(
 
         .config_t_latency_access      ( 32'h6                 ),
         .config_t_latency_additional  ( 32'h6                 ),
-        .config_t_cs_max              ( 32'd666               ),
+        .config_t_cs_max              ( 32'd665               ),
         .config_t_read_write_recovery ( 32'h6                 ),
         .config_t_rwds_delay_line     ( 32'd2000              ),
 

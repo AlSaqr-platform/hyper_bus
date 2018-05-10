@@ -47,6 +47,9 @@ module hyperbus_phy_tb;
   logic [15:0]            rx_data_o;
   logic                   rx_last_o;
   logic                   rx_error_o;
+  logic                   b_resp_valid_o;
+  logic                   b_last_o;
+  logic                   b_error_o;
   logic [NR_CS-1:0]       hyper_cs_no;
   logic                   hyper_ck_o;
   logic                   hyper_ck_no;
@@ -88,6 +91,9 @@ module hyperbus_phy_tb;
     .rx_data_o                    ( rx_data_o                    ),
     .rx_last_o                    ( rx_last_o                    ),
     .rx_error_o                   ( rx_error_o                   ),
+    .b_resp_valid_o               ( b_resp_valid_o               ),
+    .b_last_o                     ( b_last_o                     ),
+    .b_error_o                    ( b_error_o                    ),
     .hyper_cs_no                  ( hyper_cs_no                  ),
     .hyper_ck_o                   ( hyper_ck_o                   ),
     .hyper_ck_no                  ( hyper_ck_no                  ),
@@ -193,6 +199,7 @@ module hyperbus_phy_tb;
         int received_data[];
         int timeoutAfter = -1;
         logic testPassed = 1'bx;
+        logic write_error = 0;
 
         function new (int burst);
             this.burst = burst;
@@ -234,10 +241,10 @@ module hyperbus_phy_tb;
         endtask : checkTimeOfFirstByte
 
         task assertTimeoutOccured();
-            assert(this.timeoutAfter > -1) else begin
+            assert(this.timeoutAfter > -1 || this.write_error) else begin
                 $error("A timeout was expected, but no timeout occured");
             end
-            setTestPassed(this.timeoutAfter > -1);
+            setTestPassed(this.timeoutAfter > -1 || this.write_error);
         endtask : assertTimeoutOccured
 
         task printResult();
@@ -316,7 +323,7 @@ module hyperbus_phy_tb;
       input trans_ready_o;
 
       output tx_valid_i, tx_data_i, tx_strb_i;
-      input tx_ready_o;
+      input tx_ready_o, b_resp_valid_o, b_last_o, b_error_o;
 
       output rx_ready_i;
       input rx_valid_o, rx_data_o, rx_last_o, rx_error_o;
@@ -444,6 +451,14 @@ module hyperbus_phy_tb;
 
         stimuli = new(32'h3000, 64);
         stimuli.name("Timeout for CS");
+
+        doTransaction(stimuli);
+
+        result.assertTimeoutOccured();
+        result.printResult();
+
+        stimuli = new(32'h0, 64);
+        stimuli.write(writeData64, mask64);
 
         doTransaction(stimuli);
 
@@ -629,6 +644,9 @@ module hyperbus_phy_tb;
             ##2; //Wait one cycle of clk0
         end
         cb_hyper_phy.tx_valid_i <= 1'b0;
+
+        wait(cb_hyper_phy.b_resp_valid_o);
+        result.write_error = cb_hyper_phy.b_error_o;
 
     endtask : writeData
 

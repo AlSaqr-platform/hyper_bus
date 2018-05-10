@@ -52,11 +52,11 @@ module chip #(
     (* keep = "true" *) logic [7:0] hyper_dq_o;
     (* keep = "true" *) logic hyper_dq_oe_o;
 
-    assign debug[0] = hyper_cs_no[0];
+    assign debug[0] = clk_phy_90;
     assign debug[1] = hyper_rwds_i;
     assign debug[9:2] = hyper_dq_i[7:0];
 
-    clk_generation clk_generation_i (
+    clk_generation_slow clk_generation_i (
         .clk_phy_0  ( clk_phy_0               ),
         .clk_phy_90 ( clk_phy_90              ),
         .clk_sys    ( clk_sys                 ),

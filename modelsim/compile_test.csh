@@ -31,7 +31,7 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/clock_diff_out.sv \
     ../src/clk_gen.sv \
     ../src/ddr_out.sv \
-    ../src/delay_line.sv \
+    ../src/hyperbus_delay_line.sv \
     ../src/pad_simulation.sv \
     ../src/read_clk_rwds.sv \
     ../src/hyperbus.sv \

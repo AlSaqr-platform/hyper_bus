@@ -13,7 +13,7 @@ module pad_io #(
   parameter WIDTH = 1
   )(
     input  logic [WIDTH-1:0] data_i,
-    input  logic             oe_i,
+    input  logic             oe_i, //high output, low input
     output logic [WIDTH-1:0] data_o,
     inout  logic [WIDTH-1:0] pad_io
 );
