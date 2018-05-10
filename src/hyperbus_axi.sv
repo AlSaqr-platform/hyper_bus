@@ -147,7 +147,7 @@ module hyperbus_axi #(
                     end
                 end
                 READ_ERROR: begin //Have to signal valid response with every read
-                    if(~rx_last_i) begin
+                    if(rx_last_i) begin
                         read_state <= READ_READY;
                     end
                 end
