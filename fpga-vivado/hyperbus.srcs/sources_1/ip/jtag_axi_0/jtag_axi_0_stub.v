@@ -1,7 +1,7 @@
 // Copyright 1986-2017 Xilinx, Inc. All Rights Reserved.
 // --------------------------------------------------------------------------------
 // Tool Version: Vivado v.2017.2 (lin64) Build 1909853 Thu Jun 15 18:39:10 MDT 2017
-// Date        : Fri Apr 20 16:13:10 2018
+// Date        : Wed May  9 17:00:59 2018
 // Host        : badile15.ee.ethz.ch running 64-bit CentOS Linux release 7.3.1611 (Core)
 // Command     : write_verilog -force -mode synth_stub
 //               /scratch/hyperbus/fpga-vivado/hyperbus.srcs/sources_1/ip/jtag_axi_0/jtag_axi_0_stub.v
@@ -21,10 +21,10 @@ module jtag_axi_0(aclk, aresetn, m_axi_awid, m_axi_awaddr,
   m_axi_araddr, m_axi_arlen, m_axi_arsize, m_axi_arburst, m_axi_arlock, m_axi_arcache, 
   m_axi_arprot, m_axi_arqos, m_axi_arvalid, m_axi_arready, m_axi_rid, m_axi_rdata, m_axi_rresp, 
   m_axi_rlast, m_axi_rvalid, m_axi_rready)
-/* synthesis syn_black_box black_box_pad_pin="aclk,aresetn,m_axi_awid[0:0],m_axi_awaddr[31:0],m_axi_awlen[7:0],m_axi_awsize[2:0],m_axi_awburst[1:0],m_axi_awlock,m_axi_awcache[3:0],m_axi_awprot[2:0],m_axi_awqos[3:0],m_axi_awvalid,m_axi_awready,m_axi_wdata[31:0],m_axi_wstrb[3:0],m_axi_wlast,m_axi_wvalid,m_axi_wready,m_axi_bid[0:0],m_axi_bresp[1:0],m_axi_bvalid,m_axi_bready,m_axi_arid[0:0],m_axi_araddr[31:0],m_axi_arlen[7:0],m_axi_arsize[2:0],m_axi_arburst[1:0],m_axi_arlock,m_axi_arcache[3:0],m_axi_arprot[2:0],m_axi_arqos[3:0],m_axi_arvalid,m_axi_arready,m_axi_rid[0:0],m_axi_rdata[31:0],m_axi_rresp[1:0],m_axi_rlast,m_axi_rvalid,m_axi_rready" */;
+/* synthesis syn_black_box black_box_pad_pin="aclk,aresetn,m_axi_awid[3:0],m_axi_awaddr[31:0],m_axi_awlen[7:0],m_axi_awsize[2:0],m_axi_awburst[1:0],m_axi_awlock,m_axi_awcache[3:0],m_axi_awprot[2:0],m_axi_awqos[3:0],m_axi_awvalid,m_axi_awready,m_axi_wdata[31:0],m_axi_wstrb[3:0],m_axi_wlast,m_axi_wvalid,m_axi_wready,m_axi_bid[3:0],m_axi_bresp[1:0],m_axi_bvalid,m_axi_bready,m_axi_arid[3:0],m_axi_araddr[31:0],m_axi_arlen[7:0],m_axi_arsize[2:0],m_axi_arburst[1:0],m_axi_arlock,m_axi_arcache[3:0],m_axi_arprot[2:0],m_axi_arqos[3:0],m_axi_arvalid,m_axi_arready,m_axi_rid[3:0],m_axi_rdata[31:0],m_axi_rresp[1:0],m_axi_rlast,m_axi_rvalid,m_axi_rready" */;
   input aclk;
   input aresetn;
-  output [0:0]m_axi_awid;
+  output [3:0]m_axi_awid;
   output [31:0]m_axi_awaddr;
   output [7:0]m_axi_awlen;
   output [2:0]m_axi_awsize;
@@ -40,11 +40,11 @@ module jtag_axi_0(aclk, aresetn, m_axi_awid, m_axi_awaddr,
   output m_axi_wlast;
   output m_axi_wvalid;
   input m_axi_wready;
-  input [0:0]m_axi_bid;
+  input [3:0]m_axi_bid;
   input [1:0]m_axi_bresp;
   input m_axi_bvalid;
   output m_axi_bready;
-  output [0:0]m_axi_arid;
+  output [3:0]m_axi_arid;
   output [31:0]m_axi_araddr;
   output [7:0]m_axi_arlen;
   output [2:0]m_axi_arsize;
@@ -55,7 +55,7 @@ module jtag_axi_0(aclk, aresetn, m_axi_awid, m_axi_awaddr,
   output [3:0]m_axi_arqos;
   output m_axi_arvalid;
   input m_axi_arready;
-  input [0:0]m_axi_rid;
+  input [3:0]m_axi_rid;
   input [31:0]m_axi_rdata;
   input [1:0]m_axi_rresp;
   input m_axi_rlast;

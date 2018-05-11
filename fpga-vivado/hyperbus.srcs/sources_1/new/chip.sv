@@ -75,7 +75,7 @@ module chip #(
     ) axi_i(clk_phy_0);
 
 
-    hyperbus #(.NR_CS(NR_CS), .BURST_WIDTH(BURST_WIDTH)) hyperbus_i (
+    hyperbus #(.NR_CS(NR_CS), .BURST_WIDTH(BURST_WIDTH), .AXI_IW(4)) hyperbus_i (
         .clk0            ( clk_phy_0       ),
         .clk90           ( clk_phy_90      ),
         .rst_ni          ( rst_ni          ),

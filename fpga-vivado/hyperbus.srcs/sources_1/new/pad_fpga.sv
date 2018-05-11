@@ -33,7 +33,7 @@ module pad_io #(
     genvar i;
     generate
       for(i=0; i<WIDTH; i++)
-      begin: ddr_in
+      begin: io_buf
         IOBUF #(
           .DRIVE(12), // Specify the output drive strength
           .IBUF_LOW_PWR("FALSE"), // Low Power - "TRUE", High Perforrmance = "FALSE"

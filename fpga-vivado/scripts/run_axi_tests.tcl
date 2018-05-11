@@ -22,7 +22,7 @@ run_hw_axi wr2_16
 run_hw_axi rd0_16
 set result [get_property DATA [get_hw_axi_txns  rd0_16]]
 set expected_result 0000ff000000ddee0000bbcc000099aa000077880000556600003344000011220000ff000000ddee0000bbcc000099aa00007788000055660000334400001122
-if {![expr {$result eq $expected_result}]} {error "received unexpected results: $result"}
+if {![expr {$result eq $expected_result}]} {error "received unexpected results"}
 
 run_hw_axi rd2_8
 set result [get_property DATA [get_hw_axi_txns  rd2_8]]

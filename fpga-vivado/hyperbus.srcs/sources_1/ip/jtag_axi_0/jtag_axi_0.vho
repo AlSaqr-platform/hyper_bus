@@ -56,7 +56,7 @@ COMPONENT jtag_axi_0
   PORT (
     aclk : IN STD_LOGIC;
     aresetn : IN STD_LOGIC;
-    m_axi_awid : OUT STD_LOGIC_VECTOR(0 DOWNTO 0);
+    m_axi_awid : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
     m_axi_awaddr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     m_axi_awlen : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
     m_axi_awsize : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
@@ -72,11 +72,11 @@ COMPONENT jtag_axi_0
     m_axi_wlast : OUT STD_LOGIC;
     m_axi_wvalid : OUT STD_LOGIC;
     m_axi_wready : IN STD_LOGIC;
-    m_axi_bid : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    m_axi_bid : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
     m_axi_bresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
     m_axi_bvalid : IN STD_LOGIC;
     m_axi_bready : OUT STD_LOGIC;
-    m_axi_arid : OUT STD_LOGIC_VECTOR(0 DOWNTO 0);
+    m_axi_arid : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
     m_axi_araddr : OUT STD_LOGIC_VECTOR(31 DOWNTO 0);
     m_axi_arlen : OUT STD_LOGIC_VECTOR(7 DOWNTO 0);
     m_axi_arsize : OUT STD_LOGIC_VECTOR(2 DOWNTO 0);
@@ -87,7 +87,7 @@ COMPONENT jtag_axi_0
     m_axi_arqos : OUT STD_LOGIC_VECTOR(3 DOWNTO 0);
     m_axi_arvalid : OUT STD_LOGIC;
     m_axi_arready : IN STD_LOGIC;
-    m_axi_rid : IN STD_LOGIC_VECTOR(0 DOWNTO 0);
+    m_axi_rid : IN STD_LOGIC_VECTOR(3 DOWNTO 0);
     m_axi_rdata : IN STD_LOGIC_VECTOR(31 DOWNTO 0);
     m_axi_rresp : IN STD_LOGIC_VECTOR(1 DOWNTO 0);
     m_axi_rlast : IN STD_LOGIC;

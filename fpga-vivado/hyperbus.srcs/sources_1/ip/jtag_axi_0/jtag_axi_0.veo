@@ -57,7 +57,7 @@
 jtag_axi_0 your_instance_name (
   .aclk(aclk),                    // input wire aclk
   .aresetn(aresetn),              // input wire aresetn
-  .m_axi_awid(m_axi_awid),        // output wire [0 : 0] m_axi_awid
+  .m_axi_awid(m_axi_awid),        // output wire [3 : 0] m_axi_awid
   .m_axi_awaddr(m_axi_awaddr),    // output wire [31 : 0] m_axi_awaddr
   .m_axi_awlen(m_axi_awlen),      // output wire [7 : 0] m_axi_awlen
   .m_axi_awsize(m_axi_awsize),    // output wire [2 : 0] m_axi_awsize
@@ -73,11 +73,11 @@ jtag_axi_0 your_instance_name (
   .m_axi_wlast(m_axi_wlast),      // output wire m_axi_wlast
   .m_axi_wvalid(m_axi_wvalid),    // output wire m_axi_wvalid
   .m_axi_wready(m_axi_wready),    // input wire m_axi_wready
-  .m_axi_bid(m_axi_bid),          // input wire [0 : 0] m_axi_bid
+  .m_axi_bid(m_axi_bid),          // input wire [3 : 0] m_axi_bid
   .m_axi_bresp(m_axi_bresp),      // input wire [1 : 0] m_axi_bresp
   .m_axi_bvalid(m_axi_bvalid),    // input wire m_axi_bvalid
   .m_axi_bready(m_axi_bready),    // output wire m_axi_bready
-  .m_axi_arid(m_axi_arid),        // output wire [0 : 0] m_axi_arid
+  .m_axi_arid(m_axi_arid),        // output wire [3 : 0] m_axi_arid
   .m_axi_araddr(m_axi_araddr),    // output wire [31 : 0] m_axi_araddr
   .m_axi_arlen(m_axi_arlen),      // output wire [7 : 0] m_axi_arlen
   .m_axi_arsize(m_axi_arsize),    // output wire [2 : 0] m_axi_arsize
@@ -88,7 +88,7 @@ jtag_axi_0 your_instance_name (
   .m_axi_arqos(m_axi_arqos),      // output wire [3 : 0] m_axi_arqos
   .m_axi_arvalid(m_axi_arvalid),  // output wire m_axi_arvalid
   .m_axi_arready(m_axi_arready),  // input wire m_axi_arready
-  .m_axi_rid(m_axi_rid),          // input wire [0 : 0] m_axi_rid
+  .m_axi_rid(m_axi_rid),          // input wire [3 : 0] m_axi_rid
   .m_axi_rdata(m_axi_rdata),      // input wire [31 : 0] m_axi_rdata
   .m_axi_rresp(m_axi_rresp),      // input wire [1 : 0] m_axi_rresp
   .m_axi_rlast(m_axi_rlast),      // input wire m_axi_rlast

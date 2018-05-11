@@ -15,7 +15,6 @@
 module hyperbus_axi #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
-
     parameter AXI_IW = 10
 )(
     input logic                     clk_i,          // Clock
@@ -69,13 +68,13 @@ module hyperbus_axi #(
     assign rx_ready_o = axi_i.r_ready;
 
     typedef enum logic[3:0] {WRITE_READY, WRITE, WRITE_RESP, WRITE_ERROR} write_t;
-    write_t write_state;
+    (* keep = "true" *) write_t write_state;
 
     typedef enum logic[3:0] {READ_READY, READ, READ_RESP, READ_ERROR} read_t;
-    read_t read_state;
+    (* keep = "true" *) read_t read_state;
 
-    typedef enum logic[3:0] {TRANS_READY, TRANS_READ, TRANS_WRITE, TRANS_FULL} trans_t;
-    trans_t trans_state;
+    typedef enum logic[2:0] {TRANS_READY, TRANS_READ, TRANS_WRITE, TRANS_FULL} trans_t;
+    (* keep = "true" *) trans_t trans_state;
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_write_state
         if(~rst_ni) begin

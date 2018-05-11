@@ -21,8 +21,8 @@ set_max_delay -datapath_only -from [get_ports hyper_rwds_io] -to [get_pins hyper
 #needed as input is sampled with clk_rwds but output is clk0 - see saved report
 set_false_path -from [get_ports hyper_rwds_io] -to [get_ports hyper_rwds_io]
 
-set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/hyper_dq_oe_o_reg/C] -to [get_ports {hyper_dq_io[*]}] 8
-set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/hyper_rwds_oe_o_reg/C] -to [get_ports {hyper_rwds_io}] 8
+set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/hyper_dq_oe_o_reg/C] -to [get_ports {hyper_dq_io[*]}] 15
+set_max_delay -datapath_only -from [get_pins hyperbus_i/phy_i/hyper_rwds_oe_o_reg/C] -to [get_ports {hyper_rwds_io}] 15
 
 set_max_delay -datapath_only -from [get_pins {hyperbus_i/phy_i/hyper_trans_state_reg[*]/C}] -to [get_pins {hyperbus_i/phy_i/hyper_cs_no_reg[*]/D}] 12.5
 set_max_delay -datapath_only -from [get_pins {hyperbus_i/phy_i/local_cs_reg[*]/C}] -to [get_pins {hyperbus_i/phy_i/hyper_cs_no_reg[*]/D}] 12.5
@@ -110,4 +110,4 @@ set_output_delay -clock $fwclk -min [expr $period/2 - $thd_f] [get_ports $output
 # report_timing -fall_to [get_ports $output_ports] -max_paths 20 -nworst 2 -delay_type min_max -name src_sync_ddr_out_fall -file src_sync_ddr_out_fall.txt;
 
 
-set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets {pad_sim/ddr_in[0].IOBUF_inst/O}]
+set_property CLOCK_DEDICATED_ROUTE FALSE [get_nets {pad_sim/io_buf[0].IOBUF_inst/O}]

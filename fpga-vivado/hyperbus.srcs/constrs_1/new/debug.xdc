@@ -30,7 +30,7 @@ connect_debug_port u_ila_0/probe3 [get_nets [list {hyperbus_i/axi_i\\.ar_len[0]}
 create_debug_port u_ila_0 probe
 set_property PROBE_TYPE DATA [get_debug_ports u_ila_0/probe4]
 set_property port_width 3 [get_debug_ports u_ila_0/probe4]
-connect_debug_port u_ila_0/probe4 [get_nets [list {hyperbus_i/axi2phy_i/hyper_axi_state[0]} {hyperbus_i/axi2phy_i/hyper_axi_state[1]} {hyperbus_i/axi2phy_i/hyper_axi_state[2]}]]
+connect_debug_port u_ila_0/probe4 [get_nets [list {hyperbus_i/axi2phy_i/trans_state[0]} {hyperbus_i/axi2phy_i/trans_state[1]} {hyperbus_i/axi2phy_i/trans_state[2]}]]
 create_debug_port u_ila_0 probe
 set_property PROBE_TYPE DATA [get_debug_ports u_ila_0/probe5]
 set_property port_width 1 [get_debug_ports u_ila_0/probe5]

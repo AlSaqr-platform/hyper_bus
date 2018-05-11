@@ -126,7 +126,7 @@ module hyperbus #(
     b_resp      axi_b_resp;
     b_resp      phy_b_resp;
 
-    hyperbus_axi axi2phy_i (
+    hyperbus_axi #(.AXI_IW(AXI_IW)) axi2phy_i (
         .clk_i                 ( clk_i                   ),
         .rst_ni                ( rst_ni                  ),
         .axi_i                 ( axi_i                   ),  

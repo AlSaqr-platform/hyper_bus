@@ -52,7 +52,7 @@
 
 (* X_CORE_INFO = "jtag_axi_v1_2_3_jtag_axi,Vivado 2017.2" *)
 (* CHECK_LICENSE_TYPE = "jtag_axi_0,jtag_axi_v1_2_3_jtag_axi,{}" *)
-(* CORE_GENERATION_INFO = "jtag_axi_0,jtag_axi_v1_2_3_jtag_axi,{x_ipProduct=Vivado 2017.2,x_ipVendor=xilinx.com,x_ipLibrary=ip,x_ipName=jtag_axi,x_ipVersion=1.2,x_ipCoreRevision=3,x_ipLanguage=VERILOG,x_ipSimLanguage=MIXED,RD_TXN_QUEUE_LENGTH=1,WR_TXN_QUEUE_LENGTH=1,M_AXI_ID_WIDTH=1,M_AXI_ADDR_WIDTH=32,FAMILY=zynquplus,M_AXI_DATA_WIDTH=32,M_HAS_BURST=1,PROTOCOL=0}" *)
+(* CORE_GENERATION_INFO = "jtag_axi_0,jtag_axi_v1_2_3_jtag_axi,{x_ipProduct=Vivado 2017.2,x_ipVendor=xilinx.com,x_ipLibrary=ip,x_ipName=jtag_axi,x_ipVersion=1.2,x_ipCoreRevision=3,x_ipLanguage=VERILOG,x_ipSimLanguage=MIXED,RD_TXN_QUEUE_LENGTH=3,WR_TXN_QUEUE_LENGTH=3,M_AXI_ID_WIDTH=4,M_AXI_ADDR_WIDTH=32,FAMILY=zynquplus,M_AXI_DATA_WIDTH=32,M_HAS_BURST=1,PROTOCOL=0}" *)
 (* DowngradeIPIdentifiedWarnings = "yes" *)
 module jtag_axi_0 (
   aclk,
@@ -101,7 +101,7 @@ input wire aclk;
 (* X_INTERFACE_INFO = "xilinx.com:signal:reset:1.0 signal_reset RST" *)
 input wire aresetn;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI AWID" *)
-output wire [0 : 0] m_axi_awid;
+output wire [3 : 0] m_axi_awid;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI AWADDR" *)
 output wire [31 : 0] m_axi_awaddr;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI AWLEN" *)
@@ -133,7 +133,7 @@ output wire m_axi_wvalid;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI WREADY" *)
 input wire m_axi_wready;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI BID" *)
-input wire [0 : 0] m_axi_bid;
+input wire [3 : 0] m_axi_bid;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI BRESP" *)
 input wire [1 : 0] m_axi_bresp;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI BVALID" *)
@@ -141,7 +141,7 @@ input wire m_axi_bvalid;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI BREADY" *)
 output wire m_axi_bready;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI ARID" *)
-output wire [0 : 0] m_axi_arid;
+output wire [3 : 0] m_axi_arid;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI ARADDR" *)
 output wire [31 : 0] m_axi_araddr;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI ARLEN" *)
@@ -163,7 +163,7 @@ output wire m_axi_arvalid;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI ARREADY" *)
 input wire m_axi_arready;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI RID" *)
-input wire [0 : 0] m_axi_rid;
+input wire [3 : 0] m_axi_rid;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI RDATA" *)
 input wire [31 : 0] m_axi_rdata;
 (* X_INTERFACE_INFO = "xilinx.com:interface:aximm:1.0 M_AXI RRESP" *)
@@ -176,9 +176,9 @@ input wire m_axi_rvalid;
 output wire m_axi_rready;
 
   jtag_axi_v1_2_3_jtag_axi #(
-    .RD_TXN_QUEUE_LENGTH(1),
-    .WR_TXN_QUEUE_LENGTH(1),
-    .M_AXI_ID_WIDTH(1),
+    .RD_TXN_QUEUE_LENGTH(3),
+    .WR_TXN_QUEUE_LENGTH(3),
+    .M_AXI_ID_WIDTH(4),
     .M_AXI_ADDR_WIDTH(32),
     .FAMILY("zynquplus"),
     .M_AXI_DATA_WIDTH(32),
