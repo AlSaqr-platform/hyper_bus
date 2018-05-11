@@ -150,7 +150,7 @@ module hyperbus_tb;
   int expectedResulth0f03 = 16'h0f03;
   int expectedResulth0001 = 16'h0001;
   int expectedResultRegWrite = 16'h8f1f;
-  int expectedResultStrobe[16] = '{16'h3456, 16'hff56, 16'h34ff, 16'hffff, 16'h3456, 16'hff56, 16'h34ff, 16'hffff,16'h3456, 16'hff56, 16'h34ff, 16'hffff, 16'h3456, 16'hff56, 16'h34ff, 16'hffff};
+  int expectedResultStrobe[16] = '{16'hffff, 16'hff56, 16'h34ff, 16'h3456, 16'hffff, 16'hff56, 16'h34ff, 16'h3456,16'hffff, 16'hff56, 16'h34ff, 16'h3456,16'hffff, 16'hff56, 16'h34ff, 16'h3456};
 
   initial begin
 
@@ -174,72 +174,12 @@ module hyperbus_tb;
     // cfg_drv.send_read('hdeadbeef, data, error);
     // repeat(3) @(posedge clk_i);
 
-    // // Access the AXI interface.
-    // ax = new;
-    // ax.ax_addr = 'b1;
-    // axi_drv.send_aw(ax);
-
-    // w = new;
-    // // w.w_last = 1; //?
-    // axi_drv.send_w(w);
-    // axi_drv.recv_b(b);
-    // repeat(3) @(posedge clk_i);
-
-    // axi_drv.send_ar(ax);
-    // axi_drv.recv_r(r);
-
-    // repeat(10) @(posedge clk_i);
-    // done = 1;
-
-    //TODO: Long transactions
-    //With break during write
-
-    // ax = new;
-    // ax.ax_addr = 'h05FFF3;
-    // ax.ax_len = 'd15;
-    // ax.ax_burst = 'b01;
-    // axi_drv.send_ar(ax);
-
-    // for(int i = 0; i < ax.ax_len+1; i++) begin
-    //   axi_drv.recv_r(r);
-    //   data[i]=r.r_data;
-    //   $display("%4h", data[i]);
-    //   assert(data[i] == expectedResultAt05FFF3[i]) else $error("Received %4h at index %p, but expected %4h", data[i], i, expectedResultAt05FFF3[i]);
-    // end
-    
-    // axi_drv.send_aw(ax);
-
-    // w = new;
-    // w.w_data = 'h0f03;
-    // w.w_burst = 'b01;
-    // w.w_strb = 2'b11;
-
-    // for(int i = 0; i < ax.ax_len+1; i++) begin
-    //   w.w_data = data[i+1];
-    //   if(i==w.w_len) begin
-    //     w.w_last = 1;
-    //   end
-    //   axi_drv.send_w(w);
-    // end
-    // axi_drv.recv_b(b);
-    
-    // axi_drv.send_ar(ax);
-    // for(int i = 0; i < ax.ax_len+1; i++) begin
-    //   axi_drv.recv_r(r);
-    //   data[i]=r.r_data;
-    //   $display("%4h", data[i]);
-    //   assert(data[i] == expectedResultAt05FFF3[i+1]) else $error("Received %4h at index %p, but expected %4h", data[i], i, expectedResulth0f03);
-    // end
-
-    //Reg write
     ax = new;
     w = new;
     r = new;
     b = new;
     RegisterReadWriteRead(ax, w, b, r, reg_data);
     ax.ax_addr = 'h05FFF5;
-    WriteWithBreak(ax, w, b);
-    ShortRead(ax,r);
     WriteWithStrobe(ax,w,b,r);
     done = 1;
   end
@@ -270,7 +210,7 @@ module hyperbus_tb;
     for(int i = 0; i < ax.ax_len+1; i++) begin
       axi_drv.recv_r(r);
       $display("%h", r.r_data);
-      assert(r.r_data == w.w_data) else $error("Received %4h, but expected %4h", r.r_data, w.w_data);
+      assert(r.r_data == expectedResultStrobe[i]) else $error("Received %4h, but expected %4h", r.r_data, expectedResultStrobe[i]);
     end
     $display("WriteWithStrobe Finished");
   endtask : WriteWithStrobe
@@ -333,7 +273,7 @@ module hyperbus_tb;
   task LongWrite(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b);
     //Without break
     //Write
-    ax.ax_len = 'd222;
+    ax.ax_len = 'd30;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
 
@@ -354,7 +294,7 @@ module hyperbus_tb;
 
   task LongRead(axi_driver_t::ax_beat_t ax, axi_driver_t::r_beat_t r);
     //Read
-    ax.ax_len = 'd222;
+    ax.ax_len = 'd30;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
 
