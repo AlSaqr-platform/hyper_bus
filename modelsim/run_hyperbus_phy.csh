@@ -3,4 +3,8 @@
 set VER=10.6b
 set LIB=work
 
-vsim-${VER} -work ${LIB} hyperbus_phy_tb -voptargs=+acc
+vsim-${VER} -work ${LIB} \
+          -L uk65lscllmvbbl_vlog \
+          -L u065gioll25mvir_vlog \
+          -voptargs=+acc \
+          hyperbus_phy_tb

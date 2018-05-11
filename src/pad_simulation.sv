@@ -18,6 +18,29 @@ module pad_io #(
     inout  logic [WIDTH-1:0] pad_io
 );
 
+// `define pads_iumb
+
+`ifdef pads_iumb
+    genvar i;
+    generate
+      for(i=0; i<WIDTH; i++)
+      begin: pad_io_buf
+        IUMB iumb_i (
+            .DO(data_i[i]),
+            .DI(data_o[i]),
+            .PAD(pad_io[i]),
+            .OE(oe_i),
+            .IDDQ(1'b0),
+            .PIN2(1'b0),
+            .PIN1(1'b0),
+            .SMT(1'b0),
+            .PD(1'b0),
+            .PU(1'b0),
+            .SR(1'b0)
+        );
+      end
+    endgenerate
+`else 
     logic [WIDTH-1:0] out;
 
     assign #2000 data_o = pad_io;
@@ -26,5 +49,6 @@ module pad_io #(
     assign #3000 out = (oe_i) ? data_i : 8'bz;
 
     assign #2000 pad_io = out;
+`endif
 
 endmodule
