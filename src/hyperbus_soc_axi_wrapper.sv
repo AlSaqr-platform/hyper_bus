@@ -49,8 +49,10 @@ module hyperbus_soc_axi_wrapper(
 
     );
 
-    axi_prober #(.AW(64), .DW(64), .UW( 1), .IW(10)) hyper_axi_prober_i        (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i        ));
-    axi_prober #(.AW(32), .DW(16), .UW( 1), .IW(10)) hyper_axi_prober_narrow_i (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(axi_narrow_narrow_i));
+    `ifndef SYNTHESIS
+        axi_prober #(.AW(64), .DW(64), .UW( 1), .IW(10)) hyper_axi_prober_i        (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i        ));
+        axi_prober #(.AW(32), .DW(16), .UW( 1), .IW(10)) hyper_axi_prober_narrow_i (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(axi_narrow_narrow_i));
+    `endif
 
     kerbin_axi_addr_size_converter #(
     .AW_IN                  (64),
