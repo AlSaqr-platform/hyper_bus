@@ -107,7 +107,7 @@ module hyperbus_macro (
   wire hyper_dq_oe_o_inner;
   wire hyper_reset_no_inner;
 
-  hyperbus i_hyperbus (
+  hyperbus_inflate i_hyperbus (
     .clk_i(clk_i), 
     .rst_ni(rst_ni),
     .axi_i_ar_addr(axi_i_ar_addr), 

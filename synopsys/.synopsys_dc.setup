@@ -15,14 +15,16 @@ set company  {ETH IIS/DZ}
 #****** search path ******
 set search_path [concat  \
 /usr/pack/umc-65-kgf/umc/ll/u065gioll25mvir/b04/synopsys \
+/usr/pack/umc-65-kgf/umc/ll/uk65lscllmvbbh/b03/synopsys \
 /usr/pack/umc-65-kgf/umc/ll/uk65lscllmvbbl/b03/synopsys \
+/usr/pack/umc-65-kgf/umc/ll/uk65lscllmvbbr/b03/synopsys \
 $search_path]
 
 
 #****** std.cells/pads, macro cell: symbol, target and link library ******
-set link_library   [list "*" uk65lscllmvbbl_120c25_tc.db u065gioll25mvir_25_tc.db]
-set target_library [list uk65lscllmvbbl_120c25_tc.db u065gioll25mvir_25_tc.db]
-set symbol_library [list uk65lscllmvbbl.sdb u065gioll25mvir.sdb]
+set link_library   [list "*" uk65lscllmvbbl_120c25_tc.db uk65lscllmvbbr_120c25_tc.db uk65lscllmvbbh_120c25_tc.db u065gioll25mvir_25_tc.db]
+set target_library [list uk65lscllmvbbl_120c25_tc.db uk65lscllmvbbr_120c25_tc.db uk65lscllmvbbh_120c25_tc.db u065gioll25mvir_25_tc.db]
+set symbol_library [list uk65lscllmvbbl.sdb uk65lscllmvbbr.sdb uk65lscllmvbbh.sdb u065gioll25mvir.sdb]
 set alib_library_analysis_path "./alib"
 
 #****** Using different Corners and models ******
@@ -40,10 +42,10 @@ set alib_library_analysis_path "./alib"
 #**  uncomment the corresponding line below
 #** 
 #** WORST CASE: 
-#** set target_library [list uk65lscllmvbbl_108c125_wc.db u065gioll25mvir_25_wc.db]
+#** set target_library [list uk65lscllmvbbl_108c125_wc.db uk65lscllmvbbr_108c125_wc.db uk65lscllmvbbh_108c125_wc.db u065gioll25mvir_25_wc.db]
 #** 
 #** BEST CASE: 
-#** set target_library [list uk65lscllmvbbl_132c0_bc.db u065gioll25mvir_25_bc.db]
+#** set target_library [list uk65lscllmvbbl_132c0_bc.db uk65lscllmvbbr_132c0_bc.db uk65lscllmvbbh_132c0_bc.db u065gioll25mvir_25_bc.db]
 #**
 #**  You can change to one of these models. If you have questions 
 #**  send e-mail to: dz@ee.ethz.ch
@@ -59,6 +61,8 @@ set link_library      [concat  $link_library      dw_foundation.sldb]
 define_design_lib work -path ./WORK
 
 define_design_lib uk65lscllmvbbl -path /usr/pack/umc-65-kgf/umc/ll/uk65lscllmvbbl/b03/synopsys.dz/2016.03/WORK
+define_design_lib uk65lscllmvbbr -path /usr/pack/umc-65-kgf/umc/ll/uk65lscllmvbbr/b03/synopsys.dz/2016.03/WORK
+define_design_lib uk65lscllmvbbh -path /usr/pack/umc-65-kgf/umc/ll/uk65lscllmvbbh/b03/synopsys.dz/2016.03/WORK
 define_design_lib u065gioll25mvir -path /usr/pack/umc-65-kgf/umc/ll/u065gioll25mvir/b04/synopsys.dz/2016.03/WORK
 
 

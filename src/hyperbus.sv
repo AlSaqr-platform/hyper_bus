@@ -12,6 +12,8 @@
 // Description:
 `timescale 1ps/1ps
 
+import axi_pkg::*;
+
 module hyperbus #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
@@ -59,7 +61,7 @@ module hyperbus #(
 `endif
     
     //TODO: cdc_fifo_gray for TX/RX from axi to phy
-    logic                          axi_tx_valid_o;
+    logic                          axi_tx_valid;
     logic                          axi_tx_ready;
 
     // receiving channel
@@ -126,7 +128,7 @@ module hyperbus #(
     b_resp      axi_b_resp;
     b_resp      phy_b_resp;
 
-    hyperbus_axi #(.AXI_IW(AXI_IW)) axi2phy_i (
+    hyperbus_axi #(.AXI_IW(AXI_IW)) axi2phy_ix (
         .clk_i                 ( clk_i                   ),
         .rst_ni                ( rst_ni                  ),
         .axi_i                 ( axi_i                   ),  
@@ -259,4 +261,275 @@ module hyperbus #(
         .dst_valid_o ( axi_rx_valid ),  
         .dst_ready_i ( axi_rx_ready )
     );   
+endmodule
+
+
+module hyperbus_inflate #(
+    parameter BURST_WIDTH = 12,
+    parameter NR_CS = 2,
+    parameter AXI_AW = 32,
+    parameter AXI_UW = 0,
+    parameter AXI_IW = 10
+)(
+`ifdef FPGA
+    input  logic                   clk0,    // Clock
+    input  logic                   clk90,    // Clock
+`else
+    input  logic                   clk_i,
+`endif
+    input logic                    rst_ni,         // Asynchronous reset active low
+
+    //REG_BUS.in                     cfg_i,
+
+    input  logic [AXI_IW-1:0]      axi_i_aw_id,
+    input  logic [AXI_AW-1:0]      axi_i_aw_addr,
+    input  logic [7:0]             axi_i_aw_len,
+    input  logic [2:0]             axi_i_aw_size,
+    input  burst_t                 axi_i_aw_burst,
+    input  logic                   axi_i_aw_lock,
+    input  cache_t                 axi_i_aw_cache,
+    input  prot_t                  axi_i_aw_prot,
+    input  qos_t                   axi_i_aw_qos,
+    input  region_t                axi_i_aw_region,
+    input  logic [AXI_UW-1:0]      axi_i_aw_user,
+    input  logic                   axi_i_aw_valid,
+    output logic                   axi_i_aw_ready,
+
+    input  logic [15:0]            axi_i_w_data,
+    input  logic [1:0]             axi_i_w_strb,
+    input  logic                   axi_i_w_last,
+    input  logic [AXI_UW-1:0]      axi_i_w_user,
+    input  logic                   axi_i_w_valid,
+    output logic                   axi_i_w_ready,
+
+    output logic [AXI_IW-1:0]      axi_i_b_id,
+    output resp_t                  axi_i_b_resp,
+    output logic [AXI_UW-1:0]      axi_i_b_user,
+    output logic                   axi_i_b_valid,
+    input  logic                   axi_i_b_ready,
+
+    input  logic [AXI_IW-1:0]      axi_i_ar_id,
+    input  logic [AXI_AW-1:0]      axi_i_ar_addr,
+    input  logic [7:0]             axi_i_ar_len,
+    input  logic [2:0]             axi_i_ar_size,
+    input  burst_t                 axi_i_ar_burst,
+    input  logic                   axi_i_ar_lock,
+    input  cache_t                 axi_i_ar_cache,
+    input  prot_t                  axi_i_ar_prot,
+    input  qos_t                   axi_i_ar_qos,
+    input  region_t                axi_i_ar_region,
+    input  logic [AXI_UW-1:0]      axi_i_ar_user,
+    input  logic                   axi_i_ar_valid,
+    output logic                   axi_i_ar_ready,
+
+    output logic [AXI_IW-1:0]      axi_i_r_id,
+    output logic [15:0]            axi_i_r_data,
+    output resp_t                  axi_i_r_resp,
+    output logic                   axi_i_r_last,
+    output logic [AXI_UW-1:0]      axi_i_r_user,
+    output logic                   axi_i_r_valid,
+    input  logic                   axi_i_r_ready,
+
+    // physical interface
+    output logic [NR_CS-1:0]       hyper_cs_no,
+    output logic                   hyper_ck_o,
+    output logic                   hyper_ck_no,
+    output logic                   hyper_rwds_o,
+    input  logic                   hyper_rwds_i,
+    output logic                   hyper_rwds_oe_o,
+    input  logic [7:0]             hyper_dq_i,
+    output logic [7:0]             hyper_dq_o,
+    output logic                   hyper_dq_oe_o,
+    output logic                   hyper_reset_no
+);
+
+    AXI_BUS #(
+        .AXI_ADDR_WIDTH    ( AXI_AW ),
+        .AXI_DATA_WIDTH    ( 16     ),
+        .AXI_ID_WIDTH      ( AXI_IW ),
+        .AXI_USER_WIDTH    ( AXI_UW )
+    ) axi_i (clk_i);
+
+    assign axi_i.aw_id     = axi_i_aw_id;
+    assign axi_i.aw_addr   = axi_i_aw_addr;
+    assign axi_i.aw_len    = axi_i_aw_len;
+    assign axi_i.aw_size   = axi_i_aw_size;
+    assign axi_i.aw_burst  = axi_i_aw_burst;
+    assign axi_i.aw_lock   = axi_i_aw_lock;
+    assign axi_i.aw_cache  = axi_i_aw_cache;
+    assign axi_i.aw_prot   = axi_i_aw_prot;
+    assign axi_i.aw_qos    = axi_i_aw_qos;
+    assign axi_i.aw_region = axi_i_aw_region;
+    assign axi_i.aw_user   = axi_i_aw_user;
+    assign axi_i.aw_valid  = axi_i_aw_valid;
+    assign axi_i_aw_ready  = axi_i.aw_ready;
+
+    assign axi_i.w_data    = axi_i_w_data;
+    assign axi_i.w_strb    = axi_i_w_strb;
+    assign axi_i.w_last    = axi_i_w_last;
+    assign axi_i.w_user    = axi_i_w_user;
+    assign axi_i.w_valid   = axi_i_w_valid;
+    assign axi_i_w_ready   = axi_i.w_ready;
+
+    assign axi_i_b_id      = axi_i.b_id;
+    assign axi_i_b_resp    = axi_i.b_resp;
+    assign axi_i_b_user    = axi_i.b_user;
+    assign axi_i_b_valid   = axi_i.b_valid;
+    assign axi_i.b_ready   = axi_i_b_ready;
+
+    assign axi_i.ar_id     = axi_i_ar_id;
+    assign axi_i.ar_addr   = axi_i_ar_addr;
+    assign axi_i.ar_len    = axi_i_ar_len;
+    assign axi_i.ar_size   = axi_i_ar_size;
+    assign axi_i.ar_burst  = axi_i_ar_burst;
+    assign axi_i.ar_lock   = axi_i_ar_lock;
+    assign axi_i.ar_cache  = axi_i_ar_cache;
+    assign axi_i.ar_prot   = axi_i_ar_prot;
+    assign axi_i.ar_qos    = axi_i_ar_qos;
+    assign axi_i.ar_region = axi_i_ar_region;
+    assign axi_i.ar_user   = axi_i_ar_user;
+    assign axi_i.ar_valid  = axi_i_ar_valid;
+    assign axi_i_ar_ready  = axi_i.ar_ready;
+
+    assign axi_i_r_id      = axi_i.r_id;
+    assign axi_i_r_data    = axi_i.r_data;
+    assign axi_i_r_resp    = axi_i.r_resp;
+    assign axi_i_r_last    = axi_i.r_last;
+    assign axi_i_r_user    = axi_i.r_user;
+    assign axi_i_r_valid   = axi_i.r_valid;
+    assign axi_i.r_ready   = axi_i_r_ready;
+
+
+    hyperbus #(
+        .BURST_WIDTH ( BURST_WIDTH ),
+        .NR_CS       ( NR_CS       ),
+        .AXI_IW      ( AXI_IW      )
+    ) i_deflate (
+        .clk_i           ( clk_i           ),
+        .rst_ni          ( rst_ni          ),         // Asynchronous reset active low
+
+        .axi_i           ( axi_i           ),
+
+        .hyper_cs_no     ( hyper_cs_no     ),
+        .hyper_ck_o      ( hyper_ck_o      ),
+        .hyper_ck_no     ( hyper_ck_no     ),
+        .hyper_rwds_o    ( hyper_rwds_o    ),
+        .hyper_rwds_i    ( hyper_rwds_i    ),
+        .hyper_rwds_oe_o ( hyper_rwds_oe_o ),
+        .hyper_dq_i      ( hyper_dq_i      ),
+        .hyper_dq_o      ( hyper_dq_o      ),
+        .hyper_dq_oe_o   ( hyper_dq_oe_o   ),
+        .hyper_reset_no  ( hyper_reset_no  )
+    );
+
+endmodule
+
+
+module hyperbus_deflate #(
+    parameter BURST_WIDTH = 12,
+    parameter NR_CS = 2,
+    parameter AXI_AW = 32,
+    parameter AXI_UW = 0,
+    parameter AXI_IW = 10
+)(
+`ifdef FPGA
+    input  logic                   clk0,    // Clock
+    input  logic                   clk90,    // Clock
+`else
+    input  logic                   clk_i,
+`endif
+    input logic                    rst_ni,         // Asynchronous reset active low
+
+    //REG_BUS.in                     cfg_i,
+    AXI_BUS.in                     axi_i,
+    // physical interface
+    output logic [NR_CS-1:0]       hyper_cs_no,
+    output logic                   hyper_ck_o,
+    output logic                   hyper_ck_no,
+    output logic                   hyper_rwds_o,
+    input  logic                   hyper_rwds_i,
+    output logic                   hyper_rwds_oe_o,
+    input  logic [7:0]             hyper_dq_i,
+    output logic [7:0]             hyper_dq_o,
+    output logic                   hyper_dq_oe_o,
+    output logic                   hyper_reset_no
+);
+
+    hyperbus_inflate #(
+        .BURST_WIDTH ( BURST_WIDTH ),
+        .NR_CS       ( NR_CS       ),
+        .AXI_AW      ( AXI_AW      ),
+        .AXI_UW      ( AXI_UW      ),
+        .AXI_IW      ( AXI_IW      )
+    ) i_inflate (
+    `ifdef FPGA
+        .clk0            ( clk0            ),    // Clock
+        .clk90           ( clk90           ),    // Clock
+    `else
+        .clk_i           ( clk_i           ),
+    `endif
+        .rst_ni          ( rst_ni          ),         // Asynchronous reset active low
+
+        .axi_i_aw_id     ( axi_i.aw_id     ),
+        .axi_i_aw_addr   ( axi_i.aw_addr   ),
+        .axi_i_aw_len    ( axi_i.aw_len    ),
+        .axi_i_aw_size   ( axi_i.aw_size   ),
+        .axi_i_aw_burst  ( axi_i.aw_burst  ),
+        .axi_i_aw_lock   ( axi_i.aw_lock   ),
+        .axi_i_aw_cache  ( axi_i.aw_cache  ),
+        .axi_i_aw_prot   ( axi_i.aw_prot   ),
+        .axi_i_aw_qos    ( axi_i.aw_qos    ),
+        .axi_i_aw_region ( axi_i.aw_region ),
+        .axi_i_aw_user   ( axi_i.aw_user   ),
+        .axi_i_aw_valid  ( axi_i.aw_valid  ),
+        .axi_i_aw_ready  ( axi_i.aw_ready  ),
+
+        .axi_i_w_data    ( axi_i.w_data    ),
+        .axi_i_w_strb    ( axi_i.w_strb    ),
+        .axi_i_w_last    ( axi_i.w_last    ),
+        .axi_i_w_user    ( axi_i.w_user    ),
+        .axi_i_w_valid   ( axi_i.w_valid   ),
+        .axi_i_w_ready   ( axi_i.w_ready   ),
+
+        .axi_i_b_id      ( axi_i.b_id      ),
+        .axi_i_b_resp    ( axi_i.b_resp    ),
+        .axi_i_b_user    ( axi_i.b_user    ),
+        .axi_i_b_valid   ( axi_i.b_valid   ),
+        .axi_i_b_ready   ( axi_i.b_ready   ),
+
+        .axi_i_ar_id     ( axi_i.ar_id     ),
+        .axi_i_ar_addr   ( axi_i.ar_addr   ),
+        .axi_i_ar_len    ( axi_i.ar_len    ),
+        .axi_i_ar_size   ( axi_i.ar_size   ),
+        .axi_i_ar_burst  ( axi_i.ar_burst  ),
+        .axi_i_ar_lock   ( axi_i.ar_lock   ),
+        .axi_i_ar_cache  ( axi_i.ar_cache  ),
+        .axi_i_ar_prot   ( axi_i.ar_prot   ),
+        .axi_i_ar_qos    ( axi_i.ar_qos    ),
+        .axi_i_ar_region ( axi_i.ar_region ),
+        .axi_i_ar_user   ( axi_i.ar_user   ),
+        .axi_i_ar_valid  ( axi_i.ar_valid  ),
+        .axi_i_ar_ready  ( axi_i.ar_ready  ),
+
+        .axi_i_r_id      ( axi_i.r_id      ),
+        .axi_i_r_data    ( axi_i.r_data    ),
+        .axi_i_r_resp    ( axi_i.r_resp    ),
+        .axi_i_r_last    ( axi_i.r_last    ),
+        .axi_i_r_user    ( axi_i.r_user    ),
+        .axi_i_r_valid   ( axi_i.r_valid   ),
+        .axi_i_r_ready   ( axi_i.r_ready   ),
+
+        // physical interface
+        .hyper_cs_no     ( hyper_cs_no     ),
+        .hyper_ck_o      ( hyper_ck_o      ),
+        .hyper_ck_no     ( hyper_ck_no     ),
+        .hyper_rwds_o    ( hyper_rwds_o    ),
+        .hyper_rwds_i    ( hyper_rwds_i    ),
+        .hyper_rwds_oe_o ( hyper_rwds_oe_o ),
+        .hyper_dq_i      ( hyper_dq_i      ),
+        .hyper_dq_o      ( hyper_dq_o      ),
+        .hyper_dq_oe_o   ( hyper_dq_oe_o   ),
+        .hyper_reset_no  ( hyper_reset_no  )
+    );
+
 endmodule
