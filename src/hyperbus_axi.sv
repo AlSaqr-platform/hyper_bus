@@ -20,6 +20,7 @@ module hyperbus_axi #(
     input logic                     clk_i,          // Clock
     input logic                     rst_ni,         // Asynchronous reset active low
     
+    input logic [NR_CS*64-1:0]      config_addr_mapping,
     AXI_BUS.in                      axi_i,
 
     input logic [15:0]              rx_data_i,
@@ -33,7 +34,8 @@ module hyperbus_axi #(
     output logic                    tx_valid_o,
     input logic                     tx_ready_i,
 
-    input logic                     b_last_i, //Valid
+    input logic                     b_valid_i,
+    input logic                     b_last_i,
     input logic                     b_error_i,
 
     //Direct trans to phy
@@ -48,7 +50,10 @@ module hyperbus_axi #(
 );
 
     //Connect/MUX trans signals to address write and read channels 
-    assign trans_cs_o = 1'b1; //Address range
+
+    //Config: 2 registers per NR_CS, first is start address, second is last address e.g. 0, 3FFFFF, 400000, 7FFFFF
+    assign trans_cs_o[0] =  ( config_addr_mapping[62:32] > trans_address_o[30:0] ) && ( trans_address_o[30:0] > config_addr_mapping[30:0] );
+    assign trans_cs_o[1] =  ( config_addr_mapping[126:96] > trans_address_o[30:0] ) && ( trans_address_o[30:0] > config_addr_mapping[94:64] );
 
     assign trans_address_o = trans_write_o ? axi_i.aw_addr : axi_i.ar_addr;
     assign trans_burst_o = (trans_write_o ? axi_i.aw_len : axi_i.ar_len)+ 1;
@@ -94,14 +99,14 @@ module hyperbus_axi #(
                     end
                 end
                 WRITE_RESP: begin
-                    if(b_last_i && axi_i.b_ready) begin
+                    if(b_valid_i && b_last_i && axi_i.b_ready) begin
                         write_state <= WRITE_READY;
                     end if(b_error_i) begin
                         write_state <= WRITE_ERROR;
                     end
                 end
                 WRITE_ERROR: begin
-                     if(axi_i.b_ready) begin
+                     if(~b_error_i) begin //axi_i.b_ready && 
                         write_state <= WRITE_READY;
                     end
                 end
@@ -116,7 +121,7 @@ module hyperbus_axi #(
         axi_i.b_user = 1'b0;
         case(write_state)
             WRITE_RESP: begin
-                if (b_last_i) begin
+                if (b_valid_i && b_last_i) begin
                     axi_i.b_valid = 1'b1;
                     axi_i.b_resp = 2'b00;
                 end
