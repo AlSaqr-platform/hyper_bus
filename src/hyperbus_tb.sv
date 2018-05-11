@@ -16,10 +16,10 @@ module hyperbus_tb;
   logic             clk_i = 0;
   logic             rst_ni = 1;
 
-  // REG_BUS #(
-  //   .ADDR_WIDTH ( 32 ),
-  //   .DATA_WIDTH ( 32 )
-  // ) cfg_i(clk_i);
+  REG_BUS #(
+    .ADDR_WIDTH ( 32 ),
+    .DATA_WIDTH ( 32 )
+  ) cfg_i(clk_i);
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( 32 ),
@@ -28,12 +28,12 @@ module hyperbus_tb;
     .AXI_USER_WIDTH ( 0  )
   ) axi_i(clk_i);
 
-  // typedef reg_test::reg_driver #(
-  //   .AW ( 32       ),
-  //   .DW ( 32       ),
-  //   .TA ( TCLK*0.2 ),
-  //   .TT ( TCLK*0.8 )
-  // ) cfg_driver_t;
+  typedef reg_test::reg_driver #(
+    .AW ( 32       ),
+    .DW ( 32       ),
+    .TA ( TCLK*0.2 ),
+    .TT ( TCLK*0.8 )
+  ) cfg_driver_t;
 
   typedef axi_test::axi_driver #(
     .AW ( 32       ),
@@ -64,7 +64,7 @@ module hyperbus_tb;
   ) dut_i (
     .clk_i           ( clk_i           ),
     .rst_ni          ( rst_ni          ),
-    //.cfg_i           ( cfg_i           ),
+    .cfg_i           ( cfg_i           ),
     .axi_i           ( axi_i           ),
     .hyper_cs_no     ( hyper_cs_no     ),
     .hyper_ck_o      ( hyper_ck_o      ),
@@ -180,6 +180,8 @@ module hyperbus_tb;
     b = new;
     RegisterReadWriteRead(ax, w, b, r, reg_data);
     ax.ax_addr = 'h05FFF5;
+    LongRead(ax,r);
+    LongWrite(ax, w, b);
     WriteWithStrobe(ax,w,b,r);
     done = 1;
   end

@@ -25,7 +25,7 @@ module hyperbus #(
 `endif
     input logic                    rst_ni,         // Asynchronous reset active low
 
-    //REG_BUS.in                     cfg_i,
+    REG_BUS.in                     cfg_i,
     AXI_BUS.in                     axi_i,
     // physical interface
     output logic [NR_CS-1:0]       hyper_cs_no,
@@ -58,6 +58,13 @@ module hyperbus #(
     );
 `endif
     
+    logic [31:0]                   config_t_latency_access;
+    logic [31:0]                   config_t_latency_additional;
+    logic [31:0]                   config_t_cs_max;
+    logic [31:0]                   config_t_read_write_recovery;
+    logic [31:0]                   config_t_rwds_delay_line;
+    logic [NR_CS*64-1:0]           config_addr_mapping;
+
     //TODO: cdc_fifo_gray for TX/RX from axi to phy
     logic                          axi_tx_valid_o;
     logic                          axi_tx_ready;
@@ -126,9 +133,27 @@ module hyperbus #(
     b_resp      axi_b_resp;
     b_resp      phy_b_resp;
 
+
+    config_registers config_registers_i (
+        .clk_i                        ( clk_i                        ),
+        .rst_ni                       ( rst_ni                       ),
+
+        .cfg_i                        ( cfg_i                        ),
+
+        .config_t_latency_access      ( config_t_latency_access      ),
+        .config_t_latency_additional  ( config_t_latency_additional  ),
+        .config_t_cs_max              ( config_t_cs_max              ),
+        .config_t_read_write_recovery ( config_t_read_write_recovery ),
+        .config_t_rwds_delay_line     ( config_t_rwds_delay_line     ),
+        .config_addr_mapping          ( config_addr_mapping          )
+    );
+
     hyperbus_axi #(.AXI_IW(AXI_IW)) axi2phy_i (
         .clk_i                 ( clk_i                   ),
         .rst_ni                ( rst_ni                  ),
+
+        .config_addr_mapping   ( config_addr_mapping     ),
+
         .axi_i                 ( axi_i                   ),  
 
         .rx_data_i             ( axi_rx.data             ),
@@ -142,6 +167,7 @@ module hyperbus #(
         .tx_valid_o            ( axi_tx_valid            ),
         .tx_ready_i            ( axi_tx_ready            ),
 
+        .b_valid_i             ( axi_b_valid             ),
         .b_last_i              ( axi_b_resp.last         ),
         .b_error_i             ( axi_b_resp.error        ),
 
@@ -156,50 +182,50 @@ module hyperbus #(
     );
 
     hyperbus_phy phy_i (
-        .clk0                         ( clk0                  ),
-        .clk90                        ( clk90                 ),
-        .rst_ni                       ( rst_ni                ),
+        .clk0                         ( clk0                         ),
+        .clk90                        ( clk90                        ),
+        .rst_ni                       ( rst_ni                       ),
 
-        .config_t_latency_access      ( 32'h6                 ),
-        .config_t_latency_additional  ( 32'h6                 ),
-        .config_t_cs_max              ( 32'd665               ),
-        .config_t_read_write_recovery ( 32'h6                 ),
-        .config_t_rwds_delay_line     ( 32'd2000              ),
+        .config_t_latency_access      ( config_t_latency_access      ),
+        .config_t_latency_additional  ( config_t_latency_additional  ),
+        .config_t_cs_max              ( config_t_cs_max              ),
+        .config_t_read_write_recovery ( config_t_read_write_recovery ),
+        .config_t_rwds_delay_line     ( config_t_rwds_delay_line     ),
 
-        .trans_valid_i                ( phy_trans_valid         ),
-        .trans_ready_o                ( phy_trans_ready         ),
-        .trans_address_i              ( phy_trans.address       ),
-        .trans_cs_i                   ( phy_trans.cs            ),
-        .trans_write_i                ( phy_trans.write         ),
-        .trans_burst_i                ( phy_trans.burst         ),
-        .trans_burst_type_i           ( phy_trans.burst_type    ),
-        .trans_address_space_i        ( phy_trans.address_space ),
+        .trans_valid_i                ( phy_trans_valid              ),
+        .trans_ready_o                ( phy_trans_ready              ),
+        .trans_address_i              ( phy_trans.address            ),
+        .trans_cs_i                   ( phy_trans.cs                 ),
+        .trans_write_i                ( phy_trans.write              ),
+        .trans_burst_i                ( phy_trans.burst              ),
+        .trans_burst_type_i           ( phy_trans.burst_type         ),
+        .trans_address_space_i        ( phy_trans.address_space      ),
 
-        .tx_valid_i                   ( phy_tx_valid          ),
-        .tx_ready_o                   ( phy_tx_ready          ),
-        .tx_data_i                    ( phy_tx.data           ),
-        .tx_strb_i                    ( phy_tx.strb           ),
+        .tx_valid_i                   ( phy_tx_valid                 ),
+        .tx_ready_o                   ( phy_tx_ready                 ),
+        .tx_data_i                    ( phy_tx.data                  ),
+        .tx_strb_i                    ( phy_tx.strb                  ),
 
-        .rx_valid_o                   ( phy_rx_valid          ),
-        .rx_ready_i                   ( phy_rx_ready          ),
-        .rx_data_o                    ( phy_rx.data           ),
-        .rx_error_o                   ( phy_rx.error          ),
-        .rx_last_o                    ( phy_rx.last           ),
+        .rx_valid_o                   ( phy_rx_valid                 ),
+        .rx_ready_i                   ( phy_rx_ready                 ),
+        .rx_data_o                    ( phy_rx.data                  ),
+        .rx_error_o                   ( phy_rx.error                 ),
+        .rx_last_o                    ( phy_rx.last                  ),
 
-        .b_resp_valid_o               ( phy_b_valid           ),
-        .b_last_o                     ( phy_b_resp.last       ),
-        .b_error_o                    ( phy_b_resp.error      ),
+        .b_resp_valid_o               ( phy_b_valid                  ),
+        .b_last_o                     ( phy_b_resp.last              ),
+        .b_error_o                    ( phy_b_resp.error             ),
 
-        .hyper_cs_no                  ( hyper_cs_no           ),
-        .hyper_ck_o                   ( hyper_ck_o            ),
-        .hyper_ck_no                  ( hyper_ck_no           ),
-        .hyper_rwds_o                 ( hyper_rwds_o          ),
-        .hyper_rwds_i                 ( hyper_rwds_i          ),
-        .hyper_rwds_oe_o              ( hyper_rwds_oe_o       ),
-        .hyper_dq_i                   ( hyper_dq_i            ),
-        .hyper_dq_o                   ( hyper_dq_o            ),
-        .hyper_dq_oe_o                ( hyper_dq_oe_o         ),
-        .hyper_reset_no               ( hyper_reset_no        )
+        .hyper_cs_no                  ( hyper_cs_no                  ),
+        .hyper_ck_o                   ( hyper_ck_o                   ),
+        .hyper_ck_no                  ( hyper_ck_no                  ),
+        .hyper_rwds_o                 ( hyper_rwds_o                 ),
+        .hyper_rwds_i                 ( hyper_rwds_i                 ),
+        .hyper_rwds_oe_o              ( hyper_rwds_oe_o              ),
+        .hyper_dq_i                   ( hyper_dq_i                   ),
+        .hyper_dq_o                   ( hyper_dq_o                   ),
+        .hyper_dq_oe_o                ( hyper_dq_oe_o                ),
+        .hyper_reset_no               ( hyper_reset_no               )
     );
 
     cdc_2phase #(.T(trans_struct)) i_cdc_2phase_trans_signals (
@@ -226,7 +252,7 @@ module hyperbus #(
         .dst_rst_ni  ( rst_ni      ),
         .dst_clk_i   ( clk_i       ),
         .dst_data_o  ( axi_b_resp  ),
-        .dst_valid_o (             ),
+        .dst_valid_o ( axi_b_valid ),
         .dst_ready_i ( 1'b1        )
     );
 
