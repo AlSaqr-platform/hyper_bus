@@ -21,7 +21,9 @@ module hyperbus_soc_axi_wrapper(
     );
 
 
-    AXI_BUS  #(.AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH(10)) narrow_axi_i (.clk_i(clk_i));
+    AXI_BUS  #(.AXI_ADDR_WIDTH(64), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) narrow_axi_i             (.clk_i(clk_i));
+    AXI_BUS  #(.AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) axi_narrow_narrow_i      (.clk_i(clk_i));
+
     
     REG_BUS  #(.ADDR_WIDTH    (64), .DATA_WIDTH    (64)) le_bus_bus (.clk_i(clk_i));
 
@@ -33,7 +35,7 @@ module hyperbus_soc_axi_wrapper(
         .clk_i           ( clk_i           ),
         .rst_ni          ( rst_ni          ),
         //.cfg_i           ( le_bus_bus.in   ),
-        .axi_i           ( narrow_axi_i    ),
+        .axi_i           ( axi_narrow_narrow_i    ),
         .hyper_cs_no     ( hyper_cs_no     ),
         .hyper_ck_o      ( hyper_ck_o      ),
         .hyper_ck_no     ( hyper_ck_no     ),
@@ -47,16 +49,31 @@ module hyperbus_soc_axi_wrapper(
 
     );
 
-    axi_prober #(.AW(64), .DW(64), .UW(10), .IW(10)) hyper_axi_prober_i (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i));
+    axi_prober #(.AW(64), .DW(64), .UW( 1), .IW(10)) hyper_axi_prober_i        (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i        ));
+    axi_prober #(.AW(32), .DW(16), .UW( 1), .IW(10)) hyper_axi_prober_narrow_i (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(axi_narrow_narrow_i));
+
+    kerbin_axi_addr_size_converter #(
+    .AW_IN                  (64),
+        .AW_OUT                 (32),
+        .DW                     (16),
+        .UW                     ( 1),
+        .IW                     (10)
+
+        ) axi_addr_conv_i (
+        .clk_i                  (clk_i              ),
+        .axi_in                 (narrow_axi_i       ),
+        .axi_out                (axi_narrow_narrow_i)
+
+        );
 
     //le fun :)
     axi_size_conv_DOWNSIZE #(
         .AXI_ADDR_WIDTH         ( 64                       ),
         .AXI_DATA_WIDTH_IN      ( 64                       ),
-        .AXI_USER_WIDTH_IN      ( 10                       ),
+        .AXI_USER_WIDTH_IN      (  1                       ),
         .AXI_ID_WIDTH_IN        ( 10                       ),
         .AXI_DATA_WIDTH_OUT     ( 16                       ),
-        .AXI_USER_WIDTH_OUT     ( 10                       ),
+        .AXI_USER_WIDTH_OUT     (  1                       ),
         .AXI_ID_WIDTH_OUT       ( 10                       )
                         
     ) hyper_axi_ds_i (
