@@ -1,61 +1,27 @@
-module hyperbus_soc_axi_wrapper(
+module kerbin_to_hyperbus_axi(
 
     input  logic                   clk_i,
     input logic                    rst_ni,      
 
-    //REG_BUS.in                     cfg_i,
-    AXI_BUS.in                     hyper_axi_i,
+    AXI_BUS                        hyper_axi_i,
+    //AXI_BUS                        hyper_cfg_axi_i,
 
-    // physical interface
-    output logic [2-1:0]           hyper_cs_no,
-    output logic                   hyper_ck_o,
-    output logic                   hyper_ck_no,
-    output logic                   hyper_rwds_o,
-    input  logic                   hyper_rwds_i,
-    output logic                   hyper_rwds_oe_o,
-    input  logic [7:0]             hyper_dq_i,
-    output logic [7:0]             hyper_dq_o,
-    output logic                   hyper_dq_oe_o,
-    output logic                   hyper_reset_no
+    AXI_BUS                        hyper_axi_o,
+    REG_BUS                        hyper_cfg_reg_o
 
     );
 
 
-    AXI_BUS  #(.AXI_ADDR_WIDTH(64), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) narrow_axi_i             (.clk_i(clk_i));
-    AXI_BUS  #(.AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) axi_narrow_narrow_i      (.clk_i(clk_i));
+    AXI_BUS  #(.AXI_ADDR_WIDTH(64), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) narrow_axi_i     (.clk_i(clk_i));
 
-    
-    REG_BUS  #(.ADDR_WIDTH    (64), .DATA_WIDTH    (64)) le_bus_bus (.clk_i(clk_i));
-
-
-    hyperbus #(
-        .NR_CS(2)
-    ) hyperbus_top_i (
-
-        .clk_i           ( clk_i                  ),
-        .rst_ni          ( rst_ni                 ),
-        .cfg_i           ( le_bus_bus.in          ),
-        .axi_i           ( axi_narrow_narrow_i    ),
-        .hyper_cs_no     ( hyper_cs_no            ),
-        .hyper_ck_o      ( hyper_ck_o             ),
-        .hyper_ck_no     ( hyper_ck_no            ),
-        .hyper_rwds_o    ( hyper_rwds_o           ),
-        .hyper_rwds_i    ( hyper_rwds_i           ),
-        .hyper_rwds_oe_o ( hyper_rwds_oe_o        ),
-        .hyper_dq_i      ( hyper_dq_i             ),
-        .hyper_dq_o      ( hyper_dq_o             ),
-        .hyper_dq_oe_o   ( hyper_dq_oe_o          ),
-        .hyper_reset_no  ( hyper_reset_no         )
-
-    );
 
     `ifndef SYNTHESIS
-        axi_prober #(.AW(64), .DW(64), .UW( 1), .IW(10)) hyper_axi_prober_i        (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i        ));
-        axi_prober #(.AW(32), .DW(16), .UW( 1), .IW(10)) hyper_axi_prober_narrow_i (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(axi_narrow_narrow_i));
+        axi_prober #(.AW(64), .DW(64), .UW( 1), .IW(10)) hyper_axi_prober_i        (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i));
+        axi_prober #(.AW(32), .DW(16), .UW( 1), .IW(10)) hyper_axi_prober_narrow_i (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_o));
     `endif
 
     kerbin_axi_addr_size_converter #(
-    .AW_IN                  (64),
+        .AW_IN                  (64),
         .AW_OUT                 (32),
         .DW                     (16),
         .UW                     ( 1),
@@ -64,9 +30,9 @@ module hyperbus_soc_axi_wrapper(
         ) axi_addr_conv_i (
         .clk_i                  (clk_i              ),
         .axi_in                 (narrow_axi_i       ),
-        .axi_out                (axi_narrow_narrow_i)
+        .axi_out                (hyper_axi_o        )
 
-        );
+    );
 
     //le fun :)
     axi_size_conv_DOWNSIZE #(
@@ -183,4 +149,4 @@ module hyperbus_soc_axi_wrapper(
 
     );
 
-endmodule //hyperbus_soc_axi_wrapper
+endmodule //kerbin_to_hyperbus_axi
