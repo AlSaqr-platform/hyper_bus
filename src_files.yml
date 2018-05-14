@@ -21,12 +21,18 @@ hyperbus:
     src/hyperbus_phy.sv,
     src/cmd_addr_gen.sv,
     src/ddr_in.sv,
+    src/hyperbus_soc_axi_wrapper.sv,
+    src/kerbin_to_hyperbus_axi.sv,
   ]
 
 hyperbus_soc:
+  targets: [
+    umc65,
+ ]
   files: [
     src/hyperbus_soc_axi_wrapper.sv,
     src/kerbin_to_hyperbus_axi.sv,
+    src/hyperbus_stub.sv,
   ]
 
 hyperbus_sim:
