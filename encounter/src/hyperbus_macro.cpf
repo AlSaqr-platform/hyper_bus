@@ -41,7 +41,7 @@ set_hierarchy_separator "/"
 #-------------------------------------------------------------------------------
 # design name
 #-------------------------------------------------------------------------------
-set_design hyperbus_macro
+set_design hyperbus_inflate
 
 
 #-------------------------------------------------------------------------------
@@ -49,7 +49,7 @@ set_design hyperbus_macro
 #-------------------------------------------------------------------------------
 # create power domains
 create_power_domain -name PD_core -default
-#create_power_domain -name PD_pad
+create_power_domain -name PD_pad -base_domains PD_core
 
 
 #set_instance pad_In_DI_15  -model XX_H_G -domain_mapping {{PAD_GP_VDD_VSS PD_core} {PAD_GP_VDDPST_VSSPST PD_pad}}
@@ -64,7 +64,7 @@ update_power_domain -name PD_core -primary_power_net VDD -primary_ground_net VSS
 
 create_power_nets  -nets VDDIO
 create_ground_nets -nets VSSIO
-#update_power_domain -name PD_pad -primary_power_net VDDIO -primary_ground_net VSSIO
+update_power_domain -name PD_pad -primary_power_net VDDIO -primary_ground_net VSSIO
 
 # create global connections
 create_global_connection -net VDDIO  -pins VDDIO

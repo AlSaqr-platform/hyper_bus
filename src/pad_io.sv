@@ -15,10 +15,10 @@ module pad_io #(
     input  logic [WIDTH-1:0] data_i,
     input  logic             oe_i, //high output, low input
     output logic [WIDTH-1:0] data_o,
-    inout  logic [WIDTH-1:0] pad_io
+    inout  wire  [WIDTH-1:0] pad_io
 );
 
-// `define pads_iumb
+`define pads_iumb
 
 `ifdef pads_iumb
     genvar i;

@@ -4,7 +4,7 @@
 #
 
 set defHierChar {/}
-set init_verilog {../synopsys/netlists/hyperbus.v src/hyperbus_macro.v}
+set init_verilog {../synopsys/netlists/hyperbus_macro.v}
 set init_design_settop 0
 
 # set init_io_file  {src/chip.io}

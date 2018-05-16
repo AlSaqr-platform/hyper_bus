@@ -1,5 +1,6 @@
 module hyperbus_macro (
-  clk_i,
+  clk_phy_i,
+  clk_sys_i,
   rst_ni,
   axi_i_ar_addr,
   axi_i_ar_burst,
@@ -53,6 +54,8 @@ module hyperbus_macro (
   hyper_rwds_io
 );
 
+  input clk_phy_i, clk_sys_i, rst_ni;
+
   input [9:0] axi_i_aw_id;
   input [31:0] axi_i_aw_addr;
   input [7:0] axi_i_aw_len;
@@ -84,7 +87,7 @@ module hyperbus_macro (
   output [1:0] axi_i_r_resp;
   output [-1:0] axi_i_r_user;
   
-  input clk_i, rst_ni, axi_i_aw_lock, axi_i_aw_valid, axi_i_w_last,
+  input  axi_i_aw_lock, axi_i_aw_valid, axi_i_w_last,
          axi_i_w_valid, axi_i_b_ready, axi_i_ar_lock, axi_i_ar_valid,
          axi_i_r_ready;
   output axi_i_aw_ready, axi_i_w_ready, axi_i_b_valid, axi_i_ar_ready,
@@ -107,8 +110,9 @@ module hyperbus_macro (
   wire hyper_dq_oe_o_inner;
   wire hyper_reset_no_inner;
 
-  hyperbus_inflate i_hyperbus (
-    .clk_i(clk_i), 
+  hyperbus_macro_inflate i_hyperbus (
+    .clk_phy_i(clk_phy_i),
+    .clk_sys_i(clk_sys_i),
     .rst_ni(rst_ni),
     .axi_i_ar_addr(axi_i_ar_addr), 
     .axi_i_ar_burst(axi_i_ar_burst), 

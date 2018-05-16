@@ -33,9 +33,10 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/clk_gen.sv \
     ../src/ddr_out.sv \
     ../src/hyperbus_delay_line.sv \
-    ../src/pad_simulation.sv \
+    ../src/pad_io.sv \
     ../src/read_clk_rwds.sv \
     ../src/hyperbus.sv \
+    ../src/hyperbus_macro.sv \
     ../src/hyperbus_phy.sv \
     ../src/hyperbus_axi.sv \
     ../src/cmd_addr_gen.sv \
