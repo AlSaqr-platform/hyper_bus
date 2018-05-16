@@ -66,7 +66,7 @@ module hyperbus #(
     logic [NR_CS*64-1:0]           config_addr_mapping;
 
     //TODO: cdc_fifo_gray for TX/RX from axi to phy
-    logic                          axi_tx_valid_o;
+    logic                          axi_tx_valid;
     logic                          axi_tx_ready;
 
     // receiving channel
@@ -96,6 +96,9 @@ module hyperbus #(
 
     logic                          axi_tx_error;
     logic                          axi_tx_last;
+
+    logic                          axi_b_valid;
+    logic                          axi_b_ready;
     typedef struct packed{ 
         logic [NR_CS-1:0]          cs;        // chipselect
         logic                      write;     // transaction is a write
@@ -168,6 +171,7 @@ module hyperbus #(
         .tx_ready_i            ( axi_tx_ready            ),
 
         .b_valid_i             ( axi_b_valid             ),
+        .b_ready_o             ( axi_b_ready             ),
         .b_last_i              ( axi_b_resp.last         ),
         .b_error_i             ( axi_b_resp.error        ),
 
@@ -253,7 +257,7 @@ module hyperbus #(
         .dst_clk_i   ( clk_i       ),
         .dst_data_o  ( axi_b_resp  ),
         .dst_valid_o ( axi_b_valid ),
-        .dst_ready_i ( 1'b1        )
+        .dst_ready_i ( axi_b_ready )
     );
 
     //Write data, TX CDC FIFO
