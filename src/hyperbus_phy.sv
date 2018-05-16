@@ -76,6 +76,8 @@ module hyperbus_phy #(
     logic [15:0] write_data;
     logic [1:0]  write_strb;
     logic [15:0] cs_max;
+    logic        write_valid;
+
 
     //local copy of transaction
     (* dont_touch = "true" *) logic [31:0]            local_address;
@@ -153,9 +155,13 @@ module hyperbus_phy #(
         if(~rst_ni) begin
             write_data <= 0;
             write_strb <= 0;
-        end else if(tx_valid_i && tx_ready_o) begin
-            write_data <= tx_data_i;
-            write_strb <= tx_strb_i;
+            write_valid <= 0;
+        end else begin
+            if(tx_valid_i && tx_ready_o) begin
+                write_data <= tx_data_i;
+                write_strb <= tx_strb_i;
+            end
+            write_valid <= tx_valid_i && tx_ready_o;
         end
     end
 
@@ -284,7 +290,7 @@ module hyperbus_phy #(
                     if(wait_cnt == 4'h0) begin
                         burst_cnt <= local_burst - 1;
                         if (local_write) begin
-                            if(tx_valid_i) begin
+                            if(write_valid) begin
                                 hyper_trans_state <= DATA_W;
                             end else begin //Data to write not ready yet
                                 hyper_trans_state <= WAIT_W;
@@ -491,7 +497,7 @@ module hyperbus_phy #(
             if (en_cs) begin
                 cs_max <= cs_max - 1;
             end else begin
-                cs_max <= config_t_cs_max;
+                cs_max <= config_t_cs_max; //30
             end
         end
     end
