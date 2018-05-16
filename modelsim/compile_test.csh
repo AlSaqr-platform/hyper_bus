@@ -28,6 +28,7 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/register_interface/src/reg_uniform.sv \
     ../src/config_registers.sv \
     ../src/config_registers_tb.sv \
+    ../src/delayline/PROGDEL8.v \
     ../src/clock_diff_out.sv \
     ../src/clk_gen.sv \
     ../src/ddr_out.sv \

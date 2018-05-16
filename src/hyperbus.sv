@@ -268,7 +268,7 @@ module hyperbus_inflate #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
     parameter AXI_AW = 32,
-    parameter AXI_UW = 0,
+    parameter AXI_UW = 1,
     parameter AXI_IW = 10
 )(
 `ifdef FPGA
@@ -429,7 +429,7 @@ module hyperbus_deflate #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
     parameter AXI_AW = 32,
-    parameter AXI_UW = 0,
+    parameter AXI_UW = 1,
     parameter AXI_IW = 10
 )(
 `ifdef FPGA

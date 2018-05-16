@@ -62,13 +62,13 @@ module hyperbus_macro (
   input [2:0] axi_i_aw_prot;
   input [3:0] axi_i_aw_qos;
   input [3:0] axi_i_aw_region;
-  input [0:0] axi_i_aw_user;
+  input [-1:0] axi_i_aw_user;
   input [15:0] axi_i_w_data;
   input [1:0] axi_i_w_strb;
-  input [0:0] axi_i_w_user;
+  input [-1:0] axi_i_w_user;
   output [9:0] axi_i_b_id;
   output [1:0] axi_i_b_resp;
-  output [0:0] axi_i_b_user;
+  output [-1:0] axi_i_b_user;
   input [9:0] axi_i_ar_id;
   input [31:0] axi_i_ar_addr;
   input [7:0] axi_i_ar_len;
@@ -78,11 +78,11 @@ module hyperbus_macro (
   input [2:0] axi_i_ar_prot;
   input [3:0] axi_i_ar_qos;
   input [3:0] axi_i_ar_region;
-  input [0:0] axi_i_ar_user;
+  input [-1:0] axi_i_ar_user;
   output [9:0] axi_i_r_id;
   output [15:0] axi_i_r_data;
   output [1:0] axi_i_r_resp;
-  output [0:0] axi_i_r_user;
+  output [-1:0] axi_i_r_user;
   
   input clk_i, rst_ni, axi_i_aw_lock, axi_i_aw_valid, axi_i_w_last,
          axi_i_w_valid, axi_i_b_ready, axi_i_ar_lock, axi_i_ar_valid,
@@ -319,5 +319,14 @@ module hyperbus_macro (
     .PU(1'b0),
     .SR(1'b0)
   );
+
+  IVSS    pad_vss_c ( );
+  IVSSIO  pad_vss_p ( ); 
+
+  IVDD    pad_vdd_c ( );
+  IVDDIO  pad_vdd_p ( );
+
+  IFILLER5 filler5_left ();
+  IFILLER5 filler5_right ();
 
 endmodule

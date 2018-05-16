@@ -104,6 +104,10 @@ set_max_delay \
 
 set_max_delay -from [get_ports hyper_rwds_i] -to [all_registers -data_pins] [expr $period_sys/2.0]
 
+
+set_dont_touch [get_designs hyperbus_delay_line]
+#report_dont_touch
+
 # set_input_delay 0.4 -clock clk90  hyper_rwds_i 
 # set_input_delay 0.4 -clock clk90  {hyper_dq_i}
 # set_input_delay  0.4 -clock clk_i [get_ports axi*]

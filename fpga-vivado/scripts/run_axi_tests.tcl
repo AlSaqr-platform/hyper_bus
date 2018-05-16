@@ -17,7 +17,7 @@ create_hw_axi_txn rd_config_1 [get_hw_axis hw_axi_1] -address 80000801 -data {00
 create_hw_axi_txn wr2_16 [get_hw_axis hw_axi_1] -address 00000002 -data {0000FF00_0000DDEE_0000BBCC_000099AA_00007788_00005566_00003344_00001122_0000FF00_0000DDEE_0000BBCC_000099AA_00007788_00005566_00003344_00001122} -len 16 -type write
 
 
-run_hw_axi wr2_16
+run_hw_axi wr0_16
 
 run_hw_axi rd0_16
 set result [get_property DATA [get_hw_axi_txns  rd0_16]]

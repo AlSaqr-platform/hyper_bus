@@ -19,17 +19,19 @@
 ## multiple modes. In this example we will assume that the output load 
 ## and input transition are the same.
 
-set_input_transition 1.0 [get_ports hyper_*]
-set_load 20.0 [get_ports hyper_*]
+set_input_transition 1.0 [get_ports hyper_*_io]
+set_input_delay 1.0 [get_ports hyper_*_io]
+set_load 20.0 [get_ports hyper_*o]
+set_output_delay 1.0 [get_ports hyper_*o]
 
 current_instance i_hyperbus
 
-create_clock [get_pins clk_i]  -period 3  -waveform {0 1.5}
-create_generated_clock [get_pins i_deflate/ddr_clk/clk0_o]  -name clk0  -source [get_pins clk_i]  -divide_by 2
-create_generated_clock [get_pins i_deflate/ddr_clk/clk90_o]  -name clk90  -source [get_pins clk_i]  -divide_by 2
-create_generated_clock [get_pins i_deflate/ddr_clk/clk180_o]  -name clk180  -source [get_pins clk_i]  -divide_by 2
-create_generated_clock [get_pins i_deflate/ddr_clk/clk270_o]  -name clk270  -source [get_pins clk_i]  -divide_by 2
-create_clock [get_pins hyper_rwds_i]  -name clk_rwds  -period 6  -waveform {0 3}
+create_clock [get_ports clk_i]  -period 3  -waveform {0 1.5}
+create_generated_clock [get_pins i_deflate/ddr_clk/clk0_o]    -name clk0    -source [get_ports clk_i]  -divide_by 2
+create_generated_clock [get_pins i_deflate/ddr_clk/clk90_o]   -name clk90   -source [get_ports clk_i]  -divide_by 2
+create_generated_clock [get_pins i_deflate/ddr_clk/clk180_o]  -name clk180  -source [get_ports clk_i]  -divide_by 2
+create_generated_clock [get_pins i_deflate/ddr_clk/clk270_o]  -name clk270  -source [get_ports clk_i]  -divide_by 2
+create_clock [get_pins i_deflate/hyper_rwds_i]  -name clk_rwds  -period 6  -waveform {0 3}
 
 set_input_delay -clock clk_i  0.666667  -source_latency_included  [get_ports {axi_i_aw_id[9]}]
 set_input_delay -clock clk_i  0.666667  -source_latency_included  [get_ports {axi_i_aw_id[8]}]
