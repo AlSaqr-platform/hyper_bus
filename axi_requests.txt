@@ -1,0 +1,15 @@
+//axi requests kerbin soc -> hyperbus
+
+ax.ax_id    = 10'h010;
+ax.ax_addr  = 32'h0000_0000;
+ax.ax_size  = 3'h1;
+ax.ax_burst = axi_pkg::BURST_INCR;
+ax.ax_len   = 8'h07;
+#MASTER_NAME#.send_ar(ax);            //adapt me
+
+
+repeat (8) begin
+    r.r_id      = 10'h010;
+    #MASTER_NAME#.recv_r(r);
+    $display("%d - %4h", $time, r.r_data);
+end
