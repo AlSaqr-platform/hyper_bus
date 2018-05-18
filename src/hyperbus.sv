@@ -72,9 +72,6 @@ module hyperbus #(
     // receiving channel
     logic                          axi_rx_valid;
     logic                          axi_rx_ready;
-    logic [15:0]                   axi_rx_data;
-    logic                          axi_rx_last;
-    logic                          axi_rx_error;
 
     //Connecting phy to TX
     logic                          phy_tx_valid;

@@ -338,11 +338,13 @@ module hyperbus_phy #(
                 ERROR: begin
                     en_cs <= 1'b0;
                     if (~local_write) begin
+                        if (rx_ready_i) begin
                         burst_cnt <= burst_cnt - 1;
                         if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
                             wait_cnt <= config_t_read_write_recovery - 2;
                             hyper_trans_state <= END;
                         end
+                    end
                     end else if (~tx_valid_i) begin
                         wait_cnt <= config_t_read_write_recovery - 2;
                         hyper_trans_state <= END;

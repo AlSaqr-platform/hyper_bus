@@ -433,7 +433,7 @@ module hyperbus_phy_tb;
     task testWithMultipleInterruptions();
 
         stimuli = new(32'h05FFF3, 16);
-        stimuli.name("Test with multiple interruptions");
+        stimuli.name("with multiple interruptions");
         stimuli.addInterruptHandshake(-1, 20);
         stimuli.addInterruptHandshake(3, 5);
         stimuli.addInterruptHandshake(8, 8);
@@ -603,7 +603,6 @@ module hyperbus_phy_tb;
 
             if(cb_hyper_phy.rx_error_o) begin
                 result.timeoutAfter = i;
-                break;
             end
 
             if(cb_hyper_phy.rx_valid_o) begin
