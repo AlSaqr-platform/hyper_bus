@@ -1,6 +1,6 @@
 set FPBOX {0.0 0.0 2358.2 100.0}
-set COREBOX {100 10 2258.2 100.0}
-floorPlan -b [concat $FPBOX $FPBOX $COREBOX]
+set coreOffsetSie 163.5
+floorPlan -b [concat $FPBOX $FPBOX $coreOffsetSie 10 [expr 2358.2 - $coreOffsetSie] 100]
 
 # setInstancePlacementStatus -status unplaced -name pad_*
 
@@ -26,13 +26,19 @@ set pins [list \
     i_deflate/pad_hyper_dq_io_7 \
     pad_vss_p \
 ]
-set stride [expr (2358.2 - 200 - 60) / ([llength $pins]-1)]
-for {set i 0} {$i < [llength $pins]} {incr i} {
+set placement [linsert $pins 7 skip]
+set stride [expr (2358.2 - 200 - 60) / ([llength $placement]-1)]
+for {set i 0} {$i < [llength $placement]} {incr i} {
+    if {$i == 7} {
+        puts $i
+        continue
+    }
     set x [expr $i * $stride + 100 ]
-    placeInstance [ lindex $pins $i ] $x 0.0 R0
+    placeInstance [ lindex $placement $i ] $x 0.0 R0
 }
 
-addHaloToBlock {5.6 0 5.6 0} -allIOPad
+#
+addHaloToBlock {3.5 0 3.5 0.5} -allIOPad 
 
 addIoFiller -cell IFILLER5 -side bottom -from 0 -to 100
 addIoFiller -cell IFILLER5 -side bottom -from 2258.2 -to 2358.2

@@ -7,10 +7,6 @@ init_design
 setOptMode -timeDesignCompressReports false
 
 
-
-#Add layout of delay line
-readSdpFile -file ../src/delayline/PROGDEL8.sdp -hierPath i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/progdel8_i
-
 source scripts/hyperbus_floorplan.tcl
 source scripts/hyperbus_preplace.tcl
 
@@ -25,14 +21,8 @@ globalNetConnect VDDIO -netlistOverride -pin VDDIO
 globalNetConnect VDD -netlistOverride -pin VDD
 globalNetConnect VSS -netlistOverride -pin VSS
 
-# Connect pad power pins.
-sroute -connect { padRing  } -layerChangeRange { ME1(1) ME8(8) } -blockPinTarget { nearestTarget } -padPinPortConnect { allPort oneGeom } -padPinTarget { nearestTarget } -corePinTarget { firstAfterRowEnd } -floatingStripeTarget { blockring padring ring stripe ringpin blockpin } -allowJogging 1 -crossoverViaLayerRange { ME1(1) ME8(8) } -nets { VDDIO VSSIO VDD VSS } -allowLayerChange 1 -blockPin useLef -targetViaLayerRange { ME1(1) ME8(8) }
-
 # Add custom power grid on top of rows.
 source scripts/hyperbus_power_grid.tcl
-sroute -connect { corePin } -layerChangeRange { ME1(1) ME8(8) } -blockPinTarget { nearestTarget } -padPinPortConnect { allPort oneGeom } -padPinTarget { nearestTarget } -corePinTarget { firstAfterRowEnd } -floatingStripeTarget { blockring padring ring stripe ringpin blockpin } -allowJogging 1 -crossoverViaLayerRange { ME1(1) ME8(8) } -nets { VDDIO VSSIO VDD VSS } -allowLayerChange 1 -blockPin useLef -targetViaLayerRange { ME1(1) ME8(8) }
-
-#deleteAllPowerPreroutes
 
 # Insert welltaps and tie cells.
 source scripts/welltap.tcl
@@ -50,8 +40,22 @@ source scripts/tiehilo.tcl
 timeDesign -preCTS -outDir reports/timing.postplace
 
 # TODO: Clock tree synthesis (rwds!)
+source src/hyperbus_macro.ccopt.spec
+ccopt_design -outDir reports/timing
+
+mkdir -p reports/clock
+report_ccopt_clock_trees -filename reports/clock/clock_trees.rpt
+report_ccopt_skew_groups -filename reports/clock/skew_groups.rpt
+
 # TODO: Routing
+setNanoRouteMode -quiet -routeInsertAntennaDiode 1
+routeDesign -globalDetail
+
+timeDesign -postRoute -outDir reports/timing
+timeDesign -postRoute -hold -outDir reports/timing
+
 # TODO: Finishing (export all etc)
 
+set DESIGNNAME hyperbus_macro
 source scripts/checkdesign.tcl
 source scripts/exportall.tcl

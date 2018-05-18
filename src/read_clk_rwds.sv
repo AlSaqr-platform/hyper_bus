@@ -76,13 +76,19 @@ module read_clk_rwds #(
     end
 
     //Takes 8 bit ddr data from hyperram to 16 bit
-    ddr_in i_ddr_in (
-        .clk_i  ( clk_rwds    ), 
-        .rst_ni ( rst_ni      ),
-        .data_i ( hyper_dq_i  ), 
-        .enable ( en_ddr_in_i ),
-        .data_o ( src_data    ) 
-    ); 
+    genvar i;
+    generate
+        for(i=0; i<=7; i++)
+            begin: ddr_out_bus
+            ddr_in i_ddr_in (      
+                .clk_i  ( clk_rwds    ), 
+                .rst_ni ( rst_ni      ),
+                .data_i ( hyper_dq_i[i]  ), 
+                .enable ( en_ddr_in_i ),
+                .data_o ( {src_data[i+8], src_data[i]} ) 
+            );
+        end
+    endgenerate
 
     //Clock gating resulting in clk_rwds
     pulp_clock_gating cdc_read_ck_gating (

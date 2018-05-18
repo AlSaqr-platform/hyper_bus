@@ -62,14 +62,15 @@ create_generated_clock -name clk90  -source clk_sys_i -divide_by 2  -edge_shift 
 create_generated_clock -name clk180 -source clk_sys_i -divide_by 2  -edge_shift {3 3} [get_pins i_deflate/i_hyperbus/ddr_clk/clk180_o] 
 create_generated_clock -name clk270 -source clk_sys_i -divide_by 2  -edge_shift {4.5 4.5} [get_pins i_deflate/i_hyperbus/ddr_clk/clk270_o] 
 
-create_clock -name clk_rwds -period [expr 2*$period_phy] [get_ports hyper_rwds_i]
+create_clock -name clk_rwds -period [expr 2*$period_phy] [get_pins i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/cdc_read_ck_gating/clk_o]
+
 
 # Setting input and output delays.
 set DELAY_A [expr $period_sys * 1.0 / 3]
 set DELAY_B [expr $period_sys * 2.0 / 3]
 
 #add cfg with OR
-set CHIN  "name=~axi_i_a*  OR name=~axi_i_w*" 
+set CHIN  "name=~axi_i_a*  OR name=~axi_i_w* OR name=~cfg_i_*" 
 set CHOUT "name=~axi_i_b*  OR name=~axi_i_r*"
 
 set_input_delay $DELAY_A  [filter_collection [all_inputs]  $CHIN]  -clock clk_sys_i -source_latency_included
@@ -105,7 +106,7 @@ set_max_delay \
     -to [all_fanout -from $CDC_FALSE_PATHS -flat -only_cells] \
     $period_sys
 
-set_max_delay -from [get_pins i_deflate/i_hyperbus/hyper_rwds_i] -to [all_registers -data_pins] [expr $period_sys/2.0]
+set_max_delay -from [get_pins i_deflate/i_hyperbus/hyper_rwds_i] -to [get_pins i_deflate/i_hyperbus/phy_i/hyper_rwds_i_syn_reg/next_state] [expr $period_sys/2.0]
 
 
 set_dont_touch [get_designs hyperbus_delay_line]
@@ -125,7 +126,7 @@ set_driving_cell -no_design_rule -lib_cell BUFM4W -pin Z -library uk65lscllmvbbl
 set_load [expr 8 * [load_of uk65lscllmvbbl_120c25_tc/BUFM4W/A]] [all_output]
 
 # Compilation after setting constraints.
-compile_ultra -no_autoungroup
+compile_ultra
 
 rename_design [current_design] hyperbus_inflate
 

@@ -13,15 +13,15 @@
 
 module ddr_in #(
 )(
-    input logic              clk_i,
-    input logic  [7:0]       data_i,
-    input logic              rst_ni,
-    input logic              enable,
+    input logic        clk_i,
+    input logic        data_i,
+    input logic        rst_ni,
+    input logic        enable,
     
-    output logic [15:0]      data_o
+    output logic [1:0] data_o
 );
-    logic [7:0] ddr_neg;
-    logic [7:0] ddr_pos;
+    logic ddr_neg;
+    logic ddr_pos;
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ddr_pos
         if(~rst_ni) begin
@@ -39,8 +39,8 @@ module ddr_in #(
         end
     end
 
-    assign data_o[7:0]  = ddr_neg;
-    assign data_o[15:8] = ddr_pos;
+    assign data_o[0] = ddr_neg;
+    assign data_o[1] = ddr_pos;
 
     // always_ff @(posedge clk_i or negedge rst_ni) begin : proc_data_i //not on clk0, delayed rwds
     //     if(~rst_ni) begin
