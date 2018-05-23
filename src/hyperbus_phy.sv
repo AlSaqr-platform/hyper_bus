@@ -51,7 +51,7 @@ module hyperbus_phy #(
     output logic                   rx_last_o, //signals the last transfer in a read burst 
     output logic                   rx_error_o,
 
-    output logic                   b_resp_valid_o,
+    output logic                   b_valid_o,
     output logic                   b_last_o,
     output logic                   b_error_o,
 
@@ -383,7 +383,7 @@ module hyperbus_phy #(
         en_rwds = 1'b0;
         rx_error_o = 1'b0;
         rx_last_o = 1'b0;
-        b_resp_valid_o = 1'b0;
+        b_valid_o = 1'b0;
         b_last_o = 1'b0;
         b_error_o = 1'b0;
 
@@ -408,7 +408,7 @@ module hyperbus_phy #(
             REG_WRITE: begin
                 hyper_dq_oe_n = 1'b1;
                 mode_write = 1'b1;
-                b_resp_valid_o = 1'b1;
+                b_valid_o = 1'b1;
                 b_last_o = 1'b1;
                 if (wait_cnt == '0) begin
                     clock_enable = 1'b0;
@@ -450,7 +450,7 @@ module hyperbus_phy #(
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
                 if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                    b_resp_valid_o = 1'b1;
+                    b_valid_o = 1'b1;
                     b_last_o = 1'b1;
                     clock_enable = 1'b0;
                 end
@@ -472,7 +472,7 @@ module hyperbus_phy #(
                         rx_last_o = 1'b1;
                     end
                 end else begin
-                    b_resp_valid_o = 1'b1;
+                    b_valid_o = 1'b1;
                     b_error_o = 1'b1;   
                 end
             end
