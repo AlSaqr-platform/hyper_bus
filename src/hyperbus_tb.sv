@@ -48,68 +48,38 @@ module hyperbus_tb;
   axi_driver_t axi_drv = new(axi_i);
 
   logic [NR_CS-1:0] hyper_cs_no;
-  logic             hyper_ck_o;
-  logic             hyper_ck_no;
-  logic             hyper_rwds_o;
-  logic             hyper_rwds_i;
-  logic             hyper_rwds_oe_o;
-  logic [7:0]       hyper_dq_i;
-  logic [7:0]       hyper_dq_o;
-  logic             hyper_dq_oe_o;
-  logic             hyper_reset_no;
+
+  wire        wire_reset_no;
+  wire [1:0]  wire_cs_no;
+  wire        wire_ck_o;
+  wire        wire_ck_no;
+  wire        wire_rwds;
+  wire [7:0]  wire_dq_io;
 
   // Instantiate device under test.
-  hyperbus #(
+  hyperbus_macro #(
     .NR_CS(NR_CS)
   ) dut_i (
-    .clk_i           ( clk_i           ),
-    .rst_ni          ( rst_ni          ),
-    .cfg_i           ( cfg_i           ),
-    .axi_i           ( axi_i           ),
-    .hyper_cs_no     ( hyper_cs_no     ),
-    .hyper_ck_o      ( hyper_ck_o      ),
-    .hyper_ck_no     ( hyper_ck_no     ),
-    .hyper_rwds_o    ( hyper_rwds_o    ),
-    .hyper_rwds_i    ( hyper_rwds_i    ),
-    .hyper_rwds_oe_o ( hyper_rwds_oe_o ),
-    .hyper_dq_i      ( hyper_dq_i      ),
-    .hyper_dq_o      ( hyper_dq_o      ),
-    .hyper_dq_oe_o   ( hyper_dq_oe_o   ),
-    .hyper_reset_no  ( hyper_reset_no  )
+    .clk_phy_i       ( clk_i          ),
+    .clk_sys_i       ( clk_i          ),
+    .rst_ni          ( rst_ni         ),
+    .cfg_i           ( cfg_i          ),
+    .axi_i           ( axi_i          ),
+    .hyper_reset_no  ( wire_reset_no  ),
+    .hyper_cs_no     ( hyper_cs_no    ),
+    .hyper_ck_o     ( wire_ck_o      ),
+    .hyper_ck_no    ( wire_ck_no     ),
+    .hyper_rwds_io   ( wire_rwds      ),
+    .hyper_dq_io     ( wire_dq_io     )
   );
     //simulate pad delays
     //-------------------
-    
-    wire        wire_rwds;
-    wire [7:0]  wire_dq_io;
-    wire [1:0]  wire_cs_no;
-    wire        wire_ck_o;
-    wire        wire_ck_no;
-    wire        wire_reset_no;
-
-    pad_io pad_sim (
-        .data_i   (hyper_rwds_o),   
-        .oe_i     (hyper_rwds_oe_o),
-        .data_o   (hyper_rwds_i),  
-        .pad_io   (wire_rwds) 
-    );
-
-    pad_io #(8) pad_sim_data (
-        .data_i   (hyper_dq_o),   
-        .oe_i     (hyper_dq_oe_o),
-        .data_o   (hyper_dq_i),  
-        .pad_io   (wire_dq_io) 
-    );
-
-    pad_io #(4) pad_sim_others (
-        .data_i   ({hyper_cs_no, hyper_ck_o, hyper_ck_no}),   
+    pad_io #(2) pad_sim_cs (
+        .data_i   (hyper_cs_no),   
         .oe_i     (1'b1),
         .data_o   (),  
-        .pad_io   ({wire_cs_no, wire_ck_o, wire_ck_no}) 
+        .pad_io   (wire_cs_no) 
     );
-
-    assign wire_reset_no = hyper_reset_no; //if delayed, a hold violation occures 
-
 
   s27ks0641 #(.mem_file_name("../src/s27ks0641.mem"), .TimingModel("S27KS0641DPBHI020")) hyperram_model
   (
