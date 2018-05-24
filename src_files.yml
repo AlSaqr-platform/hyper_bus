@@ -2,6 +2,7 @@ hyperbus:
   flags:
     - skip_synthesis
   files: [
+    src/axi/src/axi_pkg.sv,
     src/tech_cells_generic/pulp_clock_xor2.sv,
     src/tech_cells_generic/pulp_clock_mux2.sv,
     src/tech_cells_generic/pulp_clock_gating.sv,
@@ -23,6 +24,7 @@ hyperbus:
     src/ddr_in.sv,
     src/hyperbus_soc_axi_wrapper.sv,
     src/kerbin_to_hyperbus_axi.sv,
+    src/hyperbus_macro.sv,
   ]
 
 hyperbus_soc:
@@ -30,12 +32,16 @@ hyperbus_soc:
     umc65,
  ]
   files: [
+    src/axi/src/axi_pkg.sv,
     src/hyperbus_soc_axi_wrapper.sv,
     src/kerbin_to_hyperbus_axi.sv,
     src/hyperbus_stub.sv,
+    src/hyperbus_deflate.sv,
   ]
 
 hyperbus_sim:
+  defines:
+    - pads_iumb
   flags:
     - skip_synthesis
   files: [
