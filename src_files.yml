@@ -40,8 +40,6 @@ hyperbus_soc:
   ]
 
 hyperbus_sim:
-  defines:
-    - pads_iumb
   flags:
     - skip_synthesis
   files: [
