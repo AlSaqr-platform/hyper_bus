@@ -84,7 +84,7 @@ module read_clk_rwds #(
                 .clk_i  ( clk_rwds    ), 
                 .rst_ni ( rst_ni      ),
                 .data_i ( hyper_dq_i[i]  ), 
-                .enable ( en_ddr_in_i ),
+                .enable ( 1'b1 ),
                 .data_o ( {src_data[i+8], src_data[i]} ) 
             );
         end

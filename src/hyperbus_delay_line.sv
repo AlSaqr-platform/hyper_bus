@@ -16,15 +16,17 @@ module hyperbus_delay_line (
     input [31:0] delay
 );
 
-    //assign #(delay) out = in; 
+    // assign out = in;
 
-    logic [7:0] delay_onehot;
-    assign delay_onehot = 1<<0;
+    assign #(1ns) out = in; 
 
-    PROGDEL8 progdel8_i (
-        .A( in           ),
-        .S( 8'b00000010  ),
-        .Z( out          )
-    );
+    // logic [7:0] delay_onehot;
+    // assign delay_onehot = 1<<0;
+
+    // PROGDEL8 progdel8_i (
+    //     .A( in           ),
+    //     .S( 8'b00000010  ),
+    //     .Z( out          )
+    // );
 
 endmodule

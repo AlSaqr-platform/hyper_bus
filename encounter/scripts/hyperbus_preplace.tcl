@@ -5,7 +5,7 @@ set ly 88.8
 set ux [expr $lx + 60]
 set uy [expr $ly + 5]
 
-createRegion i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/progdel8_i $lx $ly $ux $uy
+# createRegion i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/progdel8_i $lx $ly $ux $uy
 
 set ddr_pins [list \
     i_deflate/pad_hyper_dq_io_0 \

@@ -57,13 +57,13 @@ create_clock clk_sys_i -period $period_sys
 create_clock clk_phy_i -period $period_phy
 # create_clock clk_sys_i -period 2
 
-create_generated_clock -name clk0   -source clk_sys_i -divide_by 2  [get_pins i_deflate/i_hyperbus/ddr_clk/clk0_o] 
-create_generated_clock -name clk90  -source clk_sys_i -divide_by 2  -edge_shift {1.5 1.5} [get_pins i_deflate/i_hyperbus/ddr_clk/clk90_o] 
-create_generated_clock -name clk180 -source clk_sys_i -divide_by 2  -edge_shift {3 3} [get_pins i_deflate/i_hyperbus/ddr_clk/clk180_o] 
-create_generated_clock -name clk270 -source clk_sys_i -divide_by 2  -edge_shift {4.5 4.5} [get_pins i_deflate/i_hyperbus/ddr_clk/clk270_o] 
+create_generated_clock -name clk0   -source clk_phy_i -divide_by 2  [get_pins i_deflate/i_hyperbus/ddr_clk/clk0_o] 
+create_generated_clock -name clk90  -source clk_phy_i -divide_by 2  -edge_shift {1.5 1.5} [get_pins i_deflate/i_hyperbus/ddr_clk/clk90_o] 
+#create_generated_clock -name clk180 -source clk_phy_i -divide_by 2  -edge_shift {3 3} [get_pins i_deflate/i_hyperbus/ddr_clk/clk180_o] 
+#create_generated_clock -name clk270 -source clk_phy_i -divide_by 2  -edge_shift {4.5 4.5} [get_pins i_deflate/i_hyperbus/ddr_clk/clk270_o] 
 
-create_clock -name clk_rwds -period [expr 2*$period_phy] [get_pins i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/cdc_read_ck_gating/clk_o]
-
+#create_clock -name clk_rwds -period [expr 2*$period_phy] [get_pins i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/cdc_read_ck_gating/clk_o]
+create_clock -period [expr 2*$period_phy] [get_ports hyper_rwds_io]
 
 # Setting input and output delays.
 set DELAY_A [expr $period_sys * 1.0 / 3]
@@ -109,24 +109,16 @@ set_max_delay \
 set_max_delay -from [get_pins i_deflate/i_hyperbus/hyper_rwds_i] -to [get_pins i_deflate/i_hyperbus/phy_i/hyper_rwds_i_syn_reg/next_state] [expr $period_sys/2.0]
 
 
-set_dont_touch [get_designs hyperbus_delay_line]
+#set_dont_touch [get_designs hyperbus_delay_line]
 #report_dont_touch
 
-# set_input_delay 0.4 -clock clk90  hyper_rwds_i 
-# set_input_delay 0.4 -clock clk90  {hyper_dq_i}
-# set_input_delay  0.4 -clock clk_i [get_ports axi*]
-
-# set_output_delay 0.4 -clock clk_i [all_outputs]
-
-# set_output_delay 0.4 -clock clk90  hyper_rwds_i
-# set_output_delay 0.4 -clock clk90  {hyper_dq_i[7] hyper_dq_i[6] hyper_dq_i[5] hyper_dq_i[4] hyper_dq_i[3] hyper_dq_i[2] hyper_dq_i[1] hyper_dq_i[1]}
 
 # Set input driver and output load.
 set_driving_cell -no_design_rule -lib_cell BUFM4W -pin Z -library uk65lscllmvbbl_120c25_tc [remove_from_collection [all_inputs] {clk_sys_i clk_phy_i}]
 set_load [expr 8 * [load_of uk65lscllmvbbl_120c25_tc/BUFM4W/A]] [all_output]
 
 # Compilation after setting constraints.
-compile_ultra
+compile_ultra -no_autoungroup
 
 rename_design [current_design] hyperbus_inflate
 

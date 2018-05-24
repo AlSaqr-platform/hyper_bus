@@ -90,17 +90,15 @@ create_constraint_mode -name func_mode -sdc_files [list src/mmmc_functional.sdc 
                                                         src/mmmc_shared.sdc ]   
 create_constraint_mode -name test_mode -sdc_files [list src/mmmc_test.sdc \
                                                         src/mmmc_shared.sdc ]  
-create_constraint_mode -name hold_mode -sdc_files [list src/mmmc_functional.sdc \
-                                                        src/mmmc_shared.sdc ]  
 
 ## now we create a view that combined the MODE with the CORNER
 ## hence the name Multi MODE multi CORNER.
 ##
 ## This example uses three views:
 ##
-create_analysis_view -name func_view -delay_corner typical_delay -constraint_mode func_mode
-create_analysis_view -name test_view -delay_corner typical_delay -constraint_mode test_mode
-create_analysis_view -name hold_view -delay_corner best_delay    -constraint_mode hold_mode
+create_analysis_view -name func_view -delay_corner worst_delay -constraint_mode func_mode
+create_analysis_view -name test_view -delay_corner worst_delay -constraint_mode test_mode
+create_analysis_view -name hold_view -delay_corner best_delay  -constraint_mode func_mode
 
 #################################################################
 ## SET ANALYSIS VIEWS

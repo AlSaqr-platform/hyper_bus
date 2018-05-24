@@ -41,13 +41,35 @@ set_ccopt_property clock_gating_cells [ list LAGCESM2WA LAGCESM4WA LAGCESM6WA LA
 #set_ccopt_property sink_type -pin XXXX stop
 
 
+set oddr_cells [list \
+    i_deflate/i_hyperbus/phy_i/ddr_out_bus_0__ddr_data/ddrmux/clk_mux_i/S \
+    i_deflate/i_hyperbus/phy_i/ddr_out_bus_1__ddr_data/ddrmux/clk_mux_i/S \
+    i_deflate/i_hyperbus/phy_i/ddr_out_bus_2__ddr_data/ddrmux/clk_mux_i/S \
+    i_deflate/i_hyperbus/phy_i/ddr_out_bus_3__ddr_data/ddrmux/clk_mux_i/S \
+    i_deflate/i_hyperbus/phy_i/ddr_out_bus_4__ddr_data/ddrmux/clk_mux_i/S \
+    i_deflate/i_hyperbus/phy_i/ddr_out_bus_5__ddr_data/ddrmux/clk_mux_i/S \
+    i_deflate/i_hyperbus/phy_i/ddr_out_bus_6__ddr_data/ddrmux/clk_mux_i/S \
+    i_deflate/i_hyperbus/phy_i/ddr_out_bus_7__ddr_data/ddrmux/clk_mux_i/S \
+    i_deflate/i_hyperbus/phy_i/ddr_data_strb/ddrmux/U1/S \
+]
+foreach cell $oddr_cells {
+	set_ccopt_property sink_type -pin $cell stop
+}
+
+set_ccopt_property sink_type -pin i_deflate/pad_hyper_ck_o/DO stop
+set_ccopt_property sink_type -pin i_deflate/pad_hyper_ck_no/DO stop
+
+
+
+
 # MacroModel constraints
 #-----------------------------------------------------------------------------------------
 # If the offset at a macro clock pin is big it can be fixed by adding the insertion_delay to it.
 # This can help to fix hold violations to the macro without opt must add delis to the input signals.
 
 #set_ccopt_property -pin mem1/CK insertion_delay 0.6
- 
+#set_ccopt_property -pin mem1/CK insertion_delay 0.6
+
 
 # clock tree definitions
 #-----------------------------------------------------------------------------------------
@@ -92,22 +114,30 @@ create_ccopt_generated_clock_tree \
 # skew group modification based on local constraints
 #-----------------------------------------------------------------------------------------
 #create_ccopt_skew_group -name SG_clk01 -balance_skew_groups {clk1 clk0}
+#create_ccopt_skew_group -name ddr_in -sources hyper_rwds_io -exclusive_sinks [get_pins -hierarchical ddr_*_reg/CK*]
+#create_ccopt_skew_group -name ddr_in -sources hyper_rwds_io -exclusive_sinks ddr_*_reg/CKB
+#create_ccopt_skew_group -name ddr_out -sources clk0 -exclusive_sinks [concat [get_pins i_deflate/i_hyperbus/phy_i/ddr_out_bus_?__ddr_data/q?_reg/CK] [get_pins i_deflate/i_hyperbus/phy_i/ddr_out_bus_?__ddr_data/ddrmux/clk_mux_i/S]]
 
 
 # skew group skew and ID targets
 #-----------------------------------------------------------------------------------------
-#set_ccopt_property target_skew -skew_group * 250ps -delay_corner *
+#set_ccopt_property target_skew -skew_group {ddr_in ddr_out} 50ps -delay_corner *
 
 
 # DRV/NDR constraints for clock trees
 #-----------------------------------------------------------------------------------------
+
+#set_clock_latency [expr 1.5 + 0.4 ] hyper_rwds_io
+
+set_ccopt_property  target_insertion_delay -skew_group clk_rwds 2300ps
+
 set_ccopt_property  target_max_trans -net_type top   -clock_tree * 500ps
 set_ccopt_property  target_max_trans -net_type trunk -clock_tree * 350ps
 set_ccopt_property  target_max_trans -net_type leaf  -clock_tree * 250ps
 
-set_ccopt_property  route_type -net_type trunk -clock_tree * default_route_type_nonleaf
-set_ccopt_property  route_type -net_type top   -clock_tree * default_route_type_nonleaf
-set_ccopt_property  route_type -net_type leaf  -clock_tree * default_route_type_leaf
+#set_ccopt_property  route_type -net_type trunk -clock_tree * default_route_type_nonleaf
+#set_ccopt_property  route_type -net_type top   -clock_tree * default_route_type_nonleaf
+#set_ccopt_property  route_type -net_type leaf  -clock_tree * default_route_type_leaf
 
 #set_ccopt_property source_input_max_trans 500.0ps
 set_ccopt_property source_max_capacitance 30pf
