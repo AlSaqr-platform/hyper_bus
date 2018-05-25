@@ -43,7 +43,7 @@ hyperbus_sim:
   flags:
     - skip_synthesis
   files: [
-    src/pad_simulation.sv,
+    #src/pad_simulation.sv,
     models/s27ks0641/s27ks0641.v,
     models/s27ks0641/s27ks0641_bmod_wrapper.v,
     models/s26ks512s/s26ks512s.v,
