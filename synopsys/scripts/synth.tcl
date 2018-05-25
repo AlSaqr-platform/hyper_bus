@@ -45,8 +45,8 @@ analyze -library WORK -format sverilog [list \
 # ------------------------------------------------------------------------------
 elaborate hyperbus_macro_inflate -parameters "AXI_IW => 10"
 
-set period_sys 2
-set period_phy 3
+set period_sys 4.0
+set period_phy 6.0
 
 # ------------------------------------------------------------------------------
 # Define Constraints
@@ -54,16 +54,16 @@ set period_phy 3
 # set_max_area 0
 # Setting the clock period.
 create_clock clk_sys_i -period $period_sys
-create_clock clk_phy_i -period $period_phy
+create_clock clk_phy_i -period [expr $period_phy/2]
 # create_clock clk_sys_i -period 2
 
-create_generated_clock -name clk0   -source clk_phy_i -divide_by 2  [get_pins i_deflate/i_hyperbus/ddr_clk/clk0_o] 
-create_generated_clock -name clk90  -source clk_phy_i -divide_by 2  -edge_shift {1.5 1.5} [get_pins i_deflate/i_hyperbus/ddr_clk/clk90_o] 
-#create_generated_clock -name clk180 -source clk_phy_i -divide_by 2  -edge_shift {3 3} [get_pins i_deflate/i_hyperbus/ddr_clk/clk180_o] 
-#create_generated_clock -name clk270 -source clk_phy_i -divide_by 2  -edge_shift {4.5 4.5} [get_pins i_deflate/i_hyperbus/ddr_clk/clk270_o] 
+create_generated_clock -name clk0  -source clk_phy_i -edges {1 3 5}  [get_pins i_deflate/i_hyperbus/ddr_clk/clk0_o] 
+create_generated_clock -name clk90 -source clk_phy_i -edges {2 4 6} [get_pins i_deflate/i_hyperbus/ddr_clk/clk90_o] 
+#create_generated_clock -name clk0   -source clk_phy_i -divide_by 2  [get_pins i_deflate/i_hyperbus/ddr_clk/clk0_o] 
+#create_generated_clock -name clk90  -source clk_phy_i -divide_by 2  -edge_shift {1.5 1.5} [get_pins i_deflate/i_hyperbus/ddr_clk/clk90_o]
 
 #create_clock -name clk_rwds -period [expr 2*$period_phy] [get_pins i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/cdc_read_ck_gating/clk_o]
-create_clock -period [expr 2*$period_phy] [get_ports hyper_rwds_io]
+create_clock -period [expr $period_phy] [get_ports hyper_rwds_io]
 
 # Setting input and output delays.
 set DELAY_A [expr $period_sys * 1.0 / 3]
@@ -79,7 +79,7 @@ set_output_delay $DELAY_A [filter_collection [all_outputs] $CHIN]  -clock clk_sy
 set_output_delay $DELAY_B [filter_collection [all_outputs] $CHOUT] -clock clk_sys_i -source_latency_included
 
 # false paths through cdc_2phase cells
-set CDC_NETS_2PHASE [get_nets -hierarchical {*async_req *async_ack *async_data}]
+set CDC_NETS_2PHASE [get_nets -hierarchical {*async_req *async_ack *async_data*}]
 set_max_delay \
     -from [all_fanin -to $CDC_NETS_2PHASE -flat -only_cells] \
     -to [all_fanout -from $CDC_NETS_2PHASE -flat -only_cells] \
@@ -87,17 +87,17 @@ set_max_delay \
 
 # false paths through cdc_fifo cells
 set_max_delay \
-    -from [all_fanin -to [get_nets -hierarchical *src_wptr_gray_q] -flat -only_cells] \
-    -to [all_fanout -from [get_nets -hierarchical *dst_wptr_gray_q] -flat -only_cells] \
+    -from [all_fanin -to [get_nets -hierarchical *src_wptr_gray_q*] -flat -only_cells] \
+    -to [all_fanout -from [get_nets -hierarchical *dst_wptr_gray_q*] -flat -only_cells] \
     [expr $period_sys/2.0]
 set_max_delay \
-    -from [all_fanin -to [get_nets -hierarchical *dst_rptr_gray_q] -flat -only_cells] \
-    -to [all_fanout -from [get_nets -hierarchical *src_rptr_gray_q] -flat -only_cells] \
+    -from [all_fanin -to [get_nets -hierarchical *dst_rptr_gray_q*] -flat -only_cells] \
+    -to [all_fanout -from [get_nets -hierarchical *src_rptr_gray_q*] -flat -only_cells] \
     [expr $period_sys/2.0]
-set_max_delay \
-    -from [all_fanin -to [get_nets -hierarchical *fifo_data_q] -flat -only_cells] \
-    -to [all_fanout -from [get_nets -hierarchical *dst_data_o] -flat -only_cells] \
-    [expr $period_sys/2.0]
+
+set_false_path \
+    -from [all_fanin -to [get_nets -hierarchical *fifo_data_q*] -flat -only_cells] \
+    -to [all_fanout -from [get_nets -hierarchical *dst_data_o*] -flat -only_cells]
 
 # false paths for other signals
 set CDC_FALSE_PATHS [get_nets -hierarchical {*config_t_* *read_clk_en_i}]
@@ -106,7 +106,17 @@ set_max_delay \
     -to [all_fanout -from $CDC_FALSE_PATHS -flat -only_cells] \
     $period_sys
 
+set_max_delay \
+    -from [get_pins i_deflate/i_hyperbus/phy_i/hyper_*_oe_o_reg/Q] \
+    -to [get_ports hyper_*_io] \
+    [expr $period_phy/2.0]
+
+
 set_max_delay -from [get_pins i_deflate/i_hyperbus/hyper_rwds_i] -to [get_pins i_deflate/i_hyperbus/phy_i/hyper_rwds_i_syn_reg/next_state] [expr $period_sys/2.0]
+
+set_false_path -hold -from [get_clocks hyper_rwds_io] -to [get_clocks clk0]
+set_false_path -hold -from [get_clocks clk0] -to [get_clocks clk_sys_i]
+
 
 
 #set_dont_touch [get_designs hyperbus_delay_line]
@@ -114,13 +124,13 @@ set_max_delay -from [get_pins i_deflate/i_hyperbus/hyper_rwds_i] -to [get_pins i
 
 
 # Set input driver and output load.
-set_driving_cell -no_design_rule -lib_cell BUFM4W -pin Z -library uk65lscllmvbbl_120c25_tc [remove_from_collection [all_inputs] {clk_sys_i clk_phy_i}]
-set_load [expr 8 * [load_of uk65lscllmvbbl_120c25_tc/BUFM4W/A]] [all_output]
+# set_driving_cell -no_design_rule -lib_cell BUFM4W -pin Z -library uk65lscllmvbbl_120c25_tc [remove_from_collection [all_inputs] {clk_sys_i clk_phy_i}]
+# set_load [expr 8 * [load_of uk65lscllmvbbl_120c25_tc/BUFM4W/A]] [all_output]
 
 # Compilation after setting constraints.
 compile_ultra -no_autoungroup
 
-rename_design [current_design] hyperbus_inflate
+rename_design [current_design] hyperbus_macro_inflate
 
 # ------------------------------------------------------------------------------
 # Generate Reports

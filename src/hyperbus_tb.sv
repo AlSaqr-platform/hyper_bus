@@ -10,7 +10,7 @@
 
 module hyperbus_tb;
 
-  localparam TCLK = 20ns;
+  localparam TCLK = 6ns;
   localparam NR_CS = 2;
 
   logic             clk_i = 0;
@@ -24,8 +24,8 @@ module hyperbus_tb;
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( 32 ),
     .AXI_DATA_WIDTH ( 16 ),
-    .AXI_ID_WIDTH   ( 4  ),
-    .AXI_USER_WIDTH ( 0  )
+    .AXI_ID_WIDTH   ( 10 ),
+    .AXI_USER_WIDTH ( 1  )
   ) axi_i(clk_i);
 
   typedef reg_test::reg_driver #(
@@ -38,13 +38,13 @@ module hyperbus_tb;
   typedef axi_test::axi_driver #(
     .AW ( 32       ),
     .DW ( 16       ),
-    .IW ( 4        ),
-    .UW ( 0        ),
+    .IW ( 10       ),
+    .UW ( 1        ),
     .TA ( TCLK*0.2 ),
     .TT ( TCLK*0.8 )
   ) axi_driver_t;
 
-  // cfg_driver_t cfg_drv = new(cfg_i);
+  cfg_driver_t cfg_drv = new(cfg_i);
   axi_driver_t axi_drv = new(axi_i);
 
   logic [NR_CS-1:0] hyper_cs_no;
@@ -57,9 +57,7 @@ module hyperbus_tb;
   wire [7:0]  wire_dq_io;
 
   // Instantiate device under test.
-  hyperbus_macro #(
-    .NR_CS(NR_CS)
-  ) dut_i (
+  hyperbus_macro_deflate  dut_i (
     .clk_phy_i       ( clk_i          ),
     .clk_sys_i       ( clk_i          ),
     .rst_ni          ( rst_ni         ),
@@ -67,8 +65,8 @@ module hyperbus_tb;
     .axi_i           ( axi_i          ),
     .hyper_reset_no  ( wire_reset_no  ),
     .hyper_cs_no     ( hyper_cs_no    ),
-    .hyper_ck_o     ( wire_ck_o      ),
-    .hyper_ck_no    ( wire_ck_no     ),
+    .hyper_ck_o      ( wire_ck_o      ),
+    .hyper_ck_no     ( wire_ck_no     ),
     .hyper_rwds_io   ( wire_rwds      ),
     .hyper_dq_io     ( wire_dq_io     )
   );
@@ -133,7 +131,7 @@ module hyperbus_tb;
     automatic axi_driver_t::r_beat_t r;
     $sdf_annotate("../models/s27ks0641/s27ks0641.sdf", hyperram_model); 
     @(negedge rst_ni);
-    // cfg_drv.reset_master();
+    cfg_drv.reset_master();
     axi_drv.reset_master();
     @(posedge rst_ni);
     #150us; //Wait for RAM to initalize

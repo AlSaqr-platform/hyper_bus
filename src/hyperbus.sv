@@ -17,6 +17,8 @@ import axi_pkg::*;
 module hyperbus #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
+    parameter AXI_AW = 32,
+    parameter AXI_UW = 1,
     parameter AXI_IW = 10
 )(
 `ifdef FPGA
@@ -223,7 +225,7 @@ module hyperbus #(
         .rx_error_o                   ( phy_rx.error                 ),
         .rx_last_o                    ( phy_rx.last                  ),
 
-        .b_resp_valid_o               ( phy_b_valid                  ),
+        .b_valid_o                    ( phy_b_valid                  ),
         .b_last_o                     ( phy_b_resp.last              ),
         .b_error_o                    ( phy_b_resp.error             ),
 

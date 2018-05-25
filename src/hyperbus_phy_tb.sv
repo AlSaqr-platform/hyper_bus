@@ -91,7 +91,7 @@ module hyperbus_phy_tb;
     .rx_data_o                    ( rx_data_o                    ),
     .rx_last_o                    ( rx_last_o                    ),
     .rx_error_o                   ( rx_error_o                   ),
-    .b_resp_valid_o               ( b_resp_valid_o               ),
+    .b_valid_o                    ( b_resp_valid_o               ),
     .b_last_o                     ( b_last_o                     ),
     .b_error_o                    ( b_error_o                    ),
     .hyper_cs_no                  ( hyper_cs_no                  ),
@@ -416,6 +416,8 @@ module hyperbus_phy_tb;
 
         doConfig0Write(16'h8f17); // use variable latency
 
+        ##(50);
+
         stimuli = new(32'h05FFF3, 8);
         stimuli.name("Use variable latency");
         stimuli.addInterruptHandshake(3, 5);
@@ -423,7 +425,7 @@ module hyperbus_phy_tb;
         doTransaction(stimuli);
 
         result.check(expectedResultAt05FFF3);
-        result.checkTimeOfFirstByte(80,90);
+        result.checkTimeOfFirstByte(75,85);
         result.printResult();
 
         //ToDo test with write

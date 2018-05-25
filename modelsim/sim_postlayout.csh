@@ -15,8 +15,8 @@ vsim-$VER -t 1ps -lib $LIB \
           -L uk65lscllmvbbr_vlog \
           -L uk65lscllmvbbh_vlog \
           -L u065gioll25mvir_vlog \
-          -sdftyp dut_i=${DIR}/encounter/out/hyperbus_macro.sdf.gz +sdf_verbose \
-          -v2k_int_delays +no_neg_tchk +ntc_warn +no_glitch_msg \
+          -sdftyp dut_i/i_inflate=${DIR}/encounter/out/hyperbus_macro.sdf.gz +sdf_verbose \
+          -v2k_int_delays +no_neg_tchk +ntc_warn +no_glitch_msg +notimingchecks \
           hyperbus_tb
 
 # use:

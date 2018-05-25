@@ -17,6 +17,8 @@ import axi_pkg::*;
 module hyperbus_macro #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
+    parameter AXI_AW = 32,
+    parameter AXI_UW = 1,
     parameter AXI_IW = 10
 )(
     input  logic                   clk_phy_i,
@@ -50,12 +52,12 @@ module hyperbus_macro #(
     .PAD(hyper_ck_no),
     .OE(1'b1),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_ck_o (
@@ -64,12 +66,12 @@ module hyperbus_macro #(
     .PAD(hyper_ck_o),
     .OE(1'b1),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_rwds_io (
@@ -78,12 +80,12 @@ module hyperbus_macro #(
     .PAD(hyper_rwds_io),
     .OE(hyper_rwds_oe_o),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_dq_io_0 (
@@ -92,12 +94,12 @@ module hyperbus_macro #(
     .PAD(hyper_dq_io[0]),
     .OE(hyper_dq_oe_o),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_dq_io_1 (
@@ -106,12 +108,12 @@ module hyperbus_macro #(
     .PAD(hyper_dq_io[1]),
     .OE(hyper_dq_oe_o),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_dq_io_2 (
@@ -120,12 +122,12 @@ module hyperbus_macro #(
     .PAD(hyper_dq_io[2]),
     .OE(hyper_dq_oe_o),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_dq_io_3 (
@@ -134,12 +136,12 @@ module hyperbus_macro #(
     .PAD(hyper_dq_io[3]),
     .OE(hyper_dq_oe_o),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_dq_io_4 (
@@ -148,12 +150,12 @@ module hyperbus_macro #(
     .PAD(hyper_dq_io[4]),
     .OE(hyper_dq_oe_o),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_dq_io_5 (
@@ -162,12 +164,12 @@ module hyperbus_macro #(
     .PAD(hyper_dq_io[5]),
     .OE(hyper_dq_oe_o),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_dq_io_6 (
@@ -176,12 +178,12 @@ module hyperbus_macro #(
     .PAD(hyper_dq_io[6]),
     .OE(hyper_dq_oe_o),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
   IUMB pad_hyper_dq_io_7 (
@@ -190,17 +192,19 @@ module hyperbus_macro #(
     .PAD(hyper_dq_io[7]),
     .OE(hyper_dq_oe_o),
     .IDDQ(1'b0),
-    .PIN2(1'b0),
-    .PIN1(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b0)
+    .SR(1'b1)
   );
 
     hyperbus #(
         .BURST_WIDTH ( BURST_WIDTH ),
         .NR_CS       ( NR_CS       ),
+        .AXI_AW      ( AXI_AW      ),
+        .AXI_UW      ( AXI_UW      ),
         .AXI_IW      ( AXI_IW      )
     ) i_hyperbus (
         .clk_phy_i       ( clk_phy_i         ),
@@ -295,8 +299,8 @@ module hyperbus_macro_inflate #(
     // physical interface
     output logic                   hyper_reset_no,
     output logic [NR_CS-1:0]       hyper_cs_no,
-    output logic                   hyper_ck_o,    //With Pad
-    output logic                   hyper_ck_no,   //With Pad
+    inout  wire                    hyper_ck_o,    //With Pad
+    inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad
     inout  wire [7:0]              hyper_dq_io    //With Pad
 );
@@ -376,7 +380,10 @@ module hyperbus_macro_inflate #(
     hyperbus_macro #(
         .BURST_WIDTH ( BURST_WIDTH ),
         .NR_CS       ( NR_CS       ),
+        .AXI_AW      ( AXI_AW      ),
+        .AXI_UW      ( AXI_UW      ),
         .AXI_IW      ( AXI_IW      )
+
     ) i_deflate (
         .clk_phy_i       ( clk_phy_i       ),
         .clk_sys_i       ( clk_sys_i       ),
@@ -405,7 +412,7 @@ module hyperbus_macro_deflate #(
 )(
     input  logic                   clk_phy_i,
     input  logic                   clk_sys_i,
-    input logic                    rst_ni,         // Asynchronous reset active low
+    input  logic                    rst_ni,         // Asynchronous reset active low
 
     REG_BUS.in                     cfg_i,
     AXI_BUS.in                     axi_i,
@@ -413,19 +420,21 @@ module hyperbus_macro_deflate #(
     // physical interface
     output logic                   hyper_reset_no,
     output logic [NR_CS-1:0]       hyper_cs_no,
-    output logic                   hyper_ck_o,    //With Pad
-    output logic                   hyper_ck_no,   //With Pad
+    inout  wire                    hyper_ck_o,    //With Pad
+    inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad
     inout  wire [7:0]              hyper_dq_io    //With Pad
 );
 
-    hyperbus_macro_inflate #(
-        .BURST_WIDTH ( BURST_WIDTH ),
-        .NR_CS       ( NR_CS       ),
-        .AXI_AW      ( AXI_AW      ),
-        .AXI_UW      ( AXI_UW      ),
-        .AXI_IW      ( AXI_IW      )
-    ) i_inflate (
+    hyperbus_macro_inflate
+    // #(
+        // .BURST_WIDTH ( BURST_WIDTH ),
+        // .NR_CS       ( NR_CS       ),
+        // .AXI_AW      ( AXI_AW      ),
+        // .AXI_UW      ( AXI_UW      ),
+        // .AXI_IW      ( AXI_IW      )
+    // ) 
+    i_inflate (
     `ifdef FPGA
         .clk0            ( clk0            ),    // Clock
         .clk90           ( clk90           ),    // Clock
