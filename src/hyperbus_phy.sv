@@ -125,7 +125,7 @@ module hyperbus_phy #(
         end
     end
 
-    always_ff @(negedge clk90 or negedge rst_ni) begin : proc_hyper_rwds_oe
+    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_rwds_oe
         if(~rst_ni) begin
             hyper_rwds_oe_o <= 0;
             hyper_dq_oe_o <= 0;

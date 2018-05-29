@@ -1,7 +1,8 @@
 module hyperbus_soc_axi_wrapper(
 
-    input  logic                   clk_i,
-    input logic                    rst_ni,      
+    input  logic                   sys_clk_i,
+    input  logic                   hyp_clk_i,  
+    input  logic                   rst_ni,      
 
     //REG_BUS.in                     cfg_i,
     AXI_BUS.in                     hyper_axi_i,
@@ -21,18 +22,40 @@ module hyperbus_soc_axi_wrapper(
     );
 
 
-    AXI_BUS  #(.AXI_ADDR_WIDTH(64), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) narrow_axi_i             (.clk_i(clk_i));
-    AXI_BUS  #(.AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) axi_narrow_narrow_i      (.clk_i(clk_i));
+    AXI_BUS  #(.AXI_ADDR_WIDTH(64), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) narrow_axi_i             (.clk_i(sys_clk_i));
+    AXI_BUS  #(.AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) axi_narrow_narrow_i      (.clk_i(sys_clk_i));
 
     
-    REG_BUS  #(.ADDR_WIDTH    (64), .DATA_WIDTH    (64)) le_bus_bus (.clk_i(clk_i));
+    REG_BUS  #(.ADDR_WIDTH    (64), .DATA_WIDTH    (64)) le_bus_bus (.clk_i(sys_clk_i));
 
 
-    hyperbus #(
+    //hyperbus #(
+    //    .NR_CS(2)
+    //) hyperbus_top_i (
+
+    //    .clk_i           ( clk_i                  ),
+    //    .rst_ni          ( rst_ni                 ),
+    //    .cfg_i           ( le_bus_bus.in          ),
+    //    .axi_i           ( axi_narrow_narrow_i    ),
+    //    .hyper_cs_no     ( hyper_cs_no            ),
+    //    .hyper_ck_o      ( hyper_ck_o             ),
+    //    .hyper_ck_no     ( hyper_ck_no            ),
+    //    .hyper_rwds_o    ( hyper_rwds_o           ),
+    //    .hyper_rwds_i    ( hyper_rwds_i           ),
+    //    .hyper_rwds_oe_o ( hyper_rwds_oe_o        ),
+    //    .hyper_dq_i      ( hyper_dq_i             ),
+    //    .hyper_dq_o      ( hyper_dq_o             ),
+    //    .hyper_dq_oe_o   ( hyper_dq_oe_o          ),
+    //    .hyper_reset_no  ( hyper_reset_no         )
+
+    //);
+
+    hyperbus_macro_deflate #(
         .NR_CS(2)
-    ) hyperbus_top_i (
+    ) hyperbus_soc_top_i (
 
-        .clk_i           ( clk_i                  ),
+        .clk_phy_i       ( clk_phy_i              ),
+        .clk_sys_i       ( sys_clk_i              ),
         .rst_ni          ( rst_ni                 ),
         .cfg_i           ( le_bus_bus.in          ),
         .axi_i           ( axi_narrow_narrow_i    ),
@@ -49,9 +72,11 @@ module hyperbus_soc_axi_wrapper(
 
     );
 
+
+
     `ifndef SYNTHESIS
-        axi_prober #(.AW(64), .DW(64), .UW( 1), .IW(10)) hyper_axi_prober_i        (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i        ));
-        axi_prober #(.AW(32), .DW(16), .UW( 1), .IW(10)) hyper_axi_prober_narrow_i (.clk_i(clk_i), .rst_ni(rst_ni), .axi_probe_i(axi_narrow_narrow_i));
+        axi_prober #(.AW(64), .DW(64), .UW( 1), .IW(10)) hyper_axi_prober_i        (.clk_i(sys_clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i        ));
+        axi_prober #(.AW(32), .DW(16), .UW( 1), .IW(10)) hyper_axi_prober_narrow_i (.clk_i(sys_clk_i), .rst_ni(rst_ni), .axi_probe_i(axi_narrow_narrow_i));
     `endif
 
     kerbin_axi_addr_size_converter #(
@@ -62,9 +87,9 @@ module hyperbus_soc_axi_wrapper(
         .IW                     (10)
 
         ) axi_addr_conv_i (
-        .clk_i                  (clk_i              ),
-        .axi_in                 (narrow_axi_i       ),
-        .axi_out                (axi_narrow_narrow_i)
+        .clk_i                  (sys_clk_i              ),
+        .axi_in                 (narrow_axi_i.Slave       ),
+        .axi_out                (axi_narrow_narrow_i.Master)
 
         );
 
@@ -80,7 +105,7 @@ module hyperbus_soc_axi_wrapper(
                         
     ) hyper_axi_ds_i (
 
-        .clk_i                  ( clk_i                    ),
+        .clk_i                  ( sys_clk_i                    ),
         .rst_ni                 ( rst_ni                   ),
 
         .axi_slave_aw_valid_i   ( hyper_axi_i.aw_valid     ),

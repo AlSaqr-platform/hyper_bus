@@ -27,3 +27,4 @@ qrc_*.log
 rc_model.bin
 voltus*
 pp*.vsrc
+.addstripe*

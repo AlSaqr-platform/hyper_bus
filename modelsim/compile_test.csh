@@ -28,13 +28,15 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/register_interface/src/reg_uniform.sv \
     ../src/config_registers.sv \
     ../src/config_registers_tb.sv \
+    ../src/delayline/PROGDEL8.v \
     ../src/clock_diff_out.sv \
     ../src/clk_gen.sv \
     ../src/ddr_out.sv \
     ../src/hyperbus_delay_line.sv \
-    ../src/pad_simulation.sv \
+    ../src/pad_io.sv \
     ../src/read_clk_rwds.sv \
     ../src/hyperbus.sv \
+    ../src/hyperbus_macro.sv \
     ../src/hyperbus_phy.sv \
     ../src/hyperbus_axi.sv \
     ../src/cmd_addr_gen.sv \
