@@ -124,8 +124,11 @@ set_false_path -hold -from [get_clocks clk0] -to [get_clocks clk_sys_i]
 
 
 # Set input driver and output load.
-# set_driving_cell -no_design_rule -lib_cell BUFM4W -pin Z -library uk65lscllmvbbl_120c25_tc [remove_from_collection [all_inputs] {clk_sys_i clk_phy_i}]
-# set_load [expr 8 * [load_of uk65lscllmvbbl_120c25_tc/BUFM4W/A]] [all_output]
+set_driving_cell -no_design_rule -lib_cell BUFM4W -pin Z -library uk65lscllmvbbl_120c25_tc [remove_from_collection [all_inputs] {clk_sys_i clk_phy_i}]
+set_load [expr 4 * [load_of uk65lscllmvbbl_120c25_tc/BUFM4W/A]] [all_output]
+
+set_load 10 [get_ports {hyper_dq* hyper_rwds_io hyper_ck_*}]
+
 
 # Compilation after setting constraints.
 compile_ultra -no_autoungroup

@@ -129,7 +129,7 @@ create_ccopt_generated_clock_tree \
 
 #set_clock_latency [expr 1.5 + 0.4 ] hyper_rwds_io
 
-set_ccopt_property  target_insertion_delay -skew_group clk_rwds 2300ps
+set_ccopt_property  target_insertion_delay -skew_group clk_rwds 2500ps
 
 set_ccopt_property  target_max_trans -net_type top   -clock_tree * 500ps
 set_ccopt_property  target_max_trans -net_type trunk -clock_tree * 350ps

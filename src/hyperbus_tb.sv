@@ -10,29 +10,31 @@
 
 module hyperbus_tb;
 
-  localparam TCLK = 6ns;
+  localparam TCLK_SYS = 4ns;
+  localparam TCLK = 3ns;
   localparam NR_CS = 2;
 
-  logic             clk_i = 0;
+  logic             clk_sys_i = 0;
+  logic             clk_phy_i = 0;
   logic             rst_ni = 1;
 
   REG_BUS #(
     .ADDR_WIDTH ( 32 ),
     .DATA_WIDTH ( 32 )
-  ) cfg_i(clk_i);
+  ) cfg_i(clk_sys_i);
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( 32 ),
     .AXI_DATA_WIDTH ( 16 ),
     .AXI_ID_WIDTH   ( 10 ),
     .AXI_USER_WIDTH ( 1  )
-  ) axi_i(clk_i);
+  ) axi_i(clk_sys_i);
 
   typedef reg_test::reg_driver #(
     .AW ( 32       ),
     .DW ( 32       ),
-    .TA ( TCLK*0.2 ),
-    .TT ( TCLK*0.8 )
+    .TA ( TCLK_SYS*0.2 ),
+    .TT ( TCLK_SYS*0.8 )
   ) cfg_driver_t;
 
   typedef axi_test::axi_driver #(
@@ -40,8 +42,8 @@ module hyperbus_tb;
     .DW ( 16       ),
     .IW ( 10       ),
     .UW ( 1        ),
-    .TA ( TCLK*0.2 ),
-    .TT ( TCLK*0.8 )
+    .TA ( TCLK_SYS*0.2 ),
+    .TT ( TCLK_SYS*0.8 )
   ) axi_driver_t;
 
   cfg_driver_t cfg_drv = new(cfg_i);
@@ -58,8 +60,8 @@ module hyperbus_tb;
 
   // Instantiate device under test.
   hyperbus_macro_deflate  dut_i (
-    .clk_phy_i       ( clk_i          ),
-    .clk_sys_i       ( clk_i          ),
+    .clk_phy_i       ( clk_phy_i      ),
+    .clk_sys_i       ( clk_sys_i      ),
     .rst_ni          ( rst_ni         ),
     .cfg_i           ( cfg_i          ),
     .axi_i           ( axi_i          ),
@@ -107,10 +109,24 @@ module hyperbus_tb;
     rst_ni = 1;
     #TCLK;
     while (!done) begin
-      clk_i = 1;
+      clk_phy_i = 1;
       #(TCLK/2);
-      clk_i = 0;
+      clk_phy_i = 0;
       #(TCLK/2);
+    end
+  end
+
+    initial begin
+    repeat(3) #TCLK;
+    rst_ni = 0;
+    repeat(3) #TCLK;
+    rst_ni = 1;
+    #TCLK;
+    while (!done) begin
+      clk_sys_i = 1;
+      #(TCLK_SYS/2);
+      clk_sys_i = 0;
+      #(TCLK_SYS/2);
     end
   end
 
@@ -352,7 +368,7 @@ module hyperbus_tb;
       end
       if (i==ax.ax_len-2) begin
         $display("Break");
-        repeat(5000) @(posedge clk_i);
+        repeat(5000) @(posedge clk_sys_i);
       end
       axi_drv.send_w(w);
     end
@@ -374,7 +390,7 @@ module hyperbus_tb;
       axi_drv.recv_r(r);
       if (i==ax.ax_len-10) begin
         $display("Break");
-        repeat(5000) @(posedge clk_i);
+        repeat(5000) @(posedge clk_sys_i);
       end
     end
 

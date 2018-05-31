@@ -38,10 +38,15 @@ for {set i 0} {$i < [llength $placement]} {incr i} {
 }
 
 #
-addHaloToBlock {3.5 0 3.5 0.5} -allIOPad 
 
 addIoFiller -cell IFILLER5 -side bottom -from 0 -to 100
 addIoFiller -cell IFILLER5 -side bottom -from 2258.2 -to 2358.2
+addIoFiller -cell IFILLER5 -side bottom -from 140 -to 1107
+addIoFiller -cell IFILLER1 -side bottom -from 140 -to 1107
+addIoFiller -cell IFILLER5 -side bottom -from 1670 -to 2230
+addIoFiller -cell IFILLER1 -side bottom -from 1670 -to 2230
+
+
 
 # deleteInst filler_*
 
