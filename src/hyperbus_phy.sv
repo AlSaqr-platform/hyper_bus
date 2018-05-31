@@ -226,7 +226,6 @@ module hyperbus_phy #(
 
     (* keep = "true" *) logic [3:0] wait_cnt;
     logic [BURST_WIDTH-1:0] burst_cnt;
-    logic additional_latency;
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
         if(~rst_ni) begin
@@ -234,7 +233,6 @@ module hyperbus_phy #(
             wait_cnt <= WAIT_CYCLES;
             burst_cnt <= {BURST_WIDTH{1'b0}};
             cmd_addr_sel <= 1'b0;
-            additional_latency <= 1'b0;
             en_cs <= 1'b0;
         end else begin
             case(hyper_trans_state)
@@ -277,7 +275,6 @@ module hyperbus_phy #(
                         hyper_trans_state <= WAIT;
                     end
                     if(wait_cnt == config_t_latency_access - 2) begin
-                        additional_latency <= hyper_rwds_i_syn; //Sample RWDS
                         if(hyper_rwds_i_syn) begin //Check if additinal latency is nesessary
                             hyper_trans_state <= WAIT2;
                         end else begin
