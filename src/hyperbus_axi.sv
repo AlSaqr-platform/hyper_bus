@@ -50,16 +50,34 @@ module hyperbus_axi #(
     output logic                    trans_address_space_o
 );
     logic decode_error;
+    logic bad_address;
+    logic[BURST_WIDTH-1:0] read_cnt;
+
     //Connect/MUX trans signals to address write and read channels 
-    assign trans_cs_o[0] =  ( config_addr_mapping[62:32] >= trans_address_o[30:0] ) && ( trans_address_o[30:0] >= config_addr_mapping[30:0] );
-    assign trans_cs_o[1] =  ( config_addr_mapping[126:96] >= trans_address_o[30:0] ) && ( trans_address_o[30:0] >= config_addr_mapping[94:64] );
+    generate
+      for(genvar i=0; i<=NR_CS-1; i++) begin
+        assign trans_cs_o[i] = (config_addr_mapping[2*32*i+62:2*32*i+32] >= trans_address_o[30:0] ) && ( trans_address_o[30:0] >= config_addr_mapping[2*32*i+30:2*32*i]); 
+      end
+    endgenerate
+
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_decode_error
         if(~rst_ni) begin
             decode_error <= 0;
-        end else if(trans_valid_o && trans_ready_i) begin
-            decode_error <= ~(trans_cs_o[0] || trans_cs_o[1]);
+        end else if(axi_i.aw_valid || axi_i.ar_valid) begin
+            decode_error <= bad_address;
         end
     end
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_read_cnt
+        if(~rst_ni) begin
+            read_cnt <= 0;
+        end else if (axi_i.ar_valid && axi_i.ar_ready) begin
+            read_cnt <= axi_i.ar_len + 1;
+        end
+    end
+    //Combinatorial
+    assign bad_address = ~(trans_cs_o[0] || trans_cs_o[1]);
+
     assign trans_address_o = trans_write_o ? axi_i.aw_addr : axi_i.ar_addr;
     assign trans_burst_o = (trans_write_o ? axi_i.aw_len : axi_i.ar_len)+ 1;
     assign trans_burst_type_o = trans_write_o ? axi_i.aw_burst[0] : axi_i.ar_burst[0];
@@ -75,7 +93,7 @@ module hyperbus_axi #(
     assign tx_valid_o = axi_i.w_valid && ~decode_error;
     assign axi_i.w_ready = tx_ready_i;
     //Read handshake & last
-    assign axi_i.r_valid = rx_valid_i;
+    assign axi_i.r_valid = rx_valid_i || (read_cnt >= 9'b0 && decode_error);
     assign rx_ready_o = axi_i.r_ready; //TODO
     assign axi_i.r_last = rx_last_i;
 
@@ -87,7 +105,7 @@ module hyperbus_axi #(
     typedef enum logic[2:0] {READ_READY, READ, READ_RESP, READ_ERROR} read_t;
     (* keep = "true" *) read_t read_state;
 
-    typedef enum logic[2:0] {TRANS_START, TRANS_READ, TRANS_WRITE, TRANS_WRITE_END, TRANS_READ_END} trans_t;
+    typedef enum logic[2:0] {TRANS_START, TRANS_CHECK_READ_ADDR, TRANS_CHECK_WRITE_ADDR, TRANS_READ, TRANS_WRITE, TRANS_WRITE_END, TRANS_READ_END} trans_t;
     (* keep = "true" *) trans_t trans_state;
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_write_state
@@ -148,12 +166,14 @@ module hyperbus_axi #(
                 READ: begin
                     if(rx_error_i) begin
                         read_state <= READ_ERROR;
-                    end else  if(rx_last_i && axi_i.r_ready && axi_i.r_valid) begin
+                    end if((read_cnt == 9'b0 ||rx_last_i) && axi_i.r_ready && axi_i.r_valid) begin
                         read_state <= READ_READY;
+                    end else if (axi_i.r_ready && axi_i.r_valid) begin
+                        read_cnt <= read_cnt - 1;
                     end
                 end
                 READ_ERROR: begin //Have to signal valid response with every read
-                    if(rx_last_i && axi_i.r_ready && axi_i.r_valid) begin
+                    if((read_cnt == 8'b0 || rx_last_i)  && axi_i.r_ready && axi_i.r_valid) begin
                         read_state <= READ_READY;
                     end
                 end
@@ -169,6 +189,9 @@ module hyperbus_axi #(
             READ: begin
                 if(rx_error_i) begin
                     axi_i.r_resp = 2'b10;
+                end
+                if(decode_error) begin
+                    axi_i.r_resp = 2'b11;
                 end
             end
             READ_ERROR: begin
@@ -187,11 +210,25 @@ module hyperbus_axi #(
         end else begin
             case(trans_state)
                 TRANS_START: begin
-                    if(axi_i.aw_valid) begin
-                        trans_state <= TRANS_WRITE;
-                    end else if(axi_i.ar_valid) begin
-                        trans_state <= TRANS_READ;
+                    if(axi_i.ar_valid) begin
+                        trans_state <= TRANS_CHECK_READ_ADDR;
+                    end else if(axi_i.aw_valid) begin
+                        trans_state <= TRANS_CHECK_WRITE_ADDR;
                     end
+                end
+                TRANS_CHECK_READ_ADDR: begin
+                     if(axi_i.ar_valid && ~bad_address) begin
+                        trans_state <= TRANS_READ;
+                    end else if(axi_i.ar_valid && bad_address) begin
+                        trans_state <= TRANS_READ_END;
+                    end
+                end
+                TRANS_CHECK_WRITE_ADDR: begin
+                    if(axi_i.aw_valid && ~bad_address) begin
+                        trans_state <= TRANS_WRITE;
+                    end else if (axi_i.aw_valid && bad_address) begin
+                        trans_state <= TRANS_WRITE_END;
+                    end 
                 end
                 TRANS_READ: begin
                     if(~trans_ready_i) begin
@@ -232,10 +269,18 @@ module hyperbus_axi #(
                 trans_write_o = 1'b1;
                 trans_valid_o = 1'b1;
             end
+            TRANS_CHECK_READ_ADDR: begin
+                trans_write_o = 1'b0;
+            end
+            TRANS_CHECK_WRITE_ADDR: begin
+                trans_write_o = 1'b1;
+            end
             TRANS_READ_END: begin
+                trans_write_o = 1'b0;
                 axi_i.ar_ready = 1'b1;
             end
             TRANS_WRITE_END: begin
+                trans_write_o = 1'b1;
                 axi_i.aw_ready = 1'b1;
             end
         endcase

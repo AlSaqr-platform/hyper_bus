@@ -135,7 +135,8 @@ module hyperbus_tb;
   int expectedResulth0001 = 16'h0001;
   int expectedResultRegWrite = 16'h8f1f;
   int expectedResultStrobe[16] = '{16'hffff, 16'hff56, 16'h34ff, 16'h3456, 16'hffff, 16'hff56, 16'h34ff, 16'h3456,16'hffff, 16'hff56, 16'h34ff, 16'h3456,16'hffff, 16'hff56, 16'h34ff, 16'h3456};
-  int SomeData[16] = '{'hcafe, 'haffe, 'h0000, 'h0001, 'hface, 'hfeed, 'h0000, 'h0e0e, 'hcafe, 'haffe, 'h0000, 'h0002, 'hface, 'hfeed, 'h0000, 'h0f0f};
+  int SomeData[16] = '{'h0001, 'h0002, 'h0003, 'h0004, 'h0005, 'h0006, 'h0007, 'h0008, 'h0009, 'h000a, 'h000b, 'h000c, 'h000d, 'h000e, 'h000f, 'h0f0f};
+  // int SomeData[16] = '{'hcafe, 'haffe, 'h0000, 'h0001, 'hface, 'hfeed, 'h0000, 'h0e0e, 'hcafe, 'haffe, 'h0000, 'h0002, 'hface, 'hfeed, 'h0000, 'h0f0f};
 
   initial begin
 
@@ -166,89 +167,15 @@ module hyperbus_tb;
     b = new;
     RegisterNoAddLatency(ax,w,b,r,'h8f1f);
     WordWithStrobe(ax,w,b,r);
-  
     ax.ax_addr = 'h00;
     LongWriteAndRead(ax, w, b, r);
-    ax.ax_addr = 'h10;
-    LongWriteAndRead(ax, w, b, r);
-
     WriteAndReadWithStrobe(ax,w,b,r);
     AddrOutOfRange(ax, w, b, r);
     WriteAndReadWithBreak(ax, w, b, r);
     ShortWriteAndRead(ax, w, b, r);
-    // Thomas(ax, w, b, r);
-
     done = 1;
+    $display("Finished");
   end
-
-  task Thomas (axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
-    //axi requests kerbin soc -> hyperbus
-
-    ax.ax_id    = 10'h010;
-    ax.ax_addr  = 32'h0000_0000;
-    ax.ax_size  = 3'h1;
-    ax.ax_burst = axi_pkg::BURST_INCR;
-    ax.ax_len   = 8'h07;
-    axi_drv.send_ar(ax);            //adapt me
-
-
-    repeat (8) begin
-        r.r_id      = 10'h010;
-        axi_drv.recv_r(r);
-        $display("Read %d - %4h", $time, r.r_data);
-    end
-
-
-    ax.ax_id    = 10'h010;
-    ax.ax_addr  = 32'h0000_0000;
-    ax.ax_size  = 3'h1;
-    ax.ax_burst = axi_pkg::BURST_INCR;
-    ax.ax_len   = 8'h03;
-    axi_drv.send_aw(ax);         
-
-    w.w_data    = 16'h000f;
-    w.w_strb    = '1;
-    w.w_last    = '0;
-    $display("Write %d - %4h", $time, w.w_data);
-    axi_drv.send_w(w);
-
-    w.w_data    = 16'hbeef;
-    w.w_strb    = '1;
-    w.w_last    = '0;
-    $display("Write %d - %4h", $time, w.w_data);
-    axi_drv.send_w(w);
-
-    w.w_data    = 16'hcafe;
-    w.w_strb    = '1;
-    w.w_last    = '0;
-    $display("Write %d - %4h", $time, w.w_data);
-    axi_drv.send_w(w);
-
-    w.w_data    = 16'hface;
-    w.w_strb    = '1;
-    w.w_last    = '1;
-    $display("Write %d - %4h", $time, w.w_data);
-    axi_drv.send_w(w);
-
-    axi_drv.recv_b(b);
-
-
-    ax.ax_id    = 10'h010;
-    ax.ax_addr  = 32'h0000_0000;
-    ax.ax_size  = 3'h1;
-    ax.ax_burst = axi_pkg::BURST_INCR;
-    ax.ax_len   = 8'h07;
-    axi_drv.send_ar(ax);       
-
-
-    repeat (8) begin
-        r.r_id      = 10'h010;
-        axi_drv.recv_r(r);
-        $display("Read %d - %4h", $time, r.r_data);
-    end
-  endtask : Thomas //Thomas(ax, w, b, r);
-
-
 
   //Writes the last word of the memory byte by byte with strobes
   task WordWithStrobe(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
@@ -406,7 +333,7 @@ module hyperbus_tb;
   task LongWriteAndRead(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
     //Without break
     //Write
-    ax.ax_len = 'd15;
+    ax.ax_len = 'd255;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
     $display("----------------------\nWriting and reading %3d words at Addr. %8h", ax.ax_len+1, ax.ax_addr);
@@ -430,7 +357,7 @@ module hyperbus_tb;
     axi_drv.send_ar(ax);
     for(int i = 0; i < ax.ax_len+1; i++) begin
       axi_drv.recv_r(r);
-      assert(r.r_data == SomeData[i%16]) else $error ("Received %4h, but expected %4h at %d", r.r_data, w.w_data, i);
+      assert(r.r_data == SomeData[i%16]) else $error ("Received %4h, but expected %4h at %d", r.r_data, SomeData[i%16], i);
       if (i == ax.ax_len) begin $display("Long read finished, number of data items %3d", i+1); end
     end
     assert (r.r_resp == 2'b00) $display ("Ok, read response received"); else $error("Read response %2b, but expected %2b", r.r_resp, 2'b00);
@@ -471,27 +398,30 @@ module hyperbus_tb;
     //Write
     ax.ax_addr = 'h900000; //Address that is out of the range 
     $display("---------------------- \nTesting write with invalid address: %8h",ax.ax_addr);
-    ax.ax_len = 'd0;
+    ax.ax_len = 'd15;
     ax.ax_burst = 'b01;
     axi_drv.send_aw(ax);
     w.w_last = 0;
-    w.w_data = 'haffe;
     w.w_strb = 2'b11;
 
     for(int i = 0; i < ax.ax_len+1; i++) begin
       if(i==ax.ax_len) begin
         w.w_last = 1;
       end
+      w.w_data = SomeData[i%16];
       axi_drv.send_w(w);
     end
     axi_drv.recv_b(b);
     assert(b.b_resp == 2'b11) $display ("OK, Decode error was trasnmitted"); else $error("Received b_resp %2b but expected %2b", b.b_resp, 2'b11);
 
     $display("Testing read with invalid address: %8h",ax.ax_addr);
-    ax.ax_len = 'd0;
+    ax.ax_len = 'd15;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
     axi_drv.send_ar(ax);
+    for(int i = 0; i < ax.ax_len+1; i++) begin
+      axi_drv.recv_r(r);
+    end
     axi_drv.recv_r(r);
     assert(r.r_resp == 2'b11) $display ("OK, Decode error was trasnmitted"); else $error("Received b_resp %2b but expected %2b", r.r_resp, 2'b11);
   endtask : AddrOutOfRange
