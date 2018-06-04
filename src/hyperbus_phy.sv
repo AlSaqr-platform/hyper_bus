@@ -462,13 +462,13 @@ module hyperbus_phy #(
             ERROR: begin //Recover state after timeout for t_CSM 
                 clock_enable = 1'b0;
                 read_fifo_rst = 1'b1;
-                tx_ready_o = 1'b1;
                 if(~local_write) begin
                     rx_error_o = 1'b1;
                     if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
                         rx_last_o = 1'b1;
                     end
                 end else begin
+                    tx_ready_o = 1'b1;
                     b_valid_o = 1'b1;
                     b_error_o = 1'b1;   
                 end

@@ -50,6 +50,7 @@ module hyperbus_axi #(
     output logic                    trans_address_space_o
 );
     logic decode_error;
+    logic slv_error;
     logic bad_address;
     logic[BURST_WIDTH-1:0] read_cnt;
 
@@ -90,16 +91,16 @@ module hyperbus_axi #(
 
     //Directly to FIFO
     //Write handshake
-    assign tx_valid_o = axi_i.w_valid && ~decode_error;
-    assign axi_i.w_ready = tx_ready_i;
+    assign tx_valid_o = axi_i.w_valid && ~decode_error && axi_i.b_resp != 2'b10;
+    assign axi_i.w_ready = tx_ready_i; //is set anyway
     //Read handshake & last
     assign axi_i.r_valid = rx_valid_i || (read_cnt >= 9'b0 && decode_error);
-    assign rx_ready_o = axi_i.r_ready; //TODO
+    assign rx_ready_o = axi_i.r_ready || (read_cnt >= 9'b0 && decode_error);
     assign axi_i.r_last = rx_last_i;
 
     assign b_ready_o = axi_i.b_ready;
 
-    typedef enum logic[2:0] {WRITE_READY, WRITE, WRITE_RESP} write_t;
+    typedef enum logic[2:0] {WRITE_READY, WRITE, WRITE_SLV_ERROR, WRITE_RESP} write_t;
     (* keep = "true" *) write_t write_state;
 
     typedef enum logic[2:0] {READ_READY, READ, READ_RESP, READ_ERROR} read_t;
@@ -121,6 +122,13 @@ module hyperbus_axi #(
                 WRITE: begin
                     if(axi_i.w_last) begin
                         write_state <= WRITE_RESP;
+                    end else if (b_error_i) begin
+                        write_state <= WRITE_SLV_ERROR;
+                    end
+                end
+                WRITE_SLV_ERROR: begin
+                    if(axi_i.b_valid && axi_i.b_ready) begin
+                        write_state <= WRITE_READY;
                     end
                 end
                 WRITE_RESP: begin
@@ -138,13 +146,16 @@ module hyperbus_axi #(
         axi_i.b_resp = 2'b00;
         axi_i.b_user = 1'b0;
         case(write_state)
+            WRITE_SLV_ERROR: begin
+                if (b_error_i && b_valid_i) begin
+                    axi_i.b_valid = 1'b1;
+                    axi_i.b_resp = 2'b10;
+                end
+            end
             WRITE_RESP: begin
                 if (b_valid_i && b_last_i) begin
                     axi_i.b_valid = 1'b1;
                     axi_i.b_resp = 2'b00;
-                end if (b_error_i && b_valid_i) begin
-                    axi_i.b_valid = 1'b1;
-                    axi_i.b_resp = 2'b10;
                 end if (decode_error) begin
                     axi_i.b_valid = 1'b1;
                     axi_i.b_resp = 2'b11;
