@@ -25,7 +25,7 @@ module ddr_in #(
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ddr_pos
         if(~rst_ni) begin
-            ddr_pos <= 8'h0;
+            ddr_pos <= 1'b0;
         end else if (enable) begin
             ddr_pos <= data_i;
         end
@@ -33,7 +33,7 @@ module ddr_in #(
     
     always_ff @(negedge clk_i or negedge rst_ni) begin : proc_ddr_neg
         if(~rst_ni) begin
-            ddr_neg <= 8'h0;
+            ddr_neg <= 1'b0;
         end else if (enable) begin
             ddr_neg <= data_i;
         end
@@ -41,14 +41,5 @@ module ddr_in #(
 
     assign data_o[0] = ddr_neg;
     assign data_o[1] = ddr_pos;
-
-    // always_ff @(posedge clk_i or negedge rst_ni) begin : proc_data_i //not on clk0, delayed rwds
-    //     if(~rst_ni) begin
-    //         data_o <= 16'h0;
-    //     end else if (enable) begin
-    //         data_o[7:0]  <= ddr_neg;
-    //         data_o[15:8] <= ddr_pos;
-    //     end
-    // end
 endmodule
 
