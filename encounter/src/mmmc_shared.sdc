@@ -73,7 +73,6 @@ set_input_transition [expr 1.8 / 2] [get_ports hyper_*_io]
 # Example of creating generated clock at clock output port
 create_generated_clock -name hyper_ck_o -edges {1 2 3} -source [get_pins i_deflate/i_hyperbus/ddr_clk/clk90_o] [get_ports hyper_ck_o]
 set_clock_latency $padDelayOutput hyper_ck_o
-# gen_clock_name is the name of forwarded clock here. It should be used below for defining "fwclk".	
 
 set margin       0.5
 set fwclk        hyper_ck_o;                         # forwarded clock name (generated using create_generated_clock at output clock port)        
@@ -148,7 +147,7 @@ set_false_path -hold \
     -from [get_pins i_deflate/i_hyperbus/phy_i/hyper_*_oe_o_reg/Q] \
     -to [get_ports hyper_*_io]
 
-set_max_delay -from [get_pins i_deflate/i_hyperbus/phy_i/read_clk_en_reg/Q] -to [get_pins i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/cdc_read_ck_gating/clk_gate_i/E] [expr $period_phy/2.0]
+set_max_delay -from [get_pins i_deflate/i_hyperbus/phy_i/read_clk_en_reg/Q] -to [all_fanin -to [get_nets i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/clk_rwds] -only_cells -pin_levels 1] [expr $period_phy/2.0]
 
 set_false_path -from [get_pins i_deflate/i_hyperbus/ddr_clk/clk0_o] -to [get_ports hyper_*_io]
 

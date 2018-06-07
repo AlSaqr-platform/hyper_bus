@@ -9,6 +9,7 @@ clearDrc
 
 set offset 1.5
 
+
 for {set i 0} {$i < [llength $pins]} {incr i} {
     set lx [dbGet [dbGetInstByName [lindex $pins $i]].pt_x]
     puts $lx
@@ -20,7 +21,7 @@ for {set i 0} {$i < [llength $pins]} {incr i} {
     set right_x [expr $lx + 60 + 0.5]
 
     #SKIP on first pad
-    if {$i != 0} {
+    if {$i > 3 && $i < [expr [llength $pins] - 1]} {
         #VSS left
         addStripe -skip_via_on_wire_shape Noshape -block_ring_top_layer_limit ME1 -max_same_layer_jog_length 4 -padcore_ring_bottom_layer_limit ME1 -number_of_sets 1 -skip_via_on_pin Standardcell -stacked_via_top_layer ME8 -padcore_ring_top_layer_limit ME1 -spacing 2 -merge_stripes_value 0.1 -layer ME2 -block_ring_bottom_layer_limit ME1 -width 1 -area {0 11.65 2358.2 100} -nets VSS -start_x $start_x -stacked_via_bottom_layer ME1
 
@@ -31,7 +32,7 @@ for {set i 0} {$i < [llength $pins]} {incr i} {
     }
 
     #SKIP on last pad
-    if {$i != [expr [llength $pins] - 1]} {
+    if {$i > 3 && $i < [expr [llength $pins] - 2]} {
         #VSS right
         addStripe -skip_via_on_wire_shape Noshape -block_ring_top_layer_limit ME1 -max_same_layer_jog_length 4 -padcore_ring_bottom_layer_limit ME1 -number_of_sets 1 -skip_via_on_pin Standardcell -stacked_via_top_layer ME8 -padcore_ring_top_layer_limit ME1 -spacing 2 -merge_stripes_value 0.1 -layer ME2 -block_ring_bottom_layer_limit ME1 -width 1 -area {0 11.65 2358.2 100} -nets VSS -start_x $right_x -stacked_via_bottom_layer ME1
 
@@ -134,17 +135,21 @@ editPowerVia -skip_via_on_pin Standardcell -bottom_layer ME1 -same_sized_stack_v
 # add halo around pads to prevent dangling follow stripes
 addHaloToBlock {3.5 0 3.5 0.5} -allIOPad 
 
-sroute -connect { corePin } -layerChangeRange { ME1(1) ME8(8) } -blockPinTarget { nearestTarget } -padPinPortConnect { allPort oneGeom } -padPinTarget { nearestTarget } -corePinTarget { firstAfterRowEnd } -floatingStripeTarget { blockring padring ring stripe ringpin blockpin } -allowJogging 1 -crossoverViaLayerRange { ME1(1) ME8(8) } -nets { VDDIO VSSIO VDD VSS } -allowLayerChange 1 -blockPin useLef -targetViaLayerRange { ME1(1) ME8(8) }
+sroute -connect { corePin } -layerChangeRange { ME1(1) ME8(8) } -blockPinTarget { nearestTarget } -padPinPortConnect { allPort oneGeom } -padPinTarget { nearestTarget } -corePinTarget { firstAfterRowEnd } -floatingStripeTarget { blockring padring ring stripe ringpin blockpin } -allowJogging 1 -crossoverViaLayerRange { ME1(1) ME8(8) } -nets { VDDIO VSSIO VDD VSS } -allowLayerChange 1 -blockPin useLef -targetViaLayerRange { ME1(1) ME8(8) } 
 
 
 # add strips at top of power pads
 
 set power_pads [list \
-    pad_vss_c \
-    pad_vdd_c \
+    pad_vss_c1 \
+    pad_vss_c2 \
+    pad_vdd_c1 \
+    pad_vdd_c2 \
 ]
 set power_nets [list \
     VSS \
+    VSS \
+    VDD \
     VDD \
 ]
 for {set i 0} {$i < [llength $power_pads]} {incr i} {
@@ -160,11 +165,14 @@ for {set i 0} {$i < [llength $power_pads]} {incr i} {
         set stop_x [expr $stop_x + 0.02]
     }
 
-    for {set layer 1} {$layer < 9} {incr layer} {
-        addStripe -skip_via_on_wire_shape Noshape -block_ring_top_layer_limit ME$layer -max_same_layer_jog_length 4 -padcore_ring_bottom_layer_limit ME$layer -number_of_sets 4 -skip_via_on_pin Standardcell -stacked_via_top_layer ME$layer -padcore_ring_top_layer_limit ME1 -merge_stripes_value 0.1 -layer ME$layer -block_ring_bottom_layer_limit ME$layer -width 10 -spacing 2 -area {0 88.8 2358.2 100} -nets [lindex $power_nets $i] -start_x $start_x -stop_x $stop_x -stacked_via_bottom_layer ME$layer -create_pins 1
+    foreach layer {2 4 6 8} {
+        addStripe -skip_via_on_wire_shape Noshape -block_ring_top_layer_limit ME$layer -max_same_layer_jog_length 4 -padcore_ring_bottom_layer_limit ME$layer -number_of_sets 4 -skip_via_on_pin Standardcell -stacked_via_top_layer ME$layer -padcore_ring_top_layer_limit ME1 -merge_stripes_value 0.1 -layer ME$layer -block_ring_bottom_layer_limit ME$layer -width 10 -spacing 2 -area {450 88.8 2258.2 235} -nets [lindex $power_nets $i] -start $start_x -stop $stop_x -stacked_via_bottom_layer ME$layer -create_pins 1
     }
 }
 
+editTrim -nets {VDD VSS}
+
+#-extend_to design_boundary
 
 puts "Finished power grid"
 

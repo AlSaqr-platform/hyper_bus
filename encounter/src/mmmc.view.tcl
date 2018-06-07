@@ -49,6 +49,14 @@ create_library_set -name worst_libs \
 		                    {*}[glob -nocomplain tech/lib/*_ss1p08v125c.*lib] \
                      ]
 
+create_library_set -name worst_IO1V8_libs \
+                    -timing [ list \
+                      tech/lib/uk65lscllmvbbh_108c125_wc.lib \
+                      tech/lib/uk65lscllmvbbl_108c125_wc.lib \
+                      tech/lib/uk65lscllmvbbr_108c125_wc.lib \
+                      /usr/pack/umc-65-kgf/umc/ll/u065gioll25mvir/b04/synopsys/u065gioll25mvir_18_wc.lib \
+                     ]
+
 # RC corners
 create_rc_corner -name typical_rc -qx_tech_file tech/qrcTechFile_typical.tch 
 create_rc_corner -name best_rc    -qx_tech_file tech/qrcTechFile_rcmin.tch
@@ -58,10 +66,12 @@ create_rc_corner -name worst_rc   -qx_tech_file tech/qrcTechFile_rcmax.tch
 create_delay_corner -name typical_delay -library_set typical_libs -rc_corner typical_rc
 create_delay_corner -name best_delay    -library_set best_libs    -rc_corner best_rc
 create_delay_corner -name worst_delay   -library_set worst_libs   -rc_corner worst_rc
+create_delay_corner -name worst_io1v8_delay   -library_set worst_IO1V8_libs   -rc_corner worst_rc
    
 update_delay_corner -name typical_delay -library_set typical_libs -rc_corner typical_rc -power_domain PD_core
 update_delay_corner -name best_delay    -library_set best_libs    -rc_corner best_rc    -power_domain PD_core
 update_delay_corner -name worst_delay   -library_set worst_libs   -rc_corner worst_rc   -power_domain PD_core
+update_delay_corner -name worst_io1v8_delay  -power_domain PD_core
 
 #update_delay_corner -name typical_delay -library_set typical_libs -rc_corner typical_rc -power_domain PD_pad
 #update_delay_corner -name best_delay    -library_set best_libs    -rc_corner best_rc    -power_domain PD_pad
@@ -99,6 +109,7 @@ create_constraint_mode -name test_mode -sdc_files [list src/mmmc_test.sdc \
 create_analysis_view -name func_view -delay_corner worst_delay -constraint_mode func_mode
 create_analysis_view -name test_view -delay_corner worst_delay -constraint_mode test_mode
 create_analysis_view -name hold_view -delay_corner best_delay  -constraint_mode func_mode
+create_analysis_view -name 1v8_view -delay_corner worst_io1v8_delay  -constraint_mode func_mode
 
 #################################################################
 ## SET ANALYSIS VIEWS
@@ -108,7 +119,7 @@ create_analysis_view -name hold_view -delay_corner best_delay  -constraint_mode 
 ## example we use both 'functional' and 'test_mode' when doing setup analysis
 ## and we use only the 'hold' view when doing hold analysis. 
 
-set_analysis_view -setup { func_view } \
+set_analysis_view -setup { func_view hold_view} \
                   -hold  { hold_view }
                   
 ## *IMPORTANT* It is actually possible that due to the differences in modelling,

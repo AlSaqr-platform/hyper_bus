@@ -15,6 +15,7 @@ addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin cfg*
 addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin clk*
 addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin hyper_cs_*
 addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin hyper_reset
+addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin debug_*
 createPinGuide -name inChip -cell hyperbus_macro_inflate -edge 1 -layer {M2 M4 M6}
 
 

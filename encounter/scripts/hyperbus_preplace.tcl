@@ -3,7 +3,7 @@
 set lx [dbGet [dbGetInstByName i_deflate/pad_hyper_rwds_io].pt_x]
 set ly 88.8
 set ux [expr $lx + 60]
-set uy [expr $ly + 5]
+set uy 95
 
 # createRegion i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/progdel8_i $lx $ly $ux $uy
 
@@ -34,8 +34,10 @@ for {set i 0} {$i < [llength $oddr_cells]} {incr i} {
     set lx [dbGet [dbGetInstByName [lindex $ddr_pins $i]].pt_x]
     puts $lx
     set ux [expr $lx + 60]
-    createRegion [lindex $oddr_cells $i] $lx $ly $ux $uy
+    createGuide [lindex $oddr_cells $i] $lx $ly $ux $uy
 }
+
+#createRegion
 
 set iddr_cells [list \
     i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/ddr_out_bus_0__i_ddr_in \
@@ -51,8 +53,9 @@ for {set i 0} {$i < [llength $iddr_cells]} {incr i} {
     set lx [dbGet [dbGetInstByName [lindex $ddr_pins $i]].pt_x]
     puts $lx
     set ux [expr $lx + 60]
-    createRegion [lindex $iddr_cells $i] $lx $ly $ux $uy
+    createGuide [lindex $iddr_cells $i] $lx $ly $ux $uy
 }
 
 #Add layout of delay line
 #readSdpFile -file ../src/delayline/PROGDEL8.sdp -hierPath i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/progdel8_i
+

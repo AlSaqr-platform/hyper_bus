@@ -73,7 +73,7 @@ timeDesign -hold -postCTS -outDir reports/timing.postCTS
 saveDesign save/postCTS
 
 # fix new violations
-#place_opt_design
+#optDesign -postCTS
 
 # Routing
 setNanoRouteMode -quiet -routeInsertAntennaDiode 1
@@ -84,20 +84,28 @@ timeDesign -postRoute -hold -outDir reports/timing.postroute
 
 saveDesign save/postRoute
 
+optDesign -postRoute
+
 source scripts/fillcore-insert.tcl
 
 # doesn't work, density 100%
+checkPlace
 ecoPlace
+
 
 # Finishing (export all etc)
 source scripts/checkdesign.tcl
+
+set DESIGNNAME hyperbus_macro
+source scripts/exportall_typ.tcl
+
+set VERSION 0v7
+set DESIGNNAME hyperbus_macro_$VERSION
+source scripts/exportall_typ.tcl
+
 saveDesign save/hyperbus_macro_${VERSION}
 # write_io_file
 
-set VERSION wip
-set DESIGNNAME hyperbus_macro_$VERSION
-
-source scripts/exportall.tcl
 
 write_lef_abstract ./out/hyperbus_macro_${VERSION}.lef -stripePin -PGpinLayers { 2 3 4 5 6 7 8 }
 

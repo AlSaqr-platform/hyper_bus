@@ -27,6 +27,8 @@ module hyperbus #(
 `else
     input  logic                   clk_phy_i,
     input  logic                   clk_sys_i,
+
+    input  logic                   test_en_ti,
 `endif
     input logic                    rst_ni,         // Asynchronous reset active low
 
@@ -42,7 +44,12 @@ module hyperbus #(
     input  logic [7:0]             hyper_dq_i,
     output logic [7:0]             hyper_dq_o,
     output logic                   hyper_dq_oe_o,
-    output logic                   hyper_reset_no
+    output logic                   hyper_reset_no,
+
+    //debug
+    output logic                   debug_hyper_rwds_oe_o,
+    output logic                   debug_hyper_dq_oe_o,
+    output logic [3:0]             debug_hyper_phy_state_o
 );
 
     //FGPA uses global clocking with MMCM
@@ -53,13 +60,30 @@ module hyperbus #(
     logic clk0;   //Clk for phy and FIFOS 
     logic clk90;
 
+    logic clk0_gen;
+    logic clk90_gen;
+
     clk_gen ddr_clk (
         .clk_i    ( clk_phy_i ),
         .rst_ni   ( rst_ni    ),
-        .clk0_o   ( clk0      ),
-        .clk90_o  ( clk90     ),
+        .clk0_o   ( clk0_gen  ),
+        .clk90_o  ( clk90_gen ),
         .clk180_o (           ),
         .clk270_o (           )
+    );
+
+    // Testmode
+    pulp_clock_mux2 test_mux_clk0 (
+        .clk_o     ( clk0       ),
+        .clk0_i    ( clk0_gen   ),
+        .clk1_i    ( clk_sys_i  ),
+        .clk_sel_i ( test_en_ti )
+    );
+    pulp_clock_mux2 test_mux_clk90 (
+        .clk_o     ( clk90      ),
+        .clk0_i    ( clk90_gen  ),
+        .clk1_i    ( clk_sys_i  ),
+        .clk_sel_i ( test_en_ti )
     );
 `endif
     
@@ -199,6 +223,9 @@ module hyperbus #(
         .clk90                        ( clk90                        ),
         .rst_ni                       ( rst_ni                       ),
 
+        .clk_test                     ( clk_sys_i                    ),
+        .test_en_ti                   ( test_en_ti                   ),
+
         .config_t_latency_access      ( config_t_latency_access      ),
         .config_t_latency_additional  ( config_t_latency_additional  ),
         .config_t_cs_max              ( config_t_cs_max              ),
@@ -238,7 +265,11 @@ module hyperbus #(
         .hyper_dq_i                   ( hyper_dq_i                   ),
         .hyper_dq_o                   ( hyper_dq_o                   ),
         .hyper_dq_oe_o                ( hyper_dq_oe_o                ),
-        .hyper_reset_no               ( hyper_reset_no               )
+        .hyper_reset_no               ( hyper_reset_no               ),
+
+        .debug_hyper_rwds_oe_o        ( debug_hyper_rwds_oe_o        ),
+        .debug_hyper_dq_oe_o          ( debug_hyper_dq_oe_o          ),
+        .debug_hyper_phy_state_o      ( debug_hyper_phy_state_o      )
     );
 
     cdc_2phase #(.T(trans_struct)) i_cdc_2phase_trans_signals (

@@ -118,10 +118,11 @@ create_ccopt_generated_clock_tree \
 #create_ccopt_skew_group -name ddr_in -sources hyper_rwds_io -exclusive_sinks ddr_*_reg/CKB
 #create_ccopt_skew_group -name ddr_out -sources clk0 -exclusive_sinks [concat [get_pins i_deflate/i_hyperbus/phy_i/ddr_out_bus_?__ddr_data/q?_reg/CK] [get_pins i_deflate/i_hyperbus/phy_i/ddr_out_bus_?__ddr_data/ddrmux/clk_mux_i/S]]
 
+create_ccopt_skew_group -name hyper_ck -sources i_deflate/i_hyperbus/ddr_clk/r_clk90_o_reg/Q -exclusive_sinks {i_deflate/pad_hyper_ck_o/DO i_deflate/pad_hyper_ck_no/DO}
 
 # skew group skew and ID targets
 #-----------------------------------------------------------------------------------------
-#set_ccopt_property target_skew -skew_group {ddr_in ddr_out} 50ps -delay_corner *
+set_ccopt_property target_skew -skew_group hyper_ck 50ps -delay_corner *
 
 
 # DRV/NDR constraints for clock trees

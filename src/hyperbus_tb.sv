@@ -13,6 +13,7 @@ module hyperbus_tb;
   localparam TCLK_SYS = 4ns;
   localparam TCLK = 3ns;
   localparam NR_CS = 2;
+  localparam CS_MAX = 4us/(2*4ns)-2;
 
   logic             clk_sys_i = 0;
   logic             clk_phy_i = 0;
@@ -58,6 +59,10 @@ module hyperbus_tb;
   wire        wire_rwds;
   wire [7:0]  wire_dq_io;
 
+  logic       debug_hyper_rwds_oe_o;
+  logic       debug_hyper_dq_oe_o;
+  logic [3:0] debug_hyper_phy_state_o;
+
   // Instantiate device under test.
   hyperbus_macro_deflate  dut_i (
     .clk_phy_i       ( clk_phy_i      ),
@@ -66,20 +71,15 @@ module hyperbus_tb;
     .cfg_i           ( cfg_i          ),
     .axi_i           ( axi_i          ),
     .hyper_reset_no  ( wire_reset_no  ),
-    .hyper_cs_no     ( hyper_cs_no    ),
+    .hyper_cs_no     ( wire_cs_no    ),
     .hyper_ck_o      ( wire_ck_o      ),
     .hyper_ck_no     ( wire_ck_no     ),
     .hyper_rwds_io   ( wire_rwds      ),
-    .hyper_dq_io     ( wire_dq_io     )
+    .hyper_dq_io     ( wire_dq_io     ),
+    .debug_hyper_rwds_oe_o    ( debug_hyper_rwds_oe_o   ),
+    .debug_hyper_dq_oe_o      ( debug_hyper_dq_oe_o     ),
+    .debug_hyper_phy_state_o  ( debug_hyper_phy_state_o )
   );
-    //simulate pad delays
-    //-------------------
-    pad_io #(2) pad_sim_cs (
-        .data_i   (hyper_cs_no),   
-        .oe_i     (1'b1),
-        .data_o   (),  
-        .pad_io   (wire_cs_no) 
-    );
 
   s27ks0641 #(.mem_file_name("../src/s27ks0641.mem"), .TimingModel("S27KS0641DPBHI020")) hyperram_model
   (
@@ -105,7 +105,7 @@ module hyperbus_tb;
   initial begin
     repeat(3) #TCLK;
     rst_ni = 0;
-    repeat(3) #TCLK;
+    #200ns
     rst_ni = 1;
     #TCLK;
     while (!done) begin
@@ -119,7 +119,7 @@ module hyperbus_tb;
     initial begin
     repeat(3) #TCLK;
     rst_ni = 0;
-    repeat(3) #TCLK;
+    #200ns
     rst_ni = 1;
     #TCLK;
     while (!done) begin
@@ -135,8 +135,7 @@ module hyperbus_tb;
   int expectedResulth0001 = 16'h0001;
   int expectedResultRegWrite = 16'h8f1f;
   int expectedResultStrobe[16] = '{16'hffff, 16'hff56, 16'h34ff, 16'h3456, 16'hffff, 16'hff56, 16'h34ff, 16'h3456,16'hffff, 16'hff56, 16'h34ff, 16'h3456,16'hffff, 16'hff56, 16'h34ff, 16'h3456};
-  int SomeData[16] = '{'h0001, 'h0002, 'h0003, 'h0004, 'h0005, 'h0006, 'h0007, 'h0008, 'h0009, 'h000a, 'h000b, 'h000c, 'h000d, 'h000e, 'h000f, 'h0f0f};
-  // int SomeData[16] = '{'hcafe, 'haffe, 'h0000, 'h0001, 'hface, 'hfeed, 'h0000, 'h0e0e, 'hcafe, 'haffe, 'h0000, 'h0002, 'hface, 'hfeed, 'h0000, 'h0f0f};
+  int SomeData[16] = '{'hcafe, 'haffe, 'h0770, 'h9001, 'hface, 'hfeed, 'h0000, 'h0e0e, 'hcafe, 'haffe, 'h0000, 'h0302, 'hface, 'hfeed, 'h7000, 'h0f0f};
 
   initial begin
 
@@ -154,8 +153,9 @@ module hyperbus_tb;
     #150us; //Wait for RAM to initalize
 
     // // Access the register interface.
-    // cfg_drv.send_write('hdeadbeef, 'hfacefeed, '1, error);
-    // repeat(3) @(posedge clk_i);
+    $display("Set CS_MAX to ",CS_MAX);
+    cfg_drv.send_write('h08, CS_MAX, '1, error);
+    //repeat(3) @(posedge clk_i);
     // cfg_drv.send_read('hdeadbeef, data, error);
     // repeat(3) @(posedge clk_i);
 
@@ -173,7 +173,11 @@ module hyperbus_tb;
     AddrOutOfRange(ax, w, b, r);
     WriteAndReadWithBreak(ax, w, b, r);
     ShortWriteAndRead(ax, w, b, r);
+    // Thomas(ax, w, b, r);
+
+    #100ns;
     done = 1;
+    $finish;
     $display("Finished");
   end
 

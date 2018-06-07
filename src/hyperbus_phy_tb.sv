@@ -60,6 +60,9 @@ module hyperbus_phy_tb;
   logic [7:0]             hyper_dq_o;
   logic                   hyper_dq_oe_o;
   logic                   hyper_reset_no;
+  logic                   debug_hyper_rwds_oe_o;
+  logic                   debug_hyper_dq_oe_o;
+  logic [3:0]             debug_hyper_phy_state_o;
 
   // Instantiate device under test.
   hyperbus_phy #(
@@ -69,6 +72,7 @@ module hyperbus_phy_tb;
     .clk0                         ( clk0                         ),
     .clk90                        ( clk90                        ),
     .rst_ni                       ( rst_ni                       ),
+    .test_en_ti                   ( 1'b0                         ),
     .config_t_latency_access      ( config_t_latency_access      ),
     .config_t_latency_additional  ( config_t_latency_additional  ),
     .config_t_cs_max              ( config_t_cs_max              ),
@@ -103,7 +107,10 @@ module hyperbus_phy_tb;
     .hyper_dq_i                   ( hyper_dq_i                   ),
     .hyper_dq_o                   ( hyper_dq_o                   ),
     .hyper_dq_oe_o                ( hyper_dq_oe_o                ),
-    .hyper_reset_no               ( hyper_reset_no               )
+    .hyper_reset_no               ( hyper_reset_no               ),
+    .debug_hyper_rwds_oe_o        ( debug_hyper_rwds_oe_o        ),
+    .debug_hyper_dq_oe_o          ( debug_hyper_dq_oe_o          ),
+    .debug_hyper_phy_state_o      ( debug_hyper_phy_state_o      )
   );
 
     clk_gen ddr_clk (

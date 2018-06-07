@@ -17,6 +17,9 @@ module read_clk_rwds #(
     input logic                    clk0,
     input logic                    rst_ni,   // Asynchronous reset active low
 
+    input  logic                   clk_test,
+    input  logic                   test_en_ti,
+
     input logic [31:0]             config_t_rwds_delay_line,
 
     input logic                    hyper_rwds_i,
@@ -81,21 +84,25 @@ module read_clk_rwds #(
         for(i=0; i<=7; i++)
             begin: ddr_out_bus
             ddr_in i_ddr_in (      
-                .clk_i  ( clk_rwds    ), 
-                .rst_ni ( rst_ni      ),
-                .data_i ( hyper_dq_i[i]  ), 
-                .enable ( 1'b1 ),
+                .clk_i  ( clk_rwds                     ), 
+                .rst_ni ( rst_ni                       ),
+                .data_i ( hyper_dq_i[i]                ), 
+                .enable ( 1'b1                         ),
                 .data_o ( {src_data[i+8], src_data[i]} ) 
             );
         end
     endgenerate
 
-    //Clock gating resulting in clk_rwds
-    pulp_clock_gating cdc_read_ck_gating (
-        .clk_i      ( hyper_rwds_i_d ),
-        .en_i       ( read_clk_en_i  ),
-        .test_en_i  ( 1'b0           ),
-        .clk_o      ( clk_rwds       )
+    logic clk_rwds_orig;
+
+    // Clock gate
+    assign clk_rwds_orig = hyper_rwds_i_d && read_clk_en_i;
+
+    pulp_clock_mux2 ddrmux (
+        .clk_o     ( clk_rwds      ),
+        .clk0_i    ( clk_rwds_orig ),
+        .clk1_i    ( clk_test      ),
+        .clk_sel_i ( test_en_ti    )
     );
 
 endmodule
