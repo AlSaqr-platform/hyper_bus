@@ -90,12 +90,14 @@ module read_clk_rwds #(
         end
     endgenerate
 
-    //Clock gating resulting in clk_rwds
-    pulp_clock_gating cdc_read_ck_gating (
-        .clk_i      ( hyper_rwds_i_d ),
-        .en_i       ( read_clk_en_i  ),
-        .test_en_i  ( 1'b0           ),
-        .clk_o      ( clk_rwds       )
-    );
+    // //Clock gating resulting in clk_rwds
+    // pulp_clock_gating cdc_read_ck_gating (
+    //     .clk_i      ( hyper_rwds_i_d ),
+    //     .en_i       ( read_clk_en_i  ),
+    //     .test_en_i  ( 1'b0           ),
+    //     .clk_o      ( clk_rwds       )
+    // );
+
+    assign clk_rwds = hyper_rwds_i_d && read_clk_en_i;
 
 endmodule

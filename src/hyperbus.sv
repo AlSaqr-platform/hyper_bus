@@ -42,7 +42,12 @@ module hyperbus #(
     input  logic [7:0]             hyper_dq_i,
     output logic [7:0]             hyper_dq_o,
     output logic                   hyper_dq_oe_o,
-    output logic                   hyper_reset_no
+    output logic                   hyper_reset_no,
+
+    //debug
+    output logic                   debug_hyper_rwds_oe_o,
+    output logic                   debug_hyper_dq_oe_o,
+    output logic [3:0]             debug_hyper_phy_state_o
 );
 
     //FGPA uses global clocking with MMCM
@@ -238,7 +243,11 @@ module hyperbus #(
         .hyper_dq_i                   ( hyper_dq_i                   ),
         .hyper_dq_o                   ( hyper_dq_o                   ),
         .hyper_dq_oe_o                ( hyper_dq_oe_o                ),
-        .hyper_reset_no               ( hyper_reset_no               )
+        .hyper_reset_no               ( hyper_reset_no               ),
+        
+        .debug_hyper_rwds_oe_o        ( debug_hyper_rwds_oe_o        ),
+        .debug_hyper_dq_oe_o          ( debug_hyper_dq_oe_o          ),
+        .debug_hyper_phy_state_o      ( debug_hyper_phy_state_o      )
     );
 
     cdc_2phase #(.T(trans_struct)) i_cdc_2phase_trans_signals (

@@ -34,7 +34,12 @@ module hyperbus_macro #(
     inout  wire                    hyper_ck_o,    //With Pad
     inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad
-    inout  wire [7:0]              hyper_dq_io    //With Pad
+    inout  wire [7:0]              hyper_dq_io,   //With Pad
+
+    //debug
+    output logic                   debug_hyper_rwds_oe_o,
+    output logic                   debug_hyper_dq_oe_o,
+    output logic [3:0]             debug_hyper_phy_state_o
 );
 
     logic       hyper_ck_o_inner;
@@ -57,7 +62,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_ck_o (
@@ -71,7 +76,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_rwds_io (
@@ -83,9 +88,9 @@ module hyperbus_macro #(
     .PIN2(1'b1),
     .PIN1(1'b1),
     .SMT(1'b0),
-    .PD(1'b0),
+    .PD(1'b1),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_dq_io_0 (
@@ -99,7 +104,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_dq_io_1 (
@@ -113,7 +118,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_dq_io_2 (
@@ -127,7 +132,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_dq_io_3 (
@@ -141,7 +146,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_dq_io_4 (
@@ -155,7 +160,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_dq_io_5 (
@@ -169,7 +174,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_dq_io_6 (
@@ -183,7 +188,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
   IUMB pad_hyper_dq_io_7 (
@@ -197,7 +202,7 @@ module hyperbus_macro #(
     .SMT(1'b0),
     .PD(1'b0),
     .PU(1'b0),
-    .SR(1'b1)
+    .SR(1'b0)
   );
 
     hyperbus #(
@@ -221,7 +226,11 @@ module hyperbus_macro #(
         .hyper_dq_i      ( hyper_dq_i        ),
         .hyper_dq_o      ( hyper_dq_o        ),
         .hyper_dq_oe_o   ( hyper_dq_oe_o     ),
-        .hyper_reset_no  ( hyper_reset_no    )
+        .hyper_reset_no  ( hyper_reset_no    ),
+
+        .debug_hyper_rwds_oe_o   ( debug_hyper_rwds_oe_o   ),
+        .debug_hyper_dq_oe_o     ( debug_hyper_dq_oe_o     ),
+        .debug_hyper_phy_state_o ( debug_hyper_phy_state_o )
     );
 
 endmodule
@@ -302,7 +311,12 @@ module hyperbus_macro_inflate #(
     inout  wire                    hyper_ck_o,    //With Pad
     inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad
-    inout  wire [7:0]              hyper_dq_io    //With Pad
+    inout  wire [7:0]              hyper_dq_io,   //With Pad
+
+    //debug
+    output logic                   debug_hyper_rwds_oe_o,
+    output logic                   debug_hyper_dq_oe_o,
+    output logic [3:0]             debug_hyper_phy_state_o
 );
 
     REG_BUS #(
@@ -397,7 +411,11 @@ module hyperbus_macro_inflate #(
         .hyper_ck_o     ( hyper_ck_o     ),
         .hyper_ck_no    ( hyper_ck_no    ),
         .hyper_rwds_io  ( hyper_rwds_io  ),
-        .hyper_dq_io    ( hyper_dq_io    )
+        .hyper_dq_io    ( hyper_dq_io    ),
+
+        .debug_hyper_rwds_oe_o   ( debug_hyper_rwds_oe_o   ),
+        .debug_hyper_dq_oe_o     ( debug_hyper_dq_oe_o     ),
+        .debug_hyper_phy_state_o ( debug_hyper_phy_state_o )
     );
 
 endmodule
@@ -423,7 +441,12 @@ module hyperbus_macro_deflate #(
     inout  wire                    hyper_ck_o,    //With Pad
     inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad
-    inout  wire [7:0]              hyper_dq_io    //With Pad
+    inout  wire [7:0]              hyper_dq_io,   //With Pad
+
+    //debug
+    output logic                   debug_hyper_rwds_oe_o,
+    output logic                   debug_hyper_dq_oe_o,
+    output logic [3:0]             debug_hyper_phy_state_o
 );
 
     hyperbus_macro_inflate
@@ -508,7 +531,11 @@ module hyperbus_macro_deflate #(
         .hyper_ck_o      ( hyper_ck_o     ),
         .hyper_ck_no     ( hyper_ck_no    ),
         .hyper_rwds_io   ( hyper_rwds_io  ),
-        .hyper_dq_io     ( hyper_dq_io    )
+        .hyper_dq_io     ( hyper_dq_io    ),
+
+        .debug_hyper_rwds_oe_o   ( debug_hyper_rwds_oe_o   ),
+        .debug_hyper_dq_oe_o     ( debug_hyper_dq_oe_o     ),
+        .debug_hyper_phy_state_o ( debug_hyper_phy_state_o )
     );
 
 endmodule

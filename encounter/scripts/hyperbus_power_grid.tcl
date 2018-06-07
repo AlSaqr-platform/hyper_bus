@@ -160,11 +160,14 @@ for {set i 0} {$i < [llength $power_pads]} {incr i} {
         set stop_x [expr $stop_x + 0.02]
     }
 
-    for {set layer 1} {$layer < 9} {incr layer} {
-        addStripe -skip_via_on_wire_shape Noshape -block_ring_top_layer_limit ME$layer -max_same_layer_jog_length 4 -padcore_ring_bottom_layer_limit ME$layer -number_of_sets 4 -skip_via_on_pin Standardcell -stacked_via_top_layer ME$layer -padcore_ring_top_layer_limit ME1 -merge_stripes_value 0.1 -layer ME$layer -block_ring_bottom_layer_limit ME$layer -width 10 -spacing 2 -area {0 88.8 2358.2 100} -nets [lindex $power_nets $i] -start_x $start_x -stop_x $stop_x -stacked_via_bottom_layer ME$layer -create_pins 1
+    foreach layer {2 4 6 8} {
+        addStripe -skip_via_on_wire_shape Noshape -block_ring_top_layer_limit ME$layer -max_same_layer_jog_length 4 -padcore_ring_bottom_layer_limit ME$layer -number_of_sets 4 -skip_via_on_pin Standardcell -stacked_via_top_layer ME$layer -padcore_ring_top_layer_limit ME1 -merge_stripes_value 0.1 -layer ME$layer -block_ring_bottom_layer_limit ME$layer -width 10 -spacing 2 -area {450 88.8 2258.2 235} -nets [lindex $power_nets $i] -start $start_x -stop $stop_x -stacked_via_bottom_layer ME$layer -create_pins 1
     }
 }
 
+editTrim -nets {VDD VSS}
+
+#-extend_to design_boundary
 
 puts "Finished power grid"
 

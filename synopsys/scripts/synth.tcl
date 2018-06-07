@@ -78,6 +78,8 @@ set_input_delay $DELAY_B  [filter_collection [all_inputs]  $CHOUT] -clock clk_sy
 set_output_delay $DELAY_A [filter_collection [all_outputs] $CHIN]  -clock clk_sys_i -source_latency_included
 set_output_delay $DELAY_B [filter_collection [all_outputs] $CHOUT] -clock clk_sys_i -source_latency_included
 
+set_output_delay -clock clk0 [expr $period_phy/3] [get_ports debug_hyper*]
+
 # false paths through cdc_2phase cells
 set CDC_NETS_2PHASE [get_nets -hierarchical {*async_req *async_ack *async_data*}]
 set_max_delay \
@@ -115,8 +117,9 @@ set_max_delay \
 set_max_delay -from [get_pins i_deflate/i_hyperbus/hyper_rwds_i] -to [get_pins i_deflate/i_hyperbus/phy_i/hyper_rwds_i_syn_reg/next_state] [expr $period_sys/2.0]
 
 set_false_path -hold -from [get_clocks hyper_rwds_io] -to [get_clocks clk0]
+set_false_path -hold -from [get_clocks clk0] -to [get_clocks hyper_rwds_io]
 set_false_path -hold -from [get_clocks clk0] -to [get_clocks clk_sys_i]
-
+set_false_path -hold -from [get_clocks clk_sys_i] -to [get_clocks clk0]
 
 
 #set_dont_touch [get_designs hyperbus_delay_line]
@@ -125,8 +128,9 @@ set_false_path -hold -from [get_clocks clk0] -to [get_clocks clk_sys_i]
 
 # Set input driver and output load.
 set_driving_cell -no_design_rule -lib_cell BUFM4W -pin Z -library uk65lscllmvbbl_120c25_tc [remove_from_collection [all_inputs] {clk_sys_i clk_phy_i}]
-set_load [expr 4 * [load_of uk65lscllmvbbl_120c25_tc/BUFM4W/A]] [all_output]
 
+#set_load [expr 4 * [load_of uk65lscllmvbbl_120c25_tc/BUFM4W/A [all_output]
+set_load 0.005 [all_output]
 set_load 10 [get_ports {hyper_dq* hyper_rwds_io hyper_ck_*}]
 
 
