@@ -11,7 +11,7 @@
 module hyperbus_tb;
 
   localparam TCLK_SYS = 4ns;
-  localparam TCLK = 4ns;
+  localparam TCLK = 3ns;
   localparam NR_CS = 2;
   localparam CS_MAX = 4us/(2*4ns)-2;
 
@@ -71,7 +71,7 @@ module hyperbus_tb;
     .cfg_i           ( cfg_i          ),
     .axi_i           ( axi_i          ),
     .hyper_reset_no  ( wire_reset_no  ),
-    .hyper_cs_no     ( hyper_cs_no    ),
+    .hyper_cs_no     ( wire_cs_no    ),
     .hyper_ck_o      ( wire_ck_o      ),
     .hyper_ck_no     ( wire_ck_no     ),
     .hyper_rwds_io   ( wire_rwds      ),
@@ -80,14 +80,6 @@ module hyperbus_tb;
     .debug_hyper_dq_oe_o      ( debug_hyper_dq_oe_o     ),
     .debug_hyper_phy_state_o  ( debug_hyper_phy_state_o )
   );
-    //simulate pad delays
-    //-------------------
-    pad_io #(2) pad_sim_cs (
-        .data_i   (hyper_cs_no),   
-        .oe_i     (1'b1),
-        .data_o   (),  
-        .pad_io   (wire_cs_no) 
-    );
 
   s27ks0641 #(.mem_file_name("../src/s27ks0641.mem"), .TimingModel("S27KS0641DPBHI020")) hyperram_model
   (

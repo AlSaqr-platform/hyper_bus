@@ -14,7 +14,7 @@ module hyperbus_macro_deflate #(
 
     // physical interface
     output logic                   hyper_reset_no,
-    output logic [NR_CS-1:0]       hyper_cs_no,
+    inout  wire [NR_CS-1:0]        hyper_cs_no,   //With Pad
     inout  wire                    hyper_ck_o,    //With Pad
     inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad

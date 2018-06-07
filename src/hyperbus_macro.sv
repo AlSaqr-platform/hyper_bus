@@ -30,7 +30,7 @@ module hyperbus_macro #(
 
     // physical interface
     output logic                   hyper_reset_no,
-    output logic [NR_CS-1:0]       hyper_cs_no,
+    inout  wire [NR_CS-1:0]        hyper_cs_no,   //With Pad
     inout  wire                    hyper_ck_o,    //With Pad
     inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad
@@ -42,14 +42,43 @@ module hyperbus_macro #(
     output logic [3:0]             debug_hyper_phy_state_o
 );
 
-    logic       hyper_ck_o_inner;
-    logic       hyper_ck_no_inner;
-    logic       hyper_rwds_o;
-    logic       hyper_rwds_i;
-    logic       hyper_rwds_oe_o;
-    logic [7:0] hyper_dq_i;
-    logic [7:0] hyper_dq_o;
-    logic       hyper_dq_oe_o;
+    logic [NR_CS-1:0] hyper_cs_no_inner;
+    logic             hyper_ck_o_inner;
+    logic             hyper_ck_no_inner;
+    logic             hyper_rwds_o;
+    logic             hyper_rwds_i;
+    logic             hyper_rwds_oe_o;
+    logic [7:0]       hyper_dq_i;
+    logic [7:0]       hyper_dq_o;
+    logic             hyper_dq_oe_o;
+
+  IUMB pad_hyper_cs_no_0 (
+    .DO(hyper_cs_no_inner[0]),
+    .DI(),
+    .PAD(hyper_cs_no[0]),
+    .OE(1'b1),
+    .IDDQ(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
+    .SMT(1'b0),
+    .PD(1'b0),
+    .PU(1'b0),
+    .SR(1'b0)
+  );
+
+  IUMB pad_hyper_cs_no_1 (
+    .DO(hyper_cs_no_inner[1]),
+    .DI(),
+    .PAD(hyper_cs_no[1]),
+    .OE(1'b1),
+    .IDDQ(1'b0),
+    .PIN2(1'b1),
+    .PIN1(1'b1),
+    .SMT(1'b0),
+    .PD(1'b0),
+    .PU(1'b0),
+    .SR(1'b0)
+  );
 
   IUMB pad_hyper_ck_no (
     .DO(hyper_ck_no_inner),
@@ -217,7 +246,7 @@ module hyperbus_macro #(
         .rst_ni          ( rst_ni            ),
         .cfg_i           ( cfg_i             ),
         .axi_i           ( axi_i             ),
-        .hyper_cs_no     ( hyper_cs_no       ),
+        .hyper_cs_no     ( hyper_cs_no_inner ),
         .hyper_ck_o      ( hyper_ck_o_inner  ),
         .hyper_ck_no     ( hyper_ck_no_inner ),
         .hyper_rwds_o    ( hyper_rwds_o      ),
@@ -307,7 +336,7 @@ module hyperbus_macro_inflate #(
 
     // physical interface
     output logic                   hyper_reset_no,
-    output logic [NR_CS-1:0]       hyper_cs_no,
+    inout  wire [NR_CS-1:0]        hyper_cs_no,   //With Pad
     inout  wire                    hyper_ck_o,    //With Pad
     inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad
@@ -437,7 +466,7 @@ module hyperbus_macro_deflate #(
 
     // physical interface
     output logic                   hyper_reset_no,
-    output logic [NR_CS-1:0]       hyper_cs_no,
+    inout  wire [NR_CS-1:0]        hyper_cs_no,   //With Pad
     inout  wire                    hyper_ck_o,    //With Pad
     inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad
