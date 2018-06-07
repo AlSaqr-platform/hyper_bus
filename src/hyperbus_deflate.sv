@@ -35,14 +35,13 @@ module hyperbus_macro_deflate #(
         // .AXI_IW      ( AXI_IW      )
     // )
      i_inflate (
-    `ifdef FPGA
-        .clk0            ( clk0            ),    // Clock
-        .clk90           ( clk90           ),    // Clock
-    `else
         .clk_phy_i       ( clk_phy_i       ),
         .clk_sys_i       ( clk_sys_i       ),
-    `endif
         .rst_ni          ( rst_ni          ),         // Asynchronous reset active low
+        .test_en_ti      ( 1'b0            ),
+        .scan_en_ti      ( 1'b0            ),
+        .scan_in_ti      ( 1'b0            ),
+        .scan_out_to     (                 ),
 
         .cfg_i_addr      ( cfg_i.addr      ),
         .cfg_i_write     ( cfg_i.write     ),

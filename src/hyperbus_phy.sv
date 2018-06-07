@@ -22,6 +22,9 @@ module hyperbus_phy #(
 
     input  logic                   rst_ni,   // Asynchronous reset active low
 
+    input  logic                   clk_test,
+    input  logic                   test_en_ti,
+
     // configuration
     input  logic [31:0]            config_t_latency_access,
     input  logic [31:0]            config_t_latency_additional,
@@ -202,6 +205,8 @@ module hyperbus_phy #(
     read_clk_rwds i_read_clk_rwds (
         .clk0                     ( clk0                        ),
         .rst_ni                   ( rst_ni                      ),
+        .clk_test                 ( clk_test                    ),
+        .test_en_ti               ( test_en_ti                  ),
         .config_t_rwds_delay_line ( config_t_rwds_delay_line    ),
         .hyper_rwds_i             ( hyper_rwds_i                ),
         .hyper_dq_i               ( hyper_dq_i                  ),

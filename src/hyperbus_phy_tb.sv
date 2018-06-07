@@ -72,6 +72,7 @@ module hyperbus_phy_tb;
     .clk0                         ( clk0                         ),
     .clk90                        ( clk90                        ),
     .rst_ni                       ( rst_ni                       ),
+    .test_en_ti                   ( 1'b0                         ),
     .config_t_latency_access      ( config_t_latency_access      ),
     .config_t_latency_additional  ( config_t_latency_additional  ),
     .config_t_cs_max              ( config_t_cs_max              ),

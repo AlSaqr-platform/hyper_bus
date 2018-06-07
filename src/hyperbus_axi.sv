@@ -68,13 +68,6 @@ module hyperbus_axi #(
         end
     end
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_read_cnt
-        if(~rst_ni) begin
-            read_cnt <= 0;
-        end else if (axi_i.ar_valid && axi_i.ar_ready) begin
-            read_cnt <= axi_i.ar_len + 1;
-        end
-    end
     //Combinatorial
     assign bad_address = ~(trans_cs_o[0] || trans_cs_o[1]);
 
@@ -156,11 +149,13 @@ module hyperbus_axi #(
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_read_state
         if(~rst_ni) begin
             read_state <= READ_READY;
+            read_cnt <= 0;
         end else begin
             case(read_state)
                 READ_READY: begin
                     if(axi_i.ar_ready && axi_i.ar_valid) begin
                         read_state <= READ;
+                        read_cnt <= axi_i.ar_len + 1;
                     end
                 end
                 READ: begin
@@ -181,7 +176,7 @@ module hyperbus_axi #(
         end
     end
 
-    always @* begin        
+    always @* begin
     //defaults
     axi_i.r_resp= 2'b00;
     axi_i.r_user = 1'b0;      
