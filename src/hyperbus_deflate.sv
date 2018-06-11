@@ -26,15 +26,7 @@ module hyperbus_macro_deflate #(
     output logic [3:0]             debug_hyper_phy_state_o
 );
 
-    hyperbus_macro_inflate 
-    // #(
-        // .BURST_WIDTH ( BURST_WIDTH ),
-        // .NR_CS       ( NR_CS       ),
-        // .AXI_AW      ( AXI_AW      ),
-        // .AXI_UW      ( AXI_UW      ),
-        // .AXI_IW      ( AXI_IW      )
-    // )
-     i_inflate (
+    hyperbus_macro_inflate i_inflate (
         .clk_phy_i       ( clk_phy_i       ),
         .clk_sys_i       ( clk_sys_i       ),
         .rst_ni          ( rst_ni          ),         // Asynchronous reset active low

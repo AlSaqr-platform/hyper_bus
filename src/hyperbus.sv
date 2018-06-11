@@ -88,10 +88,11 @@ module hyperbus #(
 `endif
     
     logic [31:0]                   config_t_latency_access;
-    logic [31:0]                   config_t_latency_additional;
+    logic [31:0]                   config_en_latency_additional;
     logic [31:0]                   config_t_cs_max;
     logic [31:0]                   config_t_read_write_recovery;
     logic [31:0]                   config_t_rwds_delay_line;
+    logic [31:0]                   config_t_variable_latency_check;
     logic [NR_CS*64-1:0]           config_addr_mapping;
 
     //TODO: cdc_fifo_gray for TX/RX from axi to phy
@@ -169,12 +170,13 @@ module hyperbus #(
 
         .cfg_i                        ( cfg_i                        ),
 
-        .config_t_latency_access      ( config_t_latency_access      ),
-        .config_t_latency_additional  ( config_t_latency_additional  ),
-        .config_t_cs_max              ( config_t_cs_max              ),
-        .config_t_read_write_recovery ( config_t_read_write_recovery ),
-        .config_t_rwds_delay_line     ( config_t_rwds_delay_line     ),
-        .config_addr_mapping          ( config_addr_mapping          )
+        .config_t_latency_access         ( config_t_latency_access         ),
+        .config_en_latency_additional    ( config_en_latency_additional    ),
+        .config_t_cs_max                 ( config_t_cs_max                 ),
+        .config_t_read_write_recovery    ( config_t_read_write_recovery    ),
+        .config_t_rwds_delay_line        ( config_t_rwds_delay_line        ),
+        .config_t_variable_latency_check ( config_t_variable_latency_check ),
+        .config_addr_mapping             ( config_addr_mapping             )
     );
 
     hyperbus_axi #(
@@ -227,9 +229,10 @@ module hyperbus #(
         .test_en_ti                   ( test_en_ti                   ),
 
         .config_t_latency_access      ( config_t_latency_access      ),
-        .config_t_latency_additional  ( config_t_latency_additional  ),
+        .config_en_latency_additional  ( config_en_latency_additional  ),
         .config_t_cs_max              ( config_t_cs_max              ),
         .config_t_read_write_recovery ( config_t_read_write_recovery ),
+        .config_t_variable_latency_check ( config_t_variable_latency_check ),
         .config_t_rwds_delay_line     ( config_t_rwds_delay_line     ),
 
         .trans_valid_i                ( phy_trans_valid              ),

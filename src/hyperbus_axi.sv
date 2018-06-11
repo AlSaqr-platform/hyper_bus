@@ -85,7 +85,7 @@ module hyperbus_axi #(
     //Directly to FIFO
     //Write handshake
     assign tx_valid_o = axi_i.w_valid && ~decode_error && axi_i.b_resp != 2'b10;
-    assign axi_i.w_ready = tx_ready_i; //is set anyway
+    assign axi_i.w_ready = tx_ready_i;
     //Read handshake & last
     assign axi_i.r_valid = rx_valid_i || (read_cnt >= 9'b0 && decode_error);
     assign rx_ready_o = axi_i.r_ready || (read_cnt >= 9'b0 && decode_error);
@@ -99,7 +99,7 @@ module hyperbus_axi #(
     typedef enum logic[2:0] {READ_READY, READ, READ_RESP, READ_ERROR} read_t;
     (* keep = "true" *) read_t read_state;
 
-    typedef enum logic[2:0] {TRANS_START, TRANS_CHECK_READ_ADDR, TRANS_CHECK_WRITE_ADDR, TRANS_READ, TRANS_WRITE, TRANS_WRITE_END, TRANS_READ_END} trans_t;
+    typedef enum logic[2:0] {TRANS_START, TRANS_CHECK_READ_ADDR, TRANS_CHECK_WRITE_ADDR, TRANS_READ, TRANS_WRITE} trans_t;
     (* keep = "true" *) trans_t trans_state;
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_write_state
@@ -115,7 +115,7 @@ module hyperbus_axi #(
                 WRITE: begin
                     if(axi_i.w_last) begin
                         write_state <= WRITE_RESP;
-                    end else if (b_error_i) begin
+                    end else if (b_error_i && b_valid_i) begin
                         write_state <= WRITE_SLV_ERROR;
                     end
                 end
@@ -140,7 +140,7 @@ module hyperbus_axi #(
         axi_i.b_user = 1'b0;
         case(write_state)
             WRITE_SLV_ERROR: begin
-                if (b_error_i && b_valid_i) begin
+                if (b_error_i) begin
                     axi_i.b_valid = 1'b1;
                     axi_i.b_resp = 2'b10;
                 end
@@ -170,7 +170,7 @@ module hyperbus_axi #(
                     end
                 end
                 READ: begin
-                    if(rx_error_i) begin
+                    if(rx_error_i && rx_valid_i) begin
                         read_state <= READ_ERROR;
                     end if((read_cnt == 9'b0 ||rx_last_i) && axi_i.r_ready && axi_i.r_valid) begin
                         read_state <= READ_READY;
@@ -209,7 +209,8 @@ module hyperbus_axi #(
         endcase
     end
 
-    //ATM only to solve simultaneous access
+    //Decides on a read or write, checks the address and handles handshake to both interfaces
+    //TODO: Takes always the read first 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_trans_t
         if(~rst_ni) begin
             trans_state <= TRANS_START;
@@ -226,36 +227,30 @@ module hyperbus_axi #(
                      if(axi_i.ar_valid && ~bad_address) begin
                         trans_state <= TRANS_READ;
                     end else if(axi_i.ar_valid && bad_address) begin
-                        trans_state <= TRANS_READ_END;
+                        trans_state <= TRANS_START;
                     end
                 end
                 TRANS_CHECK_WRITE_ADDR: begin
                     if(axi_i.aw_valid && ~bad_address) begin
                         trans_state <= TRANS_WRITE;
                     end else if (axi_i.aw_valid && bad_address) begin
-                        trans_state <= TRANS_WRITE_END;
+                        trans_state <= TRANS_START;
                     end 
                 end
                 TRANS_READ: begin
                     if(~trans_ready_i) begin
                         trans_state <= TRANS_READ;
-                    end else begin
-                        trans_state <= TRANS_READ_END;
+                    end else if (axi_i.ar_valid) begin
+                        trans_state <= TRANS_START;
                     end
                 end 
                 TRANS_WRITE: begin
                     if(~trans_ready_i) begin
                         trans_state <= TRANS_WRITE;
-                    end else begin
-                        trans_state <= TRANS_WRITE_END;
+                    end else if (axi_i.aw_valid) begin
+                        trans_state <= TRANS_START;
                     end
                 end 
-                TRANS_READ_END: begin
-                    trans_state <= TRANS_START;
-                end
-                TRANS_WRITE_END: begin
-                    trans_state <= TRANS_START;
-                end
             endcase //trans_state
         end
     end
@@ -270,24 +265,28 @@ module hyperbus_axi #(
             TRANS_READ: begin
                 trans_write_o = 1'b0;
                 trans_valid_o = 1'b1;
+                if (trans_ready_i) begin
+                    axi_i.ar_ready = 1'b1;
+                end
             end
             TRANS_WRITE: begin
                 trans_write_o = 1'b1;
                 trans_valid_o = 1'b1;
+                if (trans_ready_i) begin
+                    axi_i.aw_ready = 1'b1;
+                end
             end
             TRANS_CHECK_READ_ADDR: begin
                 trans_write_o = 1'b0;
+                if(axi_i.ar_valid && bad_address) begin
+                    axi_i.ar_ready = 1'b1;
+                end
             end
             TRANS_CHECK_WRITE_ADDR: begin
                 trans_write_o = 1'b1;
-            end
-            TRANS_READ_END: begin
-                trans_write_o = 1'b0;
-                axi_i.ar_ready = 1'b1;
-            end
-            TRANS_WRITE_END: begin
-                trans_write_o = 1'b1;
-                axi_i.aw_ready = 1'b1;
+                if (axi_i.aw_valid && bad_address) begin
+                    axi_i.aw_ready = 1'b1; 
+                end 
             end
         endcase
     end

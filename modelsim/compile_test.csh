@@ -33,6 +33,7 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/clk_gen.sv \
     ../src/ddr_out.sv \
     ../src/hyperbus_delay_line.sv \
+    ../src/hyperbus_deflate.sv \
     ../src/pad_io.sv \
     ../src/read_clk_rwds.sv \
     ../src/hyperbus.sv \

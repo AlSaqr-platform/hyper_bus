@@ -11,9 +11,9 @@
 module hyperbus_tb;
 
   localparam TCLK_SYS = 4ns;
-  localparam TCLK = 3ns;
+  localparam TCLK = 3ns; //PHY halves the clock frequency , 3ns -> 166MHz 
   localparam NR_CS = 2;
-  localparam CS_MAX = 4us/(2*4ns)-2;
+  localparam CS_MAX = 4us/(2*TCLK)-2;
 
   logic             clk_sys_i = 0;
   logic             clk_phy_i = 0;
@@ -165,16 +165,25 @@ module hyperbus_tb;
     w = new;
     r = new;
     b = new;
-    RegisterNoAddLatency(ax,w,b,r,'h8f1f);
-    WordWithStrobe(ax,w,b,r);
-    ax.ax_addr = 'h00;
-    LongWriteAndRead(ax, w, b, r);
-    WriteAndReadWithStrobe(ax,w,b,r);
-    AddrOutOfRange(ax, w, b, r);
-    WriteAndReadWithBreak(ax, w, b, r);
-    ShortWriteAndRead(ax, w, b, r);
-    // Thomas(ax, w, b, r);
 
+    RegisterFixedLatency(ax,w,b,r);
+    cfg_drv.send_write('h04, 'b1, '1, error);
+    AddrOutOfRange(ax, w, b, r);
+    WordWithStrobe(ax,w,b,r);
+    WriteAndReadWithBreak(ax, w, b, r);
+    LongWriteAndRead(ax, w, b, r);
+    ShortWriteAndRead(ax, w, b, r);
+    WriteAndReadWithStrobe(ax,w,b,r);
+
+    RegisterVariableLatency(ax,w,b,r);
+    cfg_drv.send_write('h04, 'b0, '1, error);
+    AddrOutOfRange(ax, w, b, r);
+    WordWithStrobe(ax,w,b,r);
+    WriteAndReadWithBreak(ax, w, b, r);
+    LongWriteAndRead(ax, w, b, r);
+    ShortWriteAndRead(ax, w, b, r);
+    WriteAndReadWithStrobe(ax,w,b,r);
+    
     #100ns;
     done = 1;
     $finish;
@@ -252,7 +261,7 @@ module hyperbus_tb;
   endtask : WriteAndReadWithStrobe //WriteAndReadWithStrobe(ax,w,b,r);
 
 
-  task RegisterNoAddLatency(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r, logic [31:0] reg_data);
+  task RegisterVariableLatency(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
     ax.ax_addr = 'h80000800;
     ax.ax_len = 'd0;
     ax.ax_burst = 'b01;
@@ -263,11 +272,11 @@ module hyperbus_tb;
     axi_drv.recv_r(r);
     
     $display("%4h", r.r_data);
-    assert(r.r_data == expectedResultRegWrite) $display("Ok, Additional latency is activated");
-    else $error("Received %4h, but expected %4h", r.r_data, expectedResultRegWrite);
+    if (r.r_data == 'h8f1f) begin
+    $display("Additional latency was activated");
     
     axi_drv.send_aw(ax);
-    $display("----------------------\nWriting %1d word at Register Addr. %8h", ax.ax_len+1, ax.ax_addr);
+    $display("***\nWriting %1d word at Register Addr. %8h", ax.ax_len+1, ax.ax_addr);
 
     w.w_data = 'h8f17;
     w.w_strb = 2'b11;
@@ -279,8 +288,42 @@ module hyperbus_tb;
     axi_drv.send_ar(ax);
     axi_drv.recv_r(r);
     $display("%4h", r.r_data);
-    assert(r.r_data == w.w_data) $display("Ok, Additional latency is deactivated"); else $error("Received %4h, but expected %4h", r.r_data, w.w_data);
-  endtask : RegisterNoAddLatency // RegisterNoAddLatency(ax,w,b,r, reg_data);
+    assert(r.r_data == w.w_data) $display("Ok, Additional latency is variable"); else $error("Received %4h, but expected %4h", r.r_data, w.w_data);
+    end else $display("Ok, Additional latency was already variable");
+  endtask : RegisterVariableLatency // RegisterVariableLatency(ax,w,b,r);
+
+
+  task RegisterFixedLatency(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
+    ax.ax_addr = 'h80000800;
+    ax.ax_len = 'd0;
+    ax.ax_burst = 'b01;
+    ax.ax_id = 'b1001;
+    axi_drv.send_ar(ax);
+    $display("----------------------\nReading %1d word from Register Addr. %8h", ax.ax_len+1, ax.ax_addr);
+
+    axi_drv.recv_r(r);
+    
+    $display("%4h", r.r_data);
+    if (r.r_data == 'h8f17) begin
+    $display("Additional latency was variable");
+
+    axi_drv.send_aw(ax);
+    $display("***\nWriting %1d word at Register Addr. %8h", ax.ax_len+1, ax.ax_addr);
+
+    w.w_data = 'h8f1f;
+    w.w_strb = 2'b11;
+    w.w_last = 1;
+    axi_drv.send_w(w);
+    axi_drv.recv_b(b);
+    
+    ax.ax_id = 'b10011;
+    axi_drv.send_ar(ax);
+    axi_drv.recv_r(r);
+    $display("%4h", r.r_data);
+    assert(r.r_data == w.w_data) $display("Ok, Additional latency is activated"); else $error("Received %4h, but expected %4h", r.r_data, w.w_data);
+    end else $display("Ok, Additional latency was already activated");
+
+  endtask : RegisterFixedLatency // RegisterFixedLatency(ax,w,b,r);
 
   task WriteAndReadWithBreak(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
     ax.ax_len = 'd15;
@@ -337,7 +380,8 @@ module hyperbus_tb;
   task LongWriteAndRead(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
     //Without break
     //Write
-    ax.ax_len = 'd255;
+    ax.ax_addr = 'h00;
+    ax.ax_len = 'd99;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
     $display("----------------------\nWriting and reading %3d words at Addr. %8h", ax.ax_len+1, ax.ax_addr);
@@ -402,7 +446,7 @@ module hyperbus_tb;
     //Write
     ax.ax_addr = 'h900000; //Address that is out of the range 
     $display("---------------------- \nTesting write with invalid address: %8h",ax.ax_addr);
-    ax.ax_len = 'd15;
+    ax.ax_len = 'd0;
     ax.ax_burst = 'b01;
     axi_drv.send_aw(ax);
     w.w_last = 0;
@@ -419,7 +463,7 @@ module hyperbus_tb;
     assert(b.b_resp == 2'b11) $display ("OK, Decode error was trasnmitted"); else $error("Received b_resp %2b but expected %2b", b.b_resp, 2'b11);
 
     $display("Testing read with invalid address: %8h",ax.ax_addr);
-    ax.ax_len = 'd15;
+    ax.ax_len = 'd0;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
     axi_drv.send_ar(ax);

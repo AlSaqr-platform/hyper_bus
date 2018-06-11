@@ -27,10 +27,11 @@ module hyperbus_phy #(
 
     // configuration
     input  logic [31:0]            config_t_latency_access,
-    input  logic [31:0]            config_t_latency_additional,
+    input  logic [31:0]            config_en_latency_additional,
     input  logic [31:0]            config_t_cs_max,
     input  logic [31:0]            config_t_read_write_recovery,
     input  logic [31:0]            config_t_rwds_delay_line,
+    input  logic [31:0]            config_t_variable_latency_check,
 
     // transactions
     input  logic                   trans_valid_i,
@@ -99,8 +100,6 @@ module hyperbus_phy #(
     logic en_cs;
     logic en_ddr_in;
     logic en_read_transaction;
-    logic [15:0] data_i;
-    logic hyper_rwds_i_d;
     logic hyper_rwds_oe_n;
     logic hyper_dq_oe_n;
     logic mode_write;
@@ -285,11 +284,11 @@ module hyperbus_phy #(
                 WAIT2: begin  //Additional latency (If RWDS HIGH)
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin
-                        wait_cnt <= config_t_latency_additional - 1;
+                        wait_cnt <= config_t_latency_access - 1;
                         hyper_trans_state <= WAIT;
                     end
                     if(wait_cnt == config_t_latency_access - 2) begin
-                        if(hyper_rwds_i_syn) begin //Check if additinal latency is nesessary
+                        if(hyper_rwds_i_syn || config_en_latency_additional[0]) begin //Check if additinal latency is nesessary (RWDS high or config)
                             hyper_trans_state <= WAIT2;
                         end else begin
                             hyper_trans_state <= WAIT;
@@ -415,7 +414,7 @@ module hyperbus_phy #(
             end
             CMD_ADDR: begin
                 hyper_dq_oe_n = 1'b1;
-                if (cmd_addr_sel == 3) begin
+                if (cmd_addr_sel == config_t_variable_latency_check) begin
                     en_rwds = 1'b1;
                 end
                 if (cmd_addr_sel == 2 && local_write && local_address_space) begin
@@ -481,9 +480,6 @@ module hyperbus_phy #(
                 read_fifo_rst = 1'b1;
                 if(~local_write) begin
                     rx_error_o = 1'b1;
-                    if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                        rx_last_o = 1'b1;
-                    end
                 end else begin
                     tx_ready_o = 1'b1;
                     b_valid_o = 1'b1;
