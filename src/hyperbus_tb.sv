@@ -10,29 +10,32 @@
 
 module hyperbus_tb;
 
-  localparam TCLK = 6ns;
+  localparam TCLK_SYS = 4ns;
+  localparam TCLK = 3ns;
   localparam NR_CS = 2;
+  localparam CS_MAX = 4us/(2*4ns)-2;
 
-  logic             clk_i = 0;
+  logic             clk_sys_i = 0;
+  logic             clk_phy_i = 0;
   logic             rst_ni = 1;
 
   REG_BUS #(
     .ADDR_WIDTH ( 32 ),
     .DATA_WIDTH ( 32 )
-  ) cfg_i(clk_i);
+  ) cfg_i(clk_sys_i);
 
   AXI_BUS #(
     .AXI_ADDR_WIDTH ( 32 ),
     .AXI_DATA_WIDTH ( 16 ),
     .AXI_ID_WIDTH   ( 10 ),
     .AXI_USER_WIDTH ( 1  )
-  ) axi_i(clk_i);
+  ) axi_i(clk_sys_i);
 
   typedef reg_test::reg_driver #(
     .AW ( 32       ),
     .DW ( 32       ),
-    .TA ( TCLK*0.2 ),
-    .TT ( TCLK*0.8 )
+    .TA ( TCLK_SYS*0.2 ),
+    .TT ( TCLK_SYS*0.8 )
   ) cfg_driver_t;
 
   typedef axi_test::axi_driver #(
@@ -40,8 +43,8 @@ module hyperbus_tb;
     .DW ( 16       ),
     .IW ( 10       ),
     .UW ( 1        ),
-    .TA ( TCLK*0.2 ),
-    .TT ( TCLK*0.8 )
+    .TA ( TCLK_SYS*0.2 ),
+    .TT ( TCLK_SYS*0.8 )
   ) axi_driver_t;
 
   cfg_driver_t cfg_drv = new(cfg_i);
@@ -56,28 +59,27 @@ module hyperbus_tb;
   wire        wire_rwds;
   wire [7:0]  wire_dq_io;
 
+  logic       debug_hyper_rwds_oe_o;
+  logic       debug_hyper_dq_oe_o;
+  logic [3:0] debug_hyper_phy_state_o;
+
   // Instantiate device under test.
   hyperbus_macro_deflate  dut_i (
-    .clk_phy_i       ( clk_i          ),
-    .clk_sys_i       ( clk_i          ),
+    .clk_phy_i       ( clk_phy_i      ),
+    .clk_sys_i       ( clk_sys_i      ),
     .rst_ni          ( rst_ni         ),
     .cfg_i           ( cfg_i          ),
     .axi_i           ( axi_i          ),
     .hyper_reset_no  ( wire_reset_no  ),
-    .hyper_cs_no     ( hyper_cs_no    ),
+    .hyper_cs_no     ( wire_cs_no    ),
     .hyper_ck_o      ( wire_ck_o      ),
     .hyper_ck_no     ( wire_ck_no     ),
     .hyper_rwds_io   ( wire_rwds      ),
-    .hyper_dq_io     ( wire_dq_io     )
+    .hyper_dq_io     ( wire_dq_io     ),
+    .debug_hyper_rwds_oe_o    ( debug_hyper_rwds_oe_o   ),
+    .debug_hyper_dq_oe_o      ( debug_hyper_dq_oe_o     ),
+    .debug_hyper_phy_state_o  ( debug_hyper_phy_state_o )
   );
-    //simulate pad delays
-    //-------------------
-    pad_io #(2) pad_sim_cs (
-        .data_i   (hyper_cs_no),   
-        .oe_i     (1'b1),
-        .data_o   (),  
-        .pad_io   (wire_cs_no) 
-    );
 
   s27ks0641 #(.mem_file_name("../src/s27ks0641.mem"), .TimingModel("S27KS0641DPBHI020")) hyperram_model
   (
@@ -103,14 +105,28 @@ module hyperbus_tb;
   initial begin
     repeat(3) #TCLK;
     rst_ni = 0;
-    repeat(3) #TCLK;
+    #200ns
     rst_ni = 1;
     #TCLK;
     while (!done) begin
-      clk_i = 1;
+      clk_phy_i = 1;
       #(TCLK/2);
-      clk_i = 0;
+      clk_phy_i = 0;
       #(TCLK/2);
+    end
+  end
+
+    initial begin
+    repeat(3) #TCLK;
+    rst_ni = 0;
+    #200ns
+    rst_ni = 1;
+    #TCLK;
+    while (!done) begin
+      clk_sys_i = 1;
+      #(TCLK_SYS/2);
+      clk_sys_i = 0;
+      #(TCLK_SYS/2);
     end
   end
 
@@ -119,7 +135,7 @@ module hyperbus_tb;
   int expectedResulth0001 = 16'h0001;
   int expectedResultRegWrite = 16'h8f1f;
   int expectedResultStrobe[16] = '{16'hffff, 16'hff56, 16'h34ff, 16'h3456, 16'hffff, 16'hff56, 16'h34ff, 16'h3456,16'hffff, 16'hff56, 16'h34ff, 16'h3456,16'hffff, 16'hff56, 16'h34ff, 16'h3456};
-  int SomeData[16] = '{'hcafe, 'haffe, 'h0000, 'h0001, 'hface, 'hfeed, 'h0000, 'h0e0e, 'hcafe, 'haffe, 'h0000, 'h0002, 'hface, 'hfeed, 'h0000, 'h0f0f};
+  int SomeData[16] = '{'hcafe, 'haffe, 'h0770, 'h9001, 'hface, 'hfeed, 'h0000, 'h0e0e, 'hcafe, 'haffe, 'h0000, 'h0302, 'hface, 'hfeed, 'h7000, 'h0f0f};
 
   initial begin
 
@@ -137,8 +153,9 @@ module hyperbus_tb;
     #150us; //Wait for RAM to initalize
 
     // // Access the register interface.
-    // cfg_drv.send_write('hdeadbeef, 'hfacefeed, '1, error);
-    // repeat(3) @(posedge clk_i);
+    $display("Set CS_MAX to ",CS_MAX);
+    cfg_drv.send_write('h08, CS_MAX, '1, error);
+    //repeat(3) @(posedge clk_i);
     // cfg_drv.send_read('hdeadbeef, data, error);
     // repeat(3) @(posedge clk_i);
 
@@ -150,89 +167,19 @@ module hyperbus_tb;
     b = new;
     RegisterNoAddLatency(ax,w,b,r,'h8f1f);
     WordWithStrobe(ax,w,b,r);
-  
     ax.ax_addr = 'h00;
     LongWriteAndRead(ax, w, b, r);
-    ax.ax_addr = 'h10;
-    LongWriteAndRead(ax, w, b, r);
-
     WriteAndReadWithStrobe(ax,w,b,r);
     AddrOutOfRange(ax, w, b, r);
     WriteAndReadWithBreak(ax, w, b, r);
     ShortWriteAndRead(ax, w, b, r);
     // Thomas(ax, w, b, r);
 
+    #100ns;
     done = 1;
+    $finish;
+    $display("Finished");
   end
-
-  task Thomas (axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
-    //axi requests kerbin soc -> hyperbus
-
-    ax.ax_id    = 10'h010;
-    ax.ax_addr  = 32'h0000_0000;
-    ax.ax_size  = 3'h1;
-    ax.ax_burst = axi_pkg::BURST_INCR;
-    ax.ax_len   = 8'h07;
-    axi_drv.send_ar(ax);            //adapt me
-
-
-    repeat (8) begin
-        r.r_id      = 10'h010;
-        axi_drv.recv_r(r);
-        $display("Read %d - %4h", $time, r.r_data);
-    end
-
-
-    ax.ax_id    = 10'h010;
-    ax.ax_addr  = 32'h0000_0000;
-    ax.ax_size  = 3'h1;
-    ax.ax_burst = axi_pkg::BURST_INCR;
-    ax.ax_len   = 8'h03;
-    axi_drv.send_aw(ax);         
-
-    w.w_data    = 16'h000f;
-    w.w_strb    = '1;
-    w.w_last    = '0;
-    $display("Write %d - %4h", $time, w.w_data);
-    axi_drv.send_w(w);
-
-    w.w_data    = 16'hbeef;
-    w.w_strb    = '1;
-    w.w_last    = '0;
-    $display("Write %d - %4h", $time, w.w_data);
-    axi_drv.send_w(w);
-
-    w.w_data    = 16'hcafe;
-    w.w_strb    = '1;
-    w.w_last    = '0;
-    $display("Write %d - %4h", $time, w.w_data);
-    axi_drv.send_w(w);
-
-    w.w_data    = 16'hface;
-    w.w_strb    = '1;
-    w.w_last    = '1;
-    $display("Write %d - %4h", $time, w.w_data);
-    axi_drv.send_w(w);
-
-    axi_drv.recv_b(b);
-
-
-    ax.ax_id    = 10'h010;
-    ax.ax_addr  = 32'h0000_0000;
-    ax.ax_size  = 3'h1;
-    ax.ax_burst = axi_pkg::BURST_INCR;
-    ax.ax_len   = 8'h07;
-    axi_drv.send_ar(ax);       
-
-
-    repeat (8) begin
-        r.r_id      = 10'h010;
-        axi_drv.recv_r(r);
-        $display("Read %d - %4h", $time, r.r_data);
-    end
-  endtask : Thomas //Thomas(ax, w, b, r);
-
-
 
   //Writes the last word of the memory byte by byte with strobes
   task WordWithStrobe(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
@@ -352,7 +299,7 @@ module hyperbus_tb;
       end
       if (i==ax.ax_len-2) begin
         $display("Break");
-        repeat(5000) @(posedge clk_i);
+        repeat(5000) @(posedge clk_sys_i);
       end
       axi_drv.send_w(w);
     end
@@ -374,7 +321,7 @@ module hyperbus_tb;
       axi_drv.recv_r(r);
       if (i==ax.ax_len-10) begin
         $display("Break");
-        repeat(5000) @(posedge clk_i);
+        repeat(5000) @(posedge clk_sys_i);
       end
     end
 
@@ -390,7 +337,7 @@ module hyperbus_tb;
   task LongWriteAndRead(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
     //Without break
     //Write
-    ax.ax_len = 'd15;
+    ax.ax_len = 'd255;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
     $display("----------------------\nWriting and reading %3d words at Addr. %8h", ax.ax_len+1, ax.ax_addr);
@@ -414,7 +361,7 @@ module hyperbus_tb;
     axi_drv.send_ar(ax);
     for(int i = 0; i < ax.ax_len+1; i++) begin
       axi_drv.recv_r(r);
-      assert(r.r_data == SomeData[i%16]) else $error ("Received %4h, but expected %4h at %d", r.r_data, w.w_data, i);
+      assert(r.r_data == SomeData[i%16]) else $error ("Received %4h, but expected %4h at %d", r.r_data, SomeData[i%16], i);
       if (i == ax.ax_len) begin $display("Long read finished, number of data items %3d", i+1); end
     end
     assert (r.r_resp == 2'b00) $display ("Ok, read response received"); else $error("Read response %2b, but expected %2b", r.r_resp, 2'b00);
@@ -455,27 +402,30 @@ module hyperbus_tb;
     //Write
     ax.ax_addr = 'h900000; //Address that is out of the range 
     $display("---------------------- \nTesting write with invalid address: %8h",ax.ax_addr);
-    ax.ax_len = 'd0;
+    ax.ax_len = 'd15;
     ax.ax_burst = 'b01;
     axi_drv.send_aw(ax);
     w.w_last = 0;
-    w.w_data = 'haffe;
     w.w_strb = 2'b11;
 
     for(int i = 0; i < ax.ax_len+1; i++) begin
       if(i==ax.ax_len) begin
         w.w_last = 1;
       end
+      w.w_data = SomeData[i%16];
       axi_drv.send_w(w);
     end
     axi_drv.recv_b(b);
     assert(b.b_resp == 2'b11) $display ("OK, Decode error was trasnmitted"); else $error("Received b_resp %2b but expected %2b", b.b_resp, 2'b11);
 
     $display("Testing read with invalid address: %8h",ax.ax_addr);
-    ax.ax_len = 'd0;
+    ax.ax_len = 'd15;
     ax.ax_burst = 'b01;
     ax.ax_id = 'b1001;
     axi_drv.send_ar(ax);
+    for(int i = 0; i < ax.ax_len+1; i++) begin
+      axi_drv.recv_r(r);
+    end
     axi_drv.recv_r(r);
     assert(r.r_resp == 2'b11) $display ("OK, Decode error was trasnmitted"); else $error("Received b_resp %2b but expected %2b", r.r_resp, 2'b11);
   endtask : AddrOutOfRange

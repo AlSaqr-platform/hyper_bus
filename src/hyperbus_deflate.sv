@@ -14,11 +14,16 @@ module hyperbus_macro_deflate #(
 
     // physical interface
     output logic                   hyper_reset_no,
-    output logic [NR_CS-1:0]       hyper_cs_no,
+    inout  wire [NR_CS-1:0]        hyper_cs_no,   //With Pad
     inout  wire                    hyper_ck_o,    //With Pad
     inout  wire                    hyper_ck_no,   //With Pad
     inout  wire                    hyper_rwds_io, //With Pad
-    inout  wire [7:0]              hyper_dq_io    //With Pad
+    inout  wire [7:0]              hyper_dq_io,   //With Pad
+
+    //debug
+    output logic                   debug_hyper_rwds_oe_o,
+    output logic                   debug_hyper_dq_oe_o,
+    output logic [3:0]             debug_hyper_phy_state_o
 );
 
     hyperbus_macro_inflate
@@ -34,10 +39,15 @@ module hyperbus_macro_deflate #(
         .clk0            ( clk0            ),    // Clock
         .clk90           ( clk90           ),    // Clock
     `else
+    // )
+     i_inflate (
         .clk_phy_i       ( clk_phy_i       ),
         .clk_sys_i       ( clk_sys_i       ),
-    `endif
         .rst_ni          ( rst_ni          ),         // Asynchronous reset active low
+        .test_en_ti      ( 1'b0            ),
+        .scan_en_ti      ( 1'b0            ),
+        .scan_in_ti      ( 1'b0            ),
+        .scan_out_to     (                 ),
 
         .cfg_i_addr      ( cfg_i.addr      ),
         .cfg_i_write     ( cfg_i.write     ),
@@ -103,7 +113,11 @@ module hyperbus_macro_deflate #(
         .hyper_ck_o      ( hyper_ck_o     ),
         .hyper_ck_no     ( hyper_ck_no    ),
         .hyper_rwds_io   ( hyper_rwds_io  ),
-        .hyper_dq_io     ( hyper_dq_io    )
+        .hyper_dq_io     ( hyper_dq_io    ),
+
+        .debug_hyper_rwds_oe_o   ( debug_hyper_rwds_oe_o   ),
+        .debug_hyper_dq_oe_o     ( debug_hyper_dq_oe_o     ),
+        .debug_hyper_phy_state_o ( debug_hyper_phy_state_o )
     );
 
 endmodule

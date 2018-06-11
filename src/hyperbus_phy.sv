@@ -22,6 +22,9 @@ module hyperbus_phy #(
 
     input  logic                   rst_ni,   // Asynchronous reset active low
 
+    input  logic                   clk_test,
+    input  logic                   test_en_ti,
+
     // configuration
     input  logic [31:0]            config_t_latency_access,
     input  logic [31:0]            config_t_latency_additional,
@@ -65,7 +68,12 @@ module hyperbus_phy #(
     input  logic [7:0]             hyper_dq_i,
     output logic [7:0]             hyper_dq_o,
     output logic                   hyper_dq_oe_o,
-    output logic                   hyper_reset_no
+    output logic                   hyper_reset_no,
+
+    //debug
+    output logic                   debug_hyper_rwds_oe_o,
+    output logic                   debug_hyper_dq_oe_o,
+    output logic [3:0]             debug_hyper_phy_state_o
 );
 
     logic [47:0] cmd_addr;
@@ -100,7 +108,10 @@ module hyperbus_phy #(
     logic read_clk_en_n;
     (* keep = "true" *) logic read_fifo_rst;
 
-    typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END} hyper_trans_t;
+    (* keep = "true" *) logic [3:0] wait_cnt;
+    logic [BURST_WIDTH-1:0] burst_cnt;
+
+    typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END_R, END} hyper_trans_t;
 
     (* keep = "true" *) hyper_trans_t hyper_trans_state;
 
@@ -113,7 +124,7 @@ module hyperbus_phy #(
         .out_no ( hyper_ck_no  )
     );
 
-    assign hyper_reset_no = 1;
+    assign hyper_reset_no = rst_ni;
 
     //selecting ram must be in sync with future hyper_ck_o
     always_ff @(posedge clk90 or negedge rst_ni) begin : proc_hyper_cs_no
@@ -130,13 +141,15 @@ module hyperbus_phy #(
             hyper_rwds_oe_o <= 0;
             hyper_dq_oe_o <= 0;
             clock_enable_270 <= 0;
+            read_clk_en <= 0;
         end else begin
             hyper_rwds_oe_o <= hyper_rwds_oe_n;
             hyper_dq_oe_o <= hyper_dq_oe_n;
             clock_enable_270 <= clock_enable;
+            read_clk_en <= read_clk_en_n;
         end
     end
- 
+
     genvar i;
     generate
       for(i=0; i<=7; i++)
@@ -192,6 +205,8 @@ module hyperbus_phy #(
     read_clk_rwds i_read_clk_rwds (
         .clk0                     ( clk0                        ),
         .rst_ni                   ( rst_ni                      ),
+        .clk_test                 ( clk_test                    ),
+        .test_en_ti               ( test_en_ti                  ),
         .config_t_rwds_delay_line ( config_t_rwds_delay_line    ),
         .hyper_rwds_i             ( hyper_rwds_i                ),
         .hyper_dq_i               ( hyper_dq_i                  ),
@@ -203,6 +218,8 @@ module hyperbus_phy #(
     );
 
     assign rx_valid_o = (read_fifo_valid && !read_fifo_rst) || rx_error_o;
+    assign rx_last_o =  (burst_cnt == {BURST_WIDTH{1'b0}});
+
 
     logic hyper_rwds_i_syn;
     (* keep = "true" *) logic en_rwds;
@@ -224,17 +241,12 @@ module hyperbus_phy #(
         endcase // cmd_addr_sel
     end
 
-    (* keep = "true" *) logic [3:0] wait_cnt;
-    logic [BURST_WIDTH-1:0] burst_cnt;
-    logic additional_latency;
-
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
         if(~rst_ni) begin
             hyper_trans_state <= STANDBY;
             wait_cnt <= WAIT_CYCLES;
             burst_cnt <= {BURST_WIDTH{1'b0}};
-            cmd_addr_sel <= 1'b0;
-            additional_latency <= 1'b0;
+            cmd_addr_sel <= 2'b11;
             en_cs <= 1'b0;
         end else begin
             case(hyper_trans_state)
@@ -277,7 +289,6 @@ module hyperbus_phy #(
                         hyper_trans_state <= WAIT;
                     end
                     if(wait_cnt == config_t_latency_access - 2) begin
-                        additional_latency <= hyper_rwds_i_syn; //Sample RWDS
                         if(hyper_rwds_i_syn) begin //Check if additinal latency is nesessary
                             hyper_trans_state <= WAIT2;
                         end else begin
@@ -303,8 +314,7 @@ module hyperbus_phy #(
                 DATA_R: begin
                     if(rx_valid_o && rx_ready_i) begin
                         if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                            wait_cnt <= config_t_read_write_recovery - 2;
-                            hyper_trans_state <= END;
+                            hyper_trans_state <= END_R;
                         end else begin
                             burst_cnt <= burst_cnt - 1;
                         end
@@ -337,18 +347,24 @@ module hyperbus_phy #(
                 end
                 ERROR: begin
                     en_cs <= 1'b0;
-                    if (~local_write) begin
+                    if (~local_write) begin //read
                         if (rx_ready_i) begin
-                        burst_cnt <= burst_cnt - 1;
-                        if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
+                            burst_cnt <= burst_cnt - 1;
+                            if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
+                                wait_cnt <= config_t_read_write_recovery - 2;
+                                hyper_trans_state <= END;
+                            end
+                        end
+                    end else begin  //write
+                        if (~tx_valid_i) begin
                             wait_cnt <= config_t_read_write_recovery - 2;
                             hyper_trans_state <= END;
                         end
                     end
-                    end else if (~tx_valid_i) begin
-                        wait_cnt <= config_t_read_write_recovery - 2;
-                        hyper_trans_state <= END;
-                    end
+                end
+                END_R: begin
+                    wait_cnt <= config_t_read_write_recovery - 2;
+                    hyper_trans_state <= END;
                 end
                 END: begin
                     en_cs <= 1'b0;
@@ -362,6 +378,7 @@ module hyperbus_phy #(
                     hyper_trans_state <= STANDBY;
                 end
             endcase
+
             if(cs_max == 1) begin
                 hyper_trans_state <= ERROR;
             end
@@ -382,7 +399,6 @@ module hyperbus_phy #(
         mode_write = 1'b0;
         en_rwds = 1'b0;
         rx_error_o = 1'b0;
-        rx_last_o = 1'b0;
         b_valid_o = 1'b0;
         b_last_o = 1'b0;
         b_error_o = 1'b0;
@@ -391,6 +407,7 @@ module hyperbus_phy #(
             STANDBY: begin
                 clock_enable = 1'b0;
                 en_read_transaction = 1'b1;
+                hyper_dq_oe_n = 1'b1;
             end
             SET_CMD_ADDR: begin
                 trans_ready_o = 1'b1;
@@ -435,9 +452,6 @@ module hyperbus_phy #(
             DATA_R: begin
                 en_ddr_in = 1'b1;
                 read_clk_en_n = 1'b1;
-                if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                    rx_last_o = 1'b1;
-                end
             end
             WAIT_R: begin
                 clock_enable = 1'b0;
@@ -465,16 +479,19 @@ module hyperbus_phy #(
             ERROR: begin //Recover state after timeout for t_CSM 
                 clock_enable = 1'b0;
                 read_fifo_rst = 1'b1;
-                tx_ready_o = 1'b1;
-                if(~local_write) begin
+tx_ready_o = 1'b1; //TODO: should not be on this place
+                if(~local_write) begin //read
                     rx_error_o = 1'b1;
-                    if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                        rx_last_o = 1'b1;
-                    end
-                end else begin
+                end else begin         //write
+                    
                     b_valid_o = 1'b1;
                     b_error_o = 1'b1;   
                 end
+            end
+            END_R: begin
+                clock_enable = 1'b0;
+                read_clk_en_n = 1'b1;
+                read_fifo_rst = 1'b1;
             end
             END: begin
                 clock_enable = 1'b0;
@@ -482,14 +499,6 @@ module hyperbus_phy #(
                 en_read_transaction = 1'b1;
             end
         endcase
-    end
-
-    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_read_clk_en
-        if(~rst_ni) begin
-            read_clk_en <= 0;
-        end else begin
-            read_clk_en <= read_clk_en_n;
-        end
     end
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cs_max
@@ -521,5 +530,9 @@ module hyperbus_phy #(
             local_address_space <= trans_address_space_i;
         end
     end
+
+    assign debug_hyper_rwds_oe_o = hyper_rwds_oe_o;
+    assign debug_hyper_dq_oe_o = hyper_dq_oe_o;
+    assign debug_hyper_phy_state_o = hyper_trans_state;
 
 endmodule

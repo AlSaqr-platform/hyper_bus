@@ -52,12 +52,12 @@ set_output_delay -clock clk_phy_90_clk_generation_slow [expr [expr $period/2 - 5
 
 
 # Input Delay Constraint
-set input_clock         hyper_rwds_io;     # Name of input clock
-set skew_bre            0.5+1;             # Data invalid before the rising clock edge
-set skew_are            0.5+5;             # Data invalid after the rising clock edge
-set skew_bfe            0.5+1;             # Data invalid before the falling clock edge
-set skew_afe            0.5+5;             # Data invalid after the falling clock edge
-set input_ports         {hyper_dq_io[*]};  # List of input ports
+set input_clock         hyper_rwds_io;      # Name of input clock
+set skew_bre            0.45+1;             # Data invalid before the rising clock edge
+set skew_are            0.45+5;             # Data invalid after the rising clock edge
+set skew_bfe            0.45+1;             # Data invalid before the falling clock edge
+set skew_afe            0.45+5;             # Data invalid after the falling clock edge
+set input_ports         {hyper_dq_io[*]};   # List of input ports
 
 # Input Delay Constraint
 set_input_delay -clock $input_clock -max [expr $period/2 + $skew_afe] [get_ports $input_ports];
@@ -90,19 +90,16 @@ set_input_delay -clock $input_clock -min [expr $period/2 - $skew_bre] [get_ports
 # create_generated_clock -name <gen_clock_name> -multiply_by 1 -source [get_pins <source_pin>] [get_ports <output_clock_port>]
 # gen_clock_name is the name of forwarded clock here. It should be used below for defining "fwclk".	
 
-set fwclk        hyper_ck_o;     # forwarded clock name (generated using create_generated_clock at output clock port)        
+set fwclk        hyper_ck_o;       # forwarded clock name (generated using create_generated_clock at output clock port)        
 set tsu_r        0.6+5;            # destination device setup time requirement for rising edge
 set thd_r        0.6+5;            # destination device hold time requirement for rising edge
 set tsu_f        0.6+5;            # destination device setup time requirement for falling edge
 set thd_f        0.6+5;            # destination device hold time requirement for falling edge
-set trce_dly_max 0.000;          # maximum board trace delay
-set trce_dly_min 0.000;          # minimum board trace delay
 set output_ports {{hyper_dq_io[*]} hyper_rwds_io};   # list of output ports
-
 # Output Delay Constraints
-set_output_delay -clock $fwclk -max [expr $trce_dly_max + $tsu_r] [get_ports $output_ports];
+set_output_delay -clock $fwclk -max [expr             $tsu_r] [get_ports $output_ports];
 set_output_delay -clock $fwclk -min [expr $period/2 - $thd_r] [get_ports $output_ports];
-set_output_delay -clock $fwclk -max [expr $trce_dly_max + $tsu_f] [get_ports $output_ports] -clock_fall -add_delay;
+set_output_delay -clock $fwclk -max [expr             $tsu_f] [get_ports $output_ports] -clock_fall -add_delay;
 set_output_delay -clock $fwclk -min [expr $period/2 - $thd_f] [get_ports $output_ports] -clock_fall -add_delay;
 
 # Report Timing Template

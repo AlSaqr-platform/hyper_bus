@@ -28,24 +28,23 @@ set period_sys 4.0
 
 
 # 
-set padDelayInput 1.1
+set padDelayInput 1.0
 set padDelayOutput 3.0
 set insertionDelay [expr $period_phy/4 + $padDelayInput ]
 
 #et_clock_latency -source [expr - $period_phy/2] hyper_rwds_io
 set_clock_latency  $insertionDelay hyper_rwds_io
 
-set margin              0.5
-set input_clock         hyper_rwds_io;           # Name of input clock
-set skew_bre            [expr 0.45 + $margin];   # Data invalid before the rising clock edge
-set skew_are            [expr 0.45 + $margin];   # Data invalid after the rising clock edge
-set skew_bfe            [expr 0.45 + $margin];   # Data invalid before the falling clock edge
-set skew_afe            [expr 0.45 + $margin];   # Data invalid after the falling clock edge
-set input_ports         {hyper_dq_io[*]};        # List of input ports
+set margin      0.5
+set input_clock hyper_rwds_io;           # Name of input clock
+set skew_bre    [expr 0.45 + $margin];   # Data invalid before the rising clock edge
+set skew_are    [expr 0.45 + $margin];   # Data invalid after the rising clock edge
+set skew_bfe    [expr 0.45 + $margin];   # Data invalid before the falling clock edge
+set skew_afe    [expr 0.45 + $margin];   # Data invalid after the falling clock edge
+set input_ports {hyper_dq_io[*]};        # List of input ports
 
 # Input Delay Constraint 
 set options -network_latency_included
-#-source_latency_included
 set_input_delay -clock $input_clock -max [expr $period_phy/2 + $skew_afe ] [get_ports $input_ports] $options;
 set_input_delay -clock $input_clock -min [expr $period_phy/2 - $skew_bfe ] [get_ports $input_ports] $options;
 set_input_delay -clock $input_clock -max [expr $period_phy/2 + $skew_are ] [get_ports $input_ports] -clock_fall -add_delay $options;
@@ -54,8 +53,6 @@ set_input_delay -clock $input_clock -min [expr $period_phy/2 - $skew_bre ] [get_
 #Hyperram Datasheet 8.2  -  2V/ns with 20pF load
 set_input_transition [expr 1.8 / 2] [get_ports hyper_*_io]
 
-
-#set_max_delay -from [get_clocks hyper_rwds_io] -to [get_clocks clk0] 1
 
 #  Double Data Rate Source Synchronous Outputs 
 #
@@ -76,13 +73,13 @@ set_input_transition [expr 1.8 / 2] [get_ports hyper_*_io]
 # Example of creating generated clock at clock output port
 create_generated_clock -name hyper_ck_o -edges {1 2 3} -source [get_pins i_deflate/i_hyperbus/ddr_clk/clk90_o] [get_ports hyper_ck_o]
 set_clock_latency $padDelayOutput hyper_ck_o
-# gen_clock_name is the name of forwarded clock here. It should be used below for defining "fwclk".	
 
-set fwclk        hyper_ck_o;     # forwarded clock name (generated using create_generated_clock at output clock port)        
-set tsu_r        0.6+0.5;            # destination device setup time requirement for rising edge
-set thd_r        0.6+0.5;            # destination device hold time requirement for rising edge
-set tsu_f        0.6+0.5;            # destination device setup time requirement for falling edge
-set thd_f        0.6+0.5;            # destination device hold time requirement for falling edge
+set margin       0.5
+set fwclk        hyper_ck_o;                         # forwarded clock name (generated using create_generated_clock at output clock port)        
+set tsu_r        [expr 0.6 + $margin];               # destination device setup time requirement for rising edge
+set thd_r        [expr 0.6 + $margin];               # destination device hold time requirement for rising edge
+set tsu_f        [expr 0.6 + $margin];               # destination device setup time requirement for falling edge
+set thd_f        [expr 0.6 + $margin];               # destination device hold time requirement for falling edge
 set output_ports {{hyper_dq_io[*]} hyper_rwds_io};   # list of output ports
 
 # Output Delay Constraints
@@ -146,7 +143,11 @@ set_max_delay \
     -to [get_ports hyper_*_io] \
     [expr $period_phy/2.0]
 
-set_max_delay -from [get_pins i_deflate/i_hyperbus/phy_i/read_clk_en_reg/Q] -to [get_pins i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/cdc_read_ck_gating/clk_gate_i/E] [expr $period_phy/2.0]
+set_false_path -hold \
+    -from [get_pins i_deflate/i_hyperbus/phy_i/hyper_*_oe_o_reg/Q] \
+    -to [get_ports hyper_*_io]
+
+set_max_delay -from [get_pins i_deflate/i_hyperbus/phy_i/read_clk_en_reg/Q] -to [all_fanin -to [get_nets i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/clk_rwds] -only_cells -pin_levels 1] [expr $period_phy/2.0]
 
 set_false_path -from [get_pins i_deflate/i_hyperbus/ddr_clk/clk0_o] -to [get_ports hyper_*_io]
 
