@@ -56,6 +56,8 @@
 
   libs    = umc65ll designkit_B11_PB package_ninth_module \
             uk65lscllmvbbl_b03 \
+            uk65lscllmvbbr_b03 \
+            uk65lscllmvbbh_b03 \
             u065gioll25mvir_b04 \
             fse0k_a_memaker_201301.1.1
 

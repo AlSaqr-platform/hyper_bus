@@ -12,16 +12,21 @@
 // Description:
 `timescale 1ps/1ps
 
+import axi_pkg::*;
+
 module hyperbus #(
     parameter BURST_WIDTH = 12,
     parameter NR_CS = 2,
+    parameter AXI_AW = 32,
+    parameter AXI_UW = 1,
     parameter AXI_IW = 10
 )(
 `ifdef FPGA
     input  logic                   clk0,    // Clock
     input  logic                   clk90,    // Clock
 `else
-    input  logic                   clk_i,
+    input  logic                   clk_phy_i,
+    input  logic                   clk_sys_i,
 `endif
     input logic                    rst_ni,         // Asynchronous reset active low
 
@@ -49,12 +54,12 @@ module hyperbus #(
     logic clk90;
 
     clk_gen ddr_clk (
-        .clk_i    ( clk_i  ),
-        .rst_ni   ( rst_ni ),
-        .clk0_o   ( clk0   ),
-        .clk90_o  ( clk90  ),
-        .clk180_o (        ),
-        .clk270_o (        )
+        .clk_i    ( clk_phy_i ),
+        .rst_ni   ( rst_ni    ),
+        .clk0_o   ( clk0      ),
+        .clk90_o  ( clk90     ),
+        .clk180_o (           ),
+        .clk270_o (           )
     );
 `endif
     
@@ -135,7 +140,7 @@ module hyperbus #(
 
 
     config_registers config_registers_i (
-        .clk_i                        ( clk_i                        ),
+        .clk_i                        ( clk_sys_i                    ),
         .rst_ni                       ( rst_ni                       ),
 
         .cfg_i                        ( cfg_i                        ),
@@ -148,8 +153,12 @@ module hyperbus #(
         .config_addr_mapping          ( config_addr_mapping          )
     );
 
-    hyperbus_axi #(.AXI_IW(AXI_IW)) axi2phy_i (
-        .clk_i                 ( clk_i                   ),
+    hyperbus_axi #(
+        .BURST_WIDTH ( BURST_WIDTH ),
+        .NR_CS       ( NR_CS       ),
+        .AXI_IW      ( AXI_IW      )
+        ) axi2phy_i (
+        .clk_i                 ( clk_sys_i               ),
         .rst_ni                ( rst_ni                  ),
 
         .config_addr_mapping   ( config_addr_mapping     ),
@@ -182,7 +191,10 @@ module hyperbus #(
         .trans_address_space_o ( axi_trans.address_space )
     );
 
-    hyperbus_phy phy_i (
+    hyperbus_phy #(
+        .BURST_WIDTH ( BURST_WIDTH ),
+        .NR_CS       ( NR_CS       )
+        ) phy_i (
         .clk0                         ( clk0                         ),
         .clk90                        ( clk90                        ),
         .rst_ni                       ( rst_ni                       ),
@@ -213,7 +225,7 @@ module hyperbus #(
         .rx_error_o                   ( phy_rx.error                 ),
         .rx_last_o                    ( phy_rx.last                  ),
 
-        .b_resp_valid_o               ( phy_b_valid                  ),
+        .b_valid_o                    ( phy_b_valid                  ),
         .b_last_o                     ( phy_b_resp.last              ),
         .b_error_o                    ( phy_b_resp.error             ),
 
@@ -231,7 +243,7 @@ module hyperbus #(
 
     cdc_2phase #(.T(trans_struct)) i_cdc_2phase_trans_signals (
         .src_rst_ni  ( rst_ni          ),
-        .src_clk_i   ( clk_i           ),
+        .src_clk_i   ( clk_sys_i       ),
         .src_data_i  ( axi_trans       ),
         .src_valid_i ( axi_trans_valid ),
         .src_ready_o ( axi_trans_ready ),
@@ -251,7 +263,7 @@ module hyperbus #(
         .src_ready_o (             ),
 
         .dst_rst_ni  ( rst_ni      ),
-        .dst_clk_i   ( clk_i       ),
+        .dst_clk_i   ( clk_sys_i   ),
         .dst_data_o  ( axi_b_resp  ),
         .dst_valid_o ( axi_b_valid ),
         .dst_ready_i ( axi_b_ready )
@@ -260,7 +272,7 @@ module hyperbus #(
     //Write data, TX CDC FIFO
     cdc_fifo_gray  #(.T(tx_data), .LOG_DEPTH(2)) i_cdc_TX_fifo ( 
         .src_rst_ni  ( rst_ni       ),
-        .src_clk_i   ( clk_i        ),
+        .src_clk_i   ( clk_sys_i    ),
         .src_data_i  ( axi_tx       ),
         .src_valid_i ( axi_tx_valid ),
         .src_ready_o ( axi_tx_ready ),
@@ -281,9 +293,10 @@ module hyperbus #(
         .src_ready_o ( phy_rx_ready ),
     
         .dst_rst_ni  ( rst_ni       ),  
-        .dst_clk_i   ( clk_i        ),  
+        .dst_clk_i   ( clk_sys_i    ),  
         .dst_data_o  ( axi_rx       ),
         .dst_valid_o ( axi_rx_valid ),  
         .dst_ready_i ( axi_rx_ready )
     );   
+
 endmodule

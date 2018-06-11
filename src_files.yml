@@ -19,10 +19,12 @@ hyperbus:
     src/hyperbus_axi.sv,
     src/read_clk_rwds.sv,
     src/hyperbus.sv,
+    src/hyperbus_macro.sv,
     src/hyperbus_phy.sv,
     src/cmd_addr_gen.sv,
     src/ddr_in.sv,
     src/hyperbus_soc_axi_wrapper.sv,
+    src/pad_io.sv,
     src/kerbin_to_hyperbus_axi.sv,
     src/hyperbus_macro.sv,
   ]
@@ -43,7 +45,7 @@ hyperbus_sim:
   flags:
     - skip_synthesis
   files: [
-    #src/pad_simulation.sv,
+    src/pad_io.sv,
     models/s27ks0641/s27ks0641.v,
     models/s27ks0641/s27ks0641_bmod_wrapper.v,
     models/s26ks512s/s26ks512s.v,

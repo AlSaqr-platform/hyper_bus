@@ -21,13 +21,15 @@ module hyperbus_macro_deflate #(
     inout  wire [7:0]              hyper_dq_io    //With Pad
 );
 
-    hyperbus_macro_inflate #(
-        .BURST_WIDTH ( BURST_WIDTH ),
-        .NR_CS       ( NR_CS       ),
-        .AXI_AW      ( AXI_AW      ),
-        .AXI_UW      ( AXI_UW      ),
-        .AXI_IW      ( AXI_IW      )
-    ) i_inflate (
+    hyperbus_macro_inflate
+    // #(
+        // .BURST_WIDTH ( BURST_WIDTH ),
+        // .NR_CS       ( NR_CS       ),
+        // .AXI_AW      ( AXI_AW      ),
+        // .AXI_UW      ( AXI_UW      ),
+        // .AXI_IW      ( AXI_IW      )
+    // ) 
+    i_inflate (
     `ifdef FPGA
         .clk0            ( clk0            ),    // Clock
         .clk90           ( clk90           ),    // Clock
