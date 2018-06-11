@@ -27,6 +27,7 @@ hyperbus:
     src/pad_io.sv,
     src/kerbin_to_hyperbus_axi.sv,
     src/hyperbus_macro.sv,
+    src/hyperbus_deflate.sv,
   ]
 
 hyperbus_soc:
@@ -45,6 +46,7 @@ hyperbus_sim:
   flags:
     - skip_synthesis
   files: [
+    src/pad_io.sv,
     models/s27ks0641/s27ks0641.v,
     models/s27ks0641/s27ks0641_bmod_wrapper.v,
     models/s26ks512s/s26ks512s.v,

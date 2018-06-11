@@ -6,7 +6,7 @@ set macro_width 2358.2
 
 set FPBOX {0.0 0.0 2358.2 100}
 set coreOffsetDieLeft 450
-set coreOffsetDieRight 325
+set coreOffsetDieRight 235
 floorPlan -b [concat $FPBOX $FPBOX $coreOffsetDieLeft 10 [expr $macro_width - $coreOffsetDieRight] [expr $macro_height - 0.2]]
 
 # setInstancePlacementStatus -status unplaced -name pad_*
@@ -57,12 +57,10 @@ for {set i 0} {$i < [llength $placement]} {incr i} {
 
 #
 
-# addIoFiller -cell IFILLER5 -side bottom -from 0 -to 100
-# addIoFiller -cell IFILLER5 -side bottom -from 2258.2 -to 2358.2
-# addIoFiller -cell IFILLER5 -side bottom -from 140 -to 1107
-# addIoFiller -cell IFILLER5 -side bottom -from 1670 -to 2230
-# addIoFiller -cell IFILLER1 -side bottom -from 140 -to 1107
-# addIoFiller -cell IFILLER1 -side bottom -from 1670 -to 2230
+addIoFiller -cell IFILLER5 -side bottom -from 0 -to 1333
+addIoFiller -cell IFILLER5 -side bottom -from 1666 -to 2358.2
+addIoFiller -cell IFILLER1 -side bottom -from 0 -to 1333
+addIoFiller -cell IFILLER1 -side bottom -from 1666 -to 2358.2
 
 
 # addIoFiller -cell IFILLER0 -side bottom -from 140 -to 1107

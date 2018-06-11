@@ -4,20 +4,20 @@ module hyperbus_soc_axi_wrapper(
     input  logic                   hyp_clk_i,  
     input  logic                   rst_ni,      
 
-    //REG_BUS.in                     cfg_i,
+    AXI_BUS.in                     hyper_cfg_i,
     AXI_BUS.in                     hyper_axi_i,
 
     // physical interface
-    output logic [2-1:0]           hyper_cs_no,
-    output logic                   hyper_ck_o,
-    output logic                   hyper_ck_no,
-    output logic                   hyper_rwds_o,
-    input  logic                   hyper_rwds_i,
-    output logic                   hyper_rwds_oe_o,
-    input  logic [7:0]             hyper_dq_i,
-    output logic [7:0]             hyper_dq_o,
-    output logic                   hyper_dq_oe_o,
-    output logic                   hyper_reset_no
+    output logic                   hyper_reset_no,
+    inout  wire [1:0]              hyper_cs_no,
+    inout  wire                    hyper_ck_o,    //With Pad
+    inout  wire                    hyper_ck_no,   //With Pad
+    inout  wire                    hyper_rwds_io, //With Pads
+    inout  wire [7:0]              hyper_dq_io,   //With Pad
+
+    //debug signals
+    output logic                   debug_hyper_rwds_oe_o,
+    output logic                   debug_hyper_dq_oe_o
 
     );
 
@@ -25,71 +25,90 @@ module hyperbus_soc_axi_wrapper(
     AXI_BUS  #(.AXI_ADDR_WIDTH(64), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) narrow_axi_i             (.clk_i(sys_clk_i));
     AXI_BUS  #(.AXI_ADDR_WIDTH(32), .AXI_DATA_WIDTH(16), .AXI_ID_WIDTH(10), .AXI_USER_WIDTH( 1)) axi_narrow_narrow_i      (.clk_i(sys_clk_i));
 
-    
-    REG_BUS  #(.ADDR_WIDTH    (64), .DATA_WIDTH    (64)) le_bus_bus (.clk_i(sys_clk_i));
+    AXI_LITE #(.AXI_ADDR_WIDTH(64), .AXI_DATA_WIDTH(64)) cfg_hyper_axi_lite_i (.clk_i(sys_clk_i));
+    REG_BUS  #(.ADDR_WIDTH    (64), .DATA_WIDTH    (64)) cfg_hyper_reg_full   (.clk_i(sys_clk_i));
+    REG_BUS  #(.ADDR_WIDTH    (32), .DATA_WIDTH    (32)) cfg_hyper_reg        (.clk_i(sys_clk_i));
 
 
-    //hyperbus #(
-    //    .NR_CS(2)
-    //) hyperbus_top_i (
+    //map register bus down to address 0 and translate 64bit to 32bit
+    assign cfg_hyper_reg.addr                = ((cfg_hyper_reg_full.addr [31:0]) - 32'h3000_1000) >> 1;
+    assign cfg_hyper_reg.write               =   cfg_hyper_reg_full.write;
+    assign cfg_hyper_reg.wdata               =   cfg_hyper_reg_full.wdata[31:0];
+    assign cfg_hyper_reg.wstrb               =   cfg_hyper_reg_full.wstrb;
+    assign cfg_hyper_reg.valid               =   cfg_hyper_reg_full.valid;
+ 
+    assign cfg_hyper_reg_full.ready          =   cfg_hyper_reg.ready;
+    assign cfg_hyper_reg_full.error          =   cfg_hyper_reg.error;
+    assign cfg_hyper_reg_full.rdata[63:32]   =   32'hcafeface;
+    assign cfg_hyper_reg_full.rdata[31: 0]   =   cfg_hyper_reg.rdata;
 
-    //    .clk_i           ( clk_i                  ),
-    //    .rst_ni          ( rst_ni                 ),
-    //    .cfg_i           ( le_bus_bus.in          ),
-    //    .axi_i           ( axi_narrow_narrow_i    ),
-    //    .hyper_cs_no     ( hyper_cs_no            ),
-    //    .hyper_ck_o      ( hyper_ck_o             ),
-    //    .hyper_ck_no     ( hyper_ck_no            ),
-    //    .hyper_rwds_o    ( hyper_rwds_o           ),
-    //    .hyper_rwds_i    ( hyper_rwds_i           ),
-    //    .hyper_rwds_oe_o ( hyper_rwds_oe_o        ),
-    //    .hyper_dq_i      ( hyper_dq_i             ),
-    //    .hyper_dq_o      ( hyper_dq_o             ),
-    //    .hyper_dq_oe_o   ( hyper_dq_oe_o          ),
-    //    .hyper_reset_no  ( hyper_reset_no         )
 
-    //);
+
+    axi_to_axi_lite #(
+        .NUM_PENDING_RD         ( 1                            ), 
+        .NUM_PENDING_WR         ( 1                            )
+    ) hyper_axi2axilite_i (              
+         
+        .clk_i                  ( sys_clk_i                    ), 
+        .rst_ni                 ( rst_ni                       ), 
+        .in                     ( hyper_cfg_i                  ),
+        .out                    ( cfg_hyper_axi_lite_i.out     )
+    );         
+         
+    axi_lite_to_reg #(         
+        .ADDR_WIDTH             ( 64                           ), 
+        .DATA_WIDTH             ( 64                           ),
+        .DECOUPLE_W             ( 1                            )
+    ) hypper_axilite2regitf_i (           
+        .clk_i                  ( sys_clk_i                    ),
+        .rst_ni                 ( rst_ni                       ),
+        .axi_i                  ( cfg_hyper_axi_lite_i.in      ),
+        .reg_o                  ( cfg_hyper_reg_full.out       )
+    );
+
 
     hyperbus_macro_deflate #(
-        .NR_CS(2)
+        .NR_CS                  ( 2                            ),
+        .BURST_WIDTH            ( 9                            ),
+        .AXI_AW                 ( 32                           ),
+        .AXI_UW                 ( 1                            ),
+        .AXI_IW                 ( 10                           )
+      
     ) hyperbus_soc_top_i (
 
-        .clk_phy_i       ( clk_phy_i              ),
-        .clk_sys_i       ( sys_clk_i              ),
-        .rst_ni          ( rst_ni                 ),
-        .cfg_i           ( le_bus_bus.in          ),
-        .axi_i           ( axi_narrow_narrow_i    ),
-        .hyper_cs_no     ( hyper_cs_no            ),
-        .hyper_ck_o      ( hyper_ck_o             ),
-        .hyper_ck_no     ( hyper_ck_no            ),
-        .hyper_rwds_o    ( hyper_rwds_o           ),
-        .hyper_rwds_i    ( hyper_rwds_i           ),
-        .hyper_rwds_oe_o ( hyper_rwds_oe_o        ),
-        .hyper_dq_i      ( hyper_dq_i             ),
-        .hyper_dq_o      ( hyper_dq_o             ),
-        .hyper_dq_oe_o   ( hyper_dq_oe_o          ),
-        .hyper_reset_no  ( hyper_reset_no         )
+        .clk_phy_i              ( hyp_clk_i                    ),
+        .clk_sys_i              ( sys_clk_i                    ),
+        .rst_ni                 ( rst_ni                       ),
+        .cfg_i                  ( cfg_hyper_reg.in             ),
+        .axi_i                  ( axi_narrow_narrow_i.in       ),
+        .hyper_reset_no         ( hyper_reset_no               ),
+        .hyper_cs_no            ( hyper_cs_no                  ),
+        .hyper_ck_o             ( hyper_ck_o                   ),
+        .hyper_ck_no            ( hyper_ck_no                  ),
+        .hyper_rwds_io          ( hyper_rwds_io                ),
+        .hyper_dq_io            ( hyper_dq_io                  ),
+        .debug_hyper_rwds_oe_o  ( debug_hyper_rwds_oe_o        ),
+        .debug_hyper_dq_oe_o    ( debug_hyper_dq_oe_o          )
 
     );
 
 
-
     `ifndef SYNTHESIS
-        axi_prober #(.AW(64), .DW(64), .UW( 1), .IW(10)) hyper_axi_prober_i        (.clk_i(sys_clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i        ));
-        axi_prober #(.AW(32), .DW(16), .UW( 1), .IW(10)) hyper_axi_prober_narrow_i (.clk_i(sys_clk_i), .rst_ni(rst_ni), .axi_probe_i(axi_narrow_narrow_i));
+        axi_prober #(.AW(64), .DW(64), .UW( 1), .IW(10)) hyper_axi_prober_i        (.clk_i(sys_clk_i), .rst_ni(rst_ni), .axi_probe_i(hyper_axi_i           ));
+        axi_prober #(.AW(32), .DW(16), .UW( 1), .IW(10)) hyper_axi_prober_narrow_i (.clk_i(sys_clk_i), .rst_ni(rst_ni), .axi_probe_i(axi_narrow_narrow_i   ));
     `endif
 
     kerbin_axi_addr_size_converter #(
-    .AW_IN                  (64),
-        .AW_OUT                 (32),
-        .DW                     (16),
-        .UW                     ( 1),
-        .IW                     (10)
+        .AW_IN                  ( 64                       ),
+        .AW_OUT                 ( 32                       ),
+        .DW                     ( 16                       ),
+        .UW                     (  1                       ),
+        .IW                     ( 10                       )
 
         ) axi_addr_conv_i (
-        .clk_i                  (sys_clk_i              ),
-        .axi_in                 (narrow_axi_i.Slave       ),
-        .axi_out                (axi_narrow_narrow_i.Master)
+        .clk_i                  ( sys_clk_i                ),
+        .axi_in                 ( narrow_axi_i.in          ),
+        .axi_out                ( axi_narrow_narrow_i.out  )
 
         );
 
@@ -105,7 +124,7 @@ module hyperbus_soc_axi_wrapper(
                         
     ) hyper_axi_ds_i (
 
-        .clk_i                  ( sys_clk_i                    ),
+        .clk_i                  ( sys_clk_i                ),
         .rst_ni                 ( rst_ni                   ),
 
         .axi_slave_aw_valid_i   ( hyper_axi_i.aw_valid     ),
