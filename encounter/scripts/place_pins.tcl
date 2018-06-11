@@ -1,9 +1,5 @@
 
 
-# # hyper signals (cs reset)
-editPin -fixedPin 1 -fixOverlap 1 -spreadDirection clockwise -side Top -layer 2 -spreadType range -start 2134.588 99.365 -end 2140.487 99.553 \
-        -pin {{hyper_cs_no[0]} {hyper_cs_no[1]} hyper_reset_no}
-
 editPin -fixedPin 1 -fixOverlap 1 -spreadDirection clockwise -side Top -layer 2 -spreadType range -start 1200.365 100 -end 1250 99.553 \
         -pin {cfg_i_ready axi_i_b_user[0] axi_i_r_user[0]}
 
@@ -15,6 +11,8 @@ addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin cfg*
 addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin clk*
 addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin hyper_reset*
 addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin debug_*
+addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin scan_*
+addPinToPinGroup -pinGroup inChip -cell hyperbus_macro_inflate -pin test_*
 createPinGuide -name inChip -cell hyperbus_macro_inflate -edge 1 -layer {M2 M4 M6}
 
 

@@ -7,6 +7,10 @@ set UNIT "hyperbus_macro"
 remove_design -all
 sh rm -rf WORK/*
 
+set target_library [list uk65lscllmvbbl_108c125_wc.db uk65lscllmvbbr_108c125_wc.db uk65lscllmvbbh_108c125_wc.db u065gioll25mvir_25_wc.db]
+set link_library   [list "*" uk65lscllmvbbl_108c125_wc.db uk65lscllmvbbr_108c125_wc.db uk65lscllmvbbh_108c125_wc.db u065gioll25mvir_25_wc.db dw_foundation.sldb]
+
+
 set_host_options -max_cores 3
 
 # ------------------------------------------------------------------------------
@@ -20,6 +24,7 @@ analyze -library WORK -format sverilog [list \
     ../src/common_cells/src/cdc_fifo_gray.sv \
     ../src/common_cells/src/cdc_2phase.sv \
     ../src/common_cells/src/graycode.sv \
+    ../src/common_cells/src/rstgen.sv \
     ../src/axi/src/axi_pkg.sv \
     ../src/axi/src/axi_intf.sv \
     ../src/register_interface/src/reg_intf.sv \
@@ -73,6 +78,9 @@ set DELAY_B [expr $period_sys * 2.0 / 3]
 set CHIN  "name=~axi_i_a*  OR name=~axi_i_w* OR name=~cfg_i_*" 
 set CHOUT "name=~axi_i_b*  OR name=~axi_i_r*"
 
+set_case_analysis 0 test_en_ti
+set_case_analysis 0 scan_en_ti
+
 set_input_delay $DELAY_A  [filter_collection [all_inputs]  $CHIN]  -clock clk_sys_i -source_latency_included
 set_input_delay $DELAY_B  [filter_collection [all_inputs]  $CHOUT] -clock clk_sys_i -source_latency_included
 set_output_delay $DELAY_A [filter_collection [all_outputs] $CHIN]  -clock clk_sys_i -source_latency_included
@@ -83,8 +91,8 @@ set_output_delay -clock clk0 [expr $period_phy/3] [get_ports debug_hyper*]
 # false paths through cdc_2phase cells
 set CDC_NETS_2PHASE [get_nets -hierarchical {*async_req *async_ack *async_data*}]
 set_max_delay \
-    -from [all_fanin -to $CDC_NETS_2PHASE -flat -only_cells] \
-    -to [all_fanout -from $CDC_NETS_2PHASE -flat -only_cells] \
+    -from [all_fanin -to $CDC_NETS_2PHASE -flat -only_cell] \
+    -to [all_fanout -from $CDC_NETS_2PHASE -flat -only_cell] \
     [expr $period_sys/2.0]
 
 # false paths through cdc_fifo cells
@@ -99,7 +107,11 @@ set_max_delay \
 
 set_false_path \
     -from [all_fanin -to [get_nets -hierarchical *fifo_data_q*] -flat -only_cells] \
-    -to [all_fanout -from [get_nets -hierarchical *dst_data_o*] -flat -only_cells]
+    -to [all_fanout -from [get_nets -hierarchical *dst_data_o*] -flat -only_cell] 
+
+set_false_path \
+    -from [all_fanin -to [get_nets -hierarchical *fifo_data_q*] -flat -only_cells] \
+    -to  [get_ports {axi_i_r_resp* axi_i_r_data* axi_i_r_last}]
 
 # false paths for other signals
 set CDC_FALSE_PATHS [get_nets -hierarchical {*config_t_* *read_clk_en_i}]
@@ -110,7 +122,7 @@ set_max_delay \
 
 set_max_delay \
     -from [get_pins i_deflate/i_hyperbus/phy_i/hyper_*_oe_o_reg/Q] \
-    -to [get_ports hyper_*_io] \
+    -to [get_pins i_deflate/pad_hyper_*/OE] \
     [expr $period_phy/2.0]
 
 
@@ -122,12 +134,12 @@ set_false_path -hold -from [get_clocks clk0] -to [get_clocks clk_sys_i]
 set_false_path -hold -from [get_clocks clk_sys_i] -to [get_clocks clk0]
 
 
-#set_dont_touch [get_designs hyperbus_delay_line]
+#set_dont_touch [get_designs PROGDEL8]
 #report_dont_touch
 
 
 # Set input driver and output load.
-set_driving_cell -no_design_rule -lib_cell BUFM4W -pin Z -library uk65lscllmvbbl_120c25_tc [remove_from_collection [all_inputs] {clk_sys_i clk_phy_i}]
+set_driving_cell -no_design_rule -lib_cell BUFM4W -pin Z -library uk65lscllmvbbl_108c125_wc [remove_from_collection [all_inputs] {clk_sys_i clk_phy_i}]
 
 #set_load [expr 4 * [load_of uk65lscllmvbbl_120c25_tc/BUFM4W/A [all_output]
 set_load 0.005 [all_output]
@@ -135,7 +147,31 @@ set_load 10 [get_ports {hyper_dq* hyper_rwds_io hyper_ck_* hyper_cs_*}]
 
 
 # Compilation after setting constraints.
-compile_ultra -no_autoungroup
+compile_ultra -scan -no_autoungroup -gate_clock
+ 
+
+# Scan chain 
+set_dft_signal -view existing_dft -type ScanClock -port clk_sys_i -timing {50 80} 
+set_dft_signal -view existing_dft -type Reset -port rst_ni -active_state 0 
+set_dft_signal -view existing_dft -type Constant -port test_en_ti -active_state 1 
+ 
+set_dft_signal -view spec -type ScanEnable -port scan_en_ti -active_state 1 
+set_dft_signal -view spec -type ScanDataIn -port scan_in_ti 
+set_dft_signal -view spec -type ScanDataOut -port scan_out_to 
+
+set_scan_element false [ get_cells -hierarchical ddr_clk ]
+set_scan_element false [ get_cells -hierarchical ddr_neg_reg ]
+set_scan_element false [ get_cells -hierarchical pad_* ]
+
+#todo good idea?
+set_scan_element false [ get_cells i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/read_in_valid_reg ]
+
+#set_scan_configuration -internal_clocks multi 
+create_test_protocol 
+ 
+insert_dft 
+
+
 
 rename_design [current_design] hyperbus_macro_inflate
 

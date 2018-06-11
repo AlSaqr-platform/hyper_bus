@@ -52,6 +52,9 @@ module hyperbus #(
     output logic [3:0]             debug_hyper_phy_state_o
 );
 
+    logic rst_phy_n;
+    logic rst_sys_n;
+
     //FGPA uses global clocking with MMCM
 `ifdef FPGA
     logic clk_i;
@@ -65,7 +68,7 @@ module hyperbus #(
 
     clk_gen ddr_clk (
         .clk_i    ( clk_phy_i ),
-        .rst_ni   ( rst_ni    ),
+        .rst_ni   ( rst_phy_n ),
         .clk0_o   ( clk0_gen  ),
         .clk90_o  ( clk90_gen ),
         .clk180_o (           ),
@@ -86,7 +89,7 @@ module hyperbus #(
         .clk_sel_i ( test_en_ti )
     );
 `endif
-    
+
     logic [31:0]                   config_t_latency_access;
     logic [31:0]                   config_t_latency_additional;
     logic [31:0]                   config_t_cs_max;
@@ -165,7 +168,7 @@ module hyperbus #(
 
     config_registers config_registers_i (
         .clk_i                        ( clk_sys_i                    ),
-        .rst_ni                       ( rst_ni                       ),
+        .rst_ni                       ( rst_sys_n                    ),
 
         .cfg_i                        ( cfg_i                        ),
 
@@ -183,7 +186,7 @@ module hyperbus #(
         .AXI_IW      ( AXI_IW      )
         ) axi2phy_i (
         .clk_i                 ( clk_sys_i               ),
-        .rst_ni                ( rst_ni                  ),
+        .rst_ni                ( rst_sys_n               ),
 
         .config_addr_mapping   ( config_addr_mapping     ),
 
@@ -221,7 +224,7 @@ module hyperbus #(
         ) phy_i (
         .clk0                         ( clk0                         ),
         .clk90                        ( clk90                        ),
-        .rst_ni                       ( rst_ni                       ),
+        .rst_ni                       ( rst_phy_n                    ),
 
         .clk_test                     ( clk_sys_i                    ),
         .test_en_ti                   ( test_en_ti                   ),
@@ -273,13 +276,13 @@ module hyperbus #(
     );
 
     cdc_2phase #(.T(trans_struct)) i_cdc_2phase_trans_signals (
-        .src_rst_ni  ( rst_ni          ),
+        .src_rst_ni  ( rst_sys_n       ),
         .src_clk_i   ( clk_sys_i       ),
         .src_data_i  ( axi_trans       ),
         .src_valid_i ( axi_trans_valid ),
         .src_ready_o ( axi_trans_ready ),
 
-        .dst_rst_ni  ( rst_ni          ),
+        .dst_rst_ni  ( rst_phy_n       ),
         .dst_clk_i   ( clk0            ),
         .dst_data_o  ( phy_trans       ),
         .dst_valid_o ( phy_trans_valid ),
@@ -287,13 +290,13 @@ module hyperbus #(
     );
 
     cdc_2phase #(.T(b_resp)) i_cdc_2phase_b_resp (
-        .src_rst_ni  ( rst_ni      ),
+        .src_rst_ni  ( rst_phy_n   ),
         .src_clk_i   ( clk0        ),
         .src_data_i  ( phy_b_resp  ),
         .src_valid_i ( phy_b_valid ),
         .src_ready_o (             ),
 
-        .dst_rst_ni  ( rst_ni      ),
+        .dst_rst_ni  ( rst_sys_n   ),
         .dst_clk_i   ( clk_sys_i   ),
         .dst_data_o  ( axi_b_resp  ),
         .dst_valid_o ( axi_b_valid ),
@@ -302,13 +305,13 @@ module hyperbus #(
 
     //Write data, TX CDC FIFO
     cdc_fifo_gray  #(.T(tx_data), .LOG_DEPTH(2)) i_cdc_TX_fifo ( 
-        .src_rst_ni  ( rst_ni       ),
+        .src_rst_ni  ( rst_sys_n    ),
         .src_clk_i   ( clk_sys_i    ),
         .src_data_i  ( axi_tx       ),
         .src_valid_i ( axi_tx_valid ),
         .src_ready_o ( axi_tx_ready ),
     
-        .dst_rst_ni  ( rst_ni       ),
+        .dst_rst_ni  ( rst_phy_n    ),
         .dst_clk_i   ( clk0         ),
         .dst_data_o  ( phy_tx       ),
         .dst_valid_o ( phy_tx_valid ),
@@ -317,17 +320,35 @@ module hyperbus #(
 
     //Read data, RX CDC FIFO
     cdc_fifo_gray  #(.T(rx_data), .LOG_DEPTH(2)) i_cdc_RX_fifo ( 
-        .src_rst_ni  ( rst_ni       ),
+        .src_rst_ni  ( rst_phy_n    ),
         .src_clk_i   ( clk0         ),
         .src_data_i  ( phy_rx       ),
         .src_valid_i ( phy_rx_valid ),
         .src_ready_o ( phy_rx_ready ),
     
-        .dst_rst_ni  ( rst_ni       ),  
+        .dst_rst_ni  ( rst_sys_n    ),  
         .dst_clk_i   ( clk_sys_i    ),  
         .dst_data_o  ( axi_rx       ),
         .dst_valid_o ( axi_rx_valid ),  
         .dst_ready_i ( axi_rx_ready )
     );   
+
+
+
+    rstgen i_rstgen_phy (
+        .clk_i       ( clk_phy_i  ),  
+        .rst_ni      ( rst_ni     ),  
+        .test_mode_i ( test_en_ti ),          
+        .rst_no      ( rst_phy_n  ),  
+        .init_no     (            )      
+    );
+
+    rstgen i_rstgen_sys (
+        .clk_i       ( clk_sys_i  ),  
+        .rst_ni      ( rst_ni     ),  
+        .test_mode_i ( test_en_ti ),          
+        .rst_no      ( rst_sys_n  ),  
+        .init_no     (            )      
+    );
 
 endmodule

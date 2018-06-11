@@ -67,8 +67,8 @@ ccopt_design -outDir reports/timing
 mkdir -p reports/clock
 report_ccopt_clock_trees -filename reports/clock/clock_trees.rpt
 report_ccopt_skew_groups -filename reports/clock/skew_groups.rpt
-timeDesign -postCTS -outDir reports/timing.postCTS
-timeDesign -hold -postCTS -outDir reports/timing.postCTS
+timeDesign -postCTS -outDir reports/timing.postCTS -expandedView
+timeDesign -hold -postCTS -outDir reports/timing.postCTS  -expandedView
 
 saveDesign save/postCTS
 
@@ -97,11 +97,11 @@ ecoPlace
 source scripts/checkdesign.tcl
 
 set DESIGNNAME hyperbus_macro
-source scripts/exportall_typ.tcl
+source scripts/exportall.tcl
 
-set VERSION 0v7
+set VERSION 0v8
 set DESIGNNAME hyperbus_macro_$VERSION
-source scripts/exportall_typ.tcl
+source scripts/exportall.tcl
 
 saveDesign save/hyperbus_macro_${VERSION}
 # write_io_file
@@ -109,9 +109,14 @@ saveDesign save/hyperbus_macro_${VERSION}
 
 write_lef_abstract ./out/hyperbus_macro_${VERSION}.lef -stripePin -PGpinLayers { 2 3 4 5 6 7 8 }
 
-set_analysis_view -setup { func_view hold_view } \
-                  -hold  { func_view hold_view }
-foreach view {func_view hold_view} {
+foreach view { func_wc func_tc func_bc test_wc test_bc } {
     puts "generating LIB view $view"
     do_extract_model -view $view out/hyperbus_macro_${VERSION}_${view}.lib
 }
+
+
+#check for 1.8V
+set_analysis_view -setup { func_1v8_wc} \
+                  -hold  { func_wc func_tc func_bc test_bc }
+
+timeDesign -postRoute -outDir reports/timing.postroute_1v8
