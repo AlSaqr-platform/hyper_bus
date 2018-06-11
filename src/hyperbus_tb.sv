@@ -171,6 +171,7 @@ module hyperbus_tb;
     AddrOutOfRange(ax, w, b, r);
     WordWithStrobe(ax,w,b,r);
     WriteAndReadWithBreak(ax, w, b, r);
+    MixedTransactions(ax, w, b, r);
     LongWriteAndRead(ax, w, b, r);
     ShortWriteAndRead(ax, w, b, r);
     WriteAndReadWithStrobe(ax,w,b,r);
@@ -182,13 +183,41 @@ module hyperbus_tb;
     WriteAndReadWithBreak(ax, w, b, r);
     LongWriteAndRead(ax, w, b, r);
     ShortWriteAndRead(ax, w, b, r);
+    MixedTransactions(ax, w, b, r);
     WriteAndReadWithStrobe(ax,w,b,r);
     
+    AddrOutOfRange(ax, w, b, r);
+    WriteAndReadWithBreak(ax, w, b, r);
+    AddrOutOfRange(ax, w, b, r);
+    WriteAndReadWithBreak(ax, w, b, r);
+
+    LongWriteAndRead(ax, w, b, r);
+
+
+
     #100ns;
     done = 1;
     $finish;
     $display("Finished");
   end
+  task MixedTransactions(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);
+    ax.ax_addr = 'h3FFFFF; //Last address for CS 1
+    ax.ax_len = 'd0;
+    ax.ax_burst = 'b01;
+    ax.ax_id = 'b1001;
+    $display("----------------------\nMixing write and read transactions, %1d word at Addr. %8h", ax.ax_len+1, ax.ax_addr);
+    axi_drv.send_aw(ax);
+    axi_drv.send_ar(ax);
+    w.w_data = 'h5678;
+    w.w_last = 1;
+    w.w_strb = 2'b11;
+    axi_drv.send_w(w);
+    axi_drv.recv_b(b);
+    axi_drv.recv_r(r);
+    assert(r.r_data == 'h5678) $display("Ok read same data as written"); else $error("Received %4h, but expected %4h", r.r_data, 'h5678);
+
+  endtask : MixedTransactions //WordWithStrobe(ax,w,b,r);
+
 
   //Writes the last word of the memory byte by byte with strobes
   task WordWithStrobe(axi_driver_t::ax_beat_t ax, axi_driver_t::w_beat_t w, axi_driver_t::b_beat_t b, axi_driver_t::r_beat_t r);

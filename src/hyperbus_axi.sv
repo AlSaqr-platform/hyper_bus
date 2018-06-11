@@ -140,13 +140,13 @@ module hyperbus_axi #(
         axi_i.b_user = 1'b0;
         case(write_state)
             WRITE_SLV_ERROR: begin
-                if (b_error_i) begin
+                if (b_error_i && b_valid_i) begin
                     axi_i.b_valid = 1'b1;
                     axi_i.b_resp = 2'b10;
                 end
             end
             WRITE_RESP: begin
-                if (b_valid_i && b_last_i) begin
+                if (b_last_i && b_valid_i) begin
                     axi_i.b_valid = 1'b1;
                     axi_i.b_resp = 2'b00;
                 end if (decode_error) begin
@@ -172,14 +172,14 @@ module hyperbus_axi #(
                 READ: begin
                     if(rx_error_i && rx_valid_i) begin
                         read_state <= READ_ERROR;
-                    end if((read_cnt == 9'b0 ||rx_last_i) && axi_i.r_ready && axi_i.r_valid) begin
+                    end if((read_cnt == 9'b0 || (rx_last_i && rx_valid_i)) && axi_i.r_ready && axi_i.r_valid) begin
                         read_state <= READ_READY;
                     end else if (axi_i.r_ready && axi_i.r_valid) begin
                         read_cnt <= read_cnt - 1;
                     end
                 end
                 READ_ERROR: begin //Have to signal valid response with every read
-                    if((read_cnt == 8'b0 || rx_last_i)  && axi_i.r_ready && axi_i.r_valid) begin
+                    if((read_cnt == 8'b0 || (rx_last_i && rx_valid_i))  && axi_i.r_ready && axi_i.r_valid) begin
                         read_state <= READ_READY;
                     end
                 end
@@ -193,7 +193,7 @@ module hyperbus_axi #(
     axi_i.r_user = 1'b0;      
         case(read_state)
             READ: begin
-                if(rx_error_i) begin
+                if(rx_error_i && rx_valid_i) begin
                     axi_i.r_resp = 2'b10;
                 end
                 if(decode_error) begin
