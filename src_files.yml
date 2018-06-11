@@ -27,6 +27,7 @@ hyperbus:
     src/pad_io.sv,
     src/kerbin_to_hyperbus_axi.sv,
     src/hyperbus_macro.sv,
+    src/hyperbus_deflate.sv,
   ]
 
 hyperbus_soc:
