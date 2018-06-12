@@ -92,6 +92,10 @@ set stripe_layers [list \
     {7 6 5 4} \
     {8 7 6 5 4} \
 ]
+
+set x_start [expr ([dbGet [dbGetInstByName pad_vdd_c2].pt_x] + 60)*1000 ]
+set x_stop  [expr [dbGet [dbGetInstByName i_deflate/pad_hyper_dq_io_3].pt_x] * 1000 ]
+
 redirect src/hyper_macro.power_generated.def {
     puts "VERSION 5.8 ;"
     puts "DIVIDERCHAR \"/\" ;"
@@ -115,7 +119,7 @@ redirect src/hyper_macro.power_generated.def {
             } else {
                 puts -nonewline "    NEW"
             }
-            puts " ME$layer $width + SHAPE STRIPE ( 0 $y ) ( 2358200 * )"
+            puts " ME$layer $width + SHAPE STRIPE ( $x_start $y ) ( $x_stop * )"
         }
         if {[string match VSS* $name]} {
             puts "  + USE GROUND"

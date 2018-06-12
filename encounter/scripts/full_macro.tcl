@@ -4,6 +4,7 @@ setMultiCpuUsage -localCpu max
 
 source src/hyperbus_macro.globals
 init_design
+specifyScanChain chain1 -start scan_in_ti -stop scan_out_to
 setOptMode -timeDesignCompressReports false
 
 source scripts/hyperbus_floorplan.tcl
@@ -99,7 +100,7 @@ source scripts/checkdesign.tcl
 set DESIGNNAME hyperbus_macro
 source scripts/exportall.tcl
 
-set VERSION 0v8
+set VERSION wip
 set DESIGNNAME hyperbus_macro_$VERSION
 source scripts/exportall.tcl
 
@@ -109,6 +110,8 @@ saveDesign save/hyperbus_macro_${VERSION}
 
 write_lef_abstract ./out/hyperbus_macro_${VERSION}.lef -stripePin -PGpinLayers { 2 3 4 5 6 7 8 }
 
+set_analysis_view -setup { func_wc func_tc func_bc test_wc test_bc } \
+                  -hold  { func_wc func_tc func_bc test_wc test_bc }
 foreach view { func_wc func_tc func_bc test_wc test_bc } {
     puts "generating LIB view $view"
     do_extract_model -view $view out/hyperbus_macro_${VERSION}_${view}.lib

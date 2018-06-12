@@ -123,7 +123,7 @@ set_max_delay \
 # false paths through cdc_fifo cells
 set_max_delay \
     -from [all_fanin -to [get_nets -hierarchical *src_wptr_gray_q*] -flat -only_cells] \
-    -to [all_fanout -from [get_nets -hierarchical *dst_wptr_gray_q[*]] -flat -only_cells] \
+    -to [all_fanout -from [get_nets -hierarchical *src_wptr_gray_q*] -flat -only_cells] \
     [expr $period_sys/2.0]
 
 # set_false_path -hold \
@@ -178,6 +178,8 @@ set_false_path -hold -from [get_clocks clk0] -to [get_clocks clk_sys_i]
 set_false_path -hold -from [get_clocks clk_sys_i] -to [get_clocks clk0]
 set_false_path -hold -from [get_clocks clk_phy_i] -to [get_clocks hyper_rwds_io]
 
+
+set_false_path -through [get_ports rst_ni]
 
 set_case_analysis 1 i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/delay[0]
 set_case_analysis 0 i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/delay[1]
