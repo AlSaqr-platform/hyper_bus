@@ -376,10 +376,12 @@ module hyperbus_phy_tb;
 
         // stimuli.address_space = 1;
 
+        
         testBasic();
         testWriteWithMask();
         testVariableLatency();
         testWithMultipleInterruptions();
+        testLastWordInterrupted();
         testTimeoutError();
         testDifferentLatency();
         testLongTransaction();
@@ -444,19 +446,63 @@ module hyperbus_phy_tb;
     endtask : testVariableLatency
 
     task testWithMultipleInterruptions();
+        automatic int expectedResult[64];
 
         stimuli = new(32'h05FFF3, 16);
         stimuli.name("with multiple interruptions");
         stimuli.addInterruptHandshake(-1, 20);
         stimuli.addInterruptHandshake(3, 5);
         stimuli.addInterruptHandshake(8, 8);
+        stimuli.addInterruptHandshake(12, 20);
 
         doTransaction(stimuli);
 
         result.check(expectedResultAt05FFF3);
         result.printResult();
 
+
+
+        stimuli = new(32'hFFE, 32);
+        stimuli.write(writeData64, mask64);
+        stimuli.addInterruptHandshake(-1, 30);
+        stimuli.addInterruptHandshake(3, 5);
+        stimuli.addInterruptHandshake(8, 8);
+        stimuli.addInterruptHandshake(18, 8);
+        stimuli.addInterruptHandshake(30, 20);
+
+        doTransaction(stimuli);
+
+        //Read written data
+        stimuli.isWrite = 0;
+
+        doTransaction(stimuli);
+        
+        expectedResult = writeData64;
+        expectedResult[14] = 16'h0f0d;
+
+        result.check(expectedResult);
+        result.printResult();
+
     endtask : testWithMultipleInterruptions
+
+    task  testLastWordInterrupted();
+
+        stimuli = new(32'h2FE, 8);
+        stimuli.name("Interrupt last word");
+        stimuli.write(writeData8, {2'b00,2'b00,2'b00,2'b00,2'b00,2'b00,2'b00,2'b00});
+        stimuli.addInterruptHandshake(-1, 40);
+        stimuli.addInterruptHandshake(6, 40);
+
+        doTransaction(stimuli);
+
+        stimuli.isWrite = 0;
+
+        doTransaction(stimuli);
+
+        result.check(writeData8);
+        result.printResult();
+    
+    endtask : testLastWordInterrupted
 
     task testTimeoutError();
         

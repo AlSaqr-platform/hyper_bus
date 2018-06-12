@@ -442,6 +442,9 @@ module hyperbus_phy #(
                         hyper_dq_oe_n = 1'b1;
                         tx_ready_o = 1'b1; 
                         mode_write = 1'b1;
+                        if(~write_valid) begin //data not ready yet
+                            clock_enable = 1'b0;
+                        end
                     end
                 end
                 else begin
