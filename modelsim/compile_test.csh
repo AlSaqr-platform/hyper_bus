@@ -20,6 +20,7 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/common_cells/src/cdc_fifo_gray.sv \
     ../src/common_cells/src/cdc_2phase.sv \
     ../src/common_cells/src/graycode.sv \
+    ../src/common_cells/src/rstgen.sv \
     ../src/axi/src/axi_pkg.sv \
     ../src/axi/src/axi_intf.sv \
     ../src/axi/src/axi_test.sv \
@@ -33,7 +34,6 @@ vlog-${VER} -sv -work ${LIB} \
     ../src/clk_gen.sv \
     ../src/ddr_out.sv \
     ../src/hyperbus_delay_line.sv \
-    ../src/hyperbus_deflate.sv \
     ../src/pad_io.sv \
     ../src/read_clk_rwds.sv \
     ../src/hyperbus.sv \

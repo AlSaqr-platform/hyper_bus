@@ -106,10 +106,14 @@ create_constraint_mode -name test_mode -sdc_files [list src/mmmc_test.sdc \
 ##
 ## This example uses three views:
 ##
-create_analysis_view -name func_view -delay_corner worst_delay -constraint_mode func_mode
-create_analysis_view -name test_view -delay_corner worst_delay -constraint_mode test_mode
-create_analysis_view -name hold_view -delay_corner best_delay  -constraint_mode func_mode
-create_analysis_view -name 1v8_view -delay_corner worst_io1v8_delay  -constraint_mode func_mode
+create_analysis_view -name func_wc -delay_corner worst_delay   -constraint_mode func_mode
+create_analysis_view -name func_tc -delay_corner typical_delay -constraint_mode func_mode
+create_analysis_view -name func_bc -delay_corner best_delay    -constraint_mode func_mode
+
+create_analysis_view -name test_wc -delay_corner worst_delay   -constraint_mode test_mode
+create_analysis_view -name test_bc -delay_corner best_delay    -constraint_mode test_mode
+
+create_analysis_view -name func_1v8_wc -delay_corner worst_io1v8_delay  -constraint_mode func_mode
 
 #################################################################
 ## SET ANALYSIS VIEWS
@@ -119,8 +123,8 @@ create_analysis_view -name 1v8_view -delay_corner worst_io1v8_delay  -constraint
 ## example we use both 'functional' and 'test_mode' when doing setup analysis
 ## and we use only the 'hold' view when doing hold analysis. 
 
-set_analysis_view -setup { func_view hold_view} \
-                  -hold  { hold_view }
+set_analysis_view -setup { func_wc func_tc func_bc test_wc } \
+                  -hold  { func_wc func_tc func_bc test_bc }
                   
 ## *IMPORTANT* It is actually possible that due to the differences in modelling,
 ##             for some circuits it could actually be possible that hold violations

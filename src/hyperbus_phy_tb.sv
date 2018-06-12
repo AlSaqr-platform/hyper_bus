@@ -26,10 +26,11 @@ module hyperbus_phy_tb;
   logic                   clk90;
   logic                   rst_ni;
   logic [31:0]            config_t_latency_access;
-  logic [31:0]            config_t_latency_additional;
+  logic [31:0]            config_en_latency_additional;
   logic [31:0]            config_t_cs_max;
   logic [31:0]            config_t_read_write_recovery;
   logic [31:0]            config_t_rwds_delay_line;
+  logic [31:0]            config_t_variable_latency_check;
   logic                   trans_valid_i;
   logic                   trans_ready_o;
   logic [31:0]            trans_address_i;
@@ -74,10 +75,11 @@ module hyperbus_phy_tb;
     .rst_ni                       ( rst_ni                       ),
     .test_en_ti                   ( 1'b0                         ),
     .config_t_latency_access      ( config_t_latency_access      ),
-    .config_t_latency_additional  ( config_t_latency_additional  ),
+    .config_en_latency_additional ( config_en_latency_additional ),
     .config_t_cs_max              ( config_t_cs_max              ),
     .config_t_read_write_recovery ( config_t_read_write_recovery ),
     .config_t_rwds_delay_line     ( config_t_rwds_delay_line     ),
+    .config_t_variable_latency_check ( config_t_variable_latency_check ),
     .trans_valid_i                ( trans_valid_i                ),
     .trans_ready_o                ( trans_ready_o                ),
     .trans_address_i              ( trans_address_i              ),
@@ -345,10 +347,11 @@ module hyperbus_phy_tb;
 
         // Set all inputs at the beginning    
         config_t_latency_access = DEFAULT_LATENCY;
-        config_t_latency_additional = DEFAULT_LATENCY;
+        config_en_latency_additional = 'b1;
         config_t_cs_max = CS_MAX;
         config_t_read_write_recovery = READ_WRITE_RECOVERY;
         config_t_rwds_delay_line = RWDS_DELAY_LINE;
+        config_t_variable_latency_check = 'd3;
 
         trans_valid_i = 0;
         trans_address_i = 0;
@@ -422,6 +425,7 @@ module hyperbus_phy_tb;
     task testVariableLatency();
 
         doConfig0Write(16'h8f17); // use variable latency
+        config_en_latency_additional = 'b0;
 
         ##(50);
 
@@ -491,7 +495,6 @@ module hyperbus_phy_tb;
         automatic int expectedResult[8];
 
         config_t_latency_access = 3;
-        config_t_latency_additional = 3;
         doConfig0Write(16'h8fE7); // set latency to 3
 
         stimuli = new(32'h30FFFF, 8);
@@ -513,7 +516,6 @@ module hyperbus_phy_tb;
 
         //reset config
         config_t_latency_access = DEFAULT_LATENCY;
-        config_t_latency_additional = DEFAULT_LATENCY;
         doConfig0Write(16'h8f17);
     
     endtask : testDifferentLatency

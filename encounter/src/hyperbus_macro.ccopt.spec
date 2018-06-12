@@ -34,6 +34,7 @@ set_ccopt_property clock_gating_cells [ list LAGCESM2WA LAGCESM4WA LAGCESM6WA LA
 #set_ccopt_property sink_type -pin Clk_CO ignore
 
 #get ignore and case_analysis pin information from create_ccopt_clock_tree_spec -views func_view
+#create_ccopt_clock_tree_spec -views func_tc
 
 # from local ThroughPin constraints (locality only effects skew groups not clock trees)
 # and from any local Unsync/Excluded/LeafPin constraints which no other clock passes through
@@ -53,13 +54,11 @@ set oddr_cells [list \
     i_deflate/i_hyperbus/phy_i/ddr_data_strb/ddrmux/U1/S \
 ]
 foreach cell $oddr_cells {
-	set_ccopt_property sink_type -pin $cell stop
+    set_ccopt_property sink_type -pin $cell stop
 }
 
 set_ccopt_property sink_type -pin i_deflate/pad_hyper_ck_o/DO stop
 set_ccopt_property sink_type -pin i_deflate/pad_hyper_ck_no/DO stop
-
-
 
 
 # MacroModel constraints
@@ -94,22 +93,21 @@ set_ccopt_property sink_type -pin i_deflate/pad_hyper_ck_no/DO stop
 
 create_ccopt_clock_tree -name clk_sys     -source clk_sys_i
 create_ccopt_clock_tree -name clk_phy     -source clk_phy_i
-create_ccopt_clock_tree -name clk_rwds    -source hyper_rwds_io
-
+create_ccopt_clock_tree -name clk_rwds    -source hyper_rwds_io -no_skew_group
 # promote any clock trees whose source is within one combinational arc of
 # another clock tree sink to generated clock trees
 
 create_ccopt_generated_clock_tree \
-	-generated_by [get_pins i_deflate/i_hyperbus/ddr_clk/r_clk0_o_reg/CK] \
-	-name clk0 \
-	-parents clk_phy \
-	-source i_deflate/i_hyperbus/ddr_clk/r_clk0_o_reg/Q
+    -generated_by [get_pins i_deflate/i_hyperbus/ddr_clk/r_clk0_o_reg/CK] \
+    -name clk0 \
+    -parents clk_phy \
+    -source i_deflate/i_hyperbus/ddr_clk/r_clk0_o_reg/Q
 
 create_ccopt_generated_clock_tree \
-	-generated_by [get_pins i_deflate/i_hyperbus/ddr_clk/r_clk90_o_reg/CKB] \
-	-name clk90 \
-	-parents clk_phy \
-	-source i_deflate/i_hyperbus/ddr_clk/r_clk90_o_reg/Q
+    -generated_by [get_pins i_deflate/i_hyperbus/ddr_clk/r_clk90_o_reg/CKB] \
+    -name clk90 \
+    -parents clk_phy \
+    -source i_deflate/i_hyperbus/ddr_clk/r_clk90_o_reg/Q
 
 # skew group modification based on local constraints
 #-----------------------------------------------------------------------------------------
@@ -123,14 +121,38 @@ create_ccopt_skew_group -name hyper_ck -sources i_deflate/i_hyperbus/ddr_clk/r_c
 # skew group skew and ID targets
 #-----------------------------------------------------------------------------------------
 set_ccopt_property target_skew -skew_group hyper_ck 50ps -delay_corner *
+set_ccopt_property  target_insertion_delay -skew_group hyper_ck 1250ps
 
+set target_delays [list \
+    2200ps \
+    2500ps \
+    2800ps \
+    3100ps \
+]
+set pins [list \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_left/A \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_left/B \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_right/A \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_right/B \
+]
+for {set i 0} {$i < 4} {incr i} {
+    create_ccopt_skew_group -name clk_rwds/del$i -sources hyper_rwds_io -auto_sinks
+
+    for {set j 0} {$j < 4} {incr j} {
+        if {$j != $i} {
+            modify_ccopt_skew_group -skew_group clk_rwds/del$i -add_ignore_pins [lindex $pins $j]
+        }
+    }
+
+    set_ccopt_property  target_insertion_delay -skew_group clk_rwds/del$i [lindex $target_delays $i]
+}
 
 # DRV/NDR constraints for clock trees
 #-----------------------------------------------------------------------------------------
 
 #set_clock_latency [expr 1.5 + 0.4 ] hyper_rwds_io
 
-set_ccopt_property  target_insertion_delay -skew_group clk_rwds 2500ps
+
 
 set_ccopt_property  target_max_trans -net_type top   -clock_tree * 500ps
 set_ccopt_property  target_max_trans -net_type trunk -clock_tree * 350ps

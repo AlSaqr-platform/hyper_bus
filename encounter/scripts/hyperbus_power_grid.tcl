@@ -21,7 +21,7 @@ for {set i 0} {$i < [llength $pins]} {incr i} {
     set right_x [expr $lx + 60 + 0.5]
 
     #SKIP on first pad
-    if {$i > 3 && $i < [expr [llength $pins] - 1]} {
+    if {$i > 3 && $i < [expr [llength $pins] - 2]} {
         #VSS left
         addStripe -skip_via_on_wire_shape Noshape -block_ring_top_layer_limit ME1 -max_same_layer_jog_length 4 -padcore_ring_bottom_layer_limit ME1 -number_of_sets 1 -skip_via_on_pin Standardcell -stacked_via_top_layer ME8 -padcore_ring_top_layer_limit ME1 -spacing 2 -merge_stripes_value 0.1 -layer ME2 -block_ring_bottom_layer_limit ME1 -width 1 -area {0 11.65 2358.2 100} -nets VSS -start_x $start_x -stacked_via_bottom_layer ME1
 
@@ -92,6 +92,10 @@ set stripe_layers [list \
     {7 6 5 4} \
     {8 7 6 5 4} \
 ]
+
+set x_start [expr ([dbGet [dbGetInstByName pad_vdd_c2].pt_x] + 60)*1000 ]
+set x_stop  [expr [dbGet [dbGetInstByName i_deflate/pad_hyper_dq_io_3].pt_x] * 1000 ]
+
 redirect src/hyper_macro.power_generated.def {
     puts "VERSION 5.8 ;"
     puts "DIVIDERCHAR \"/\" ;"
@@ -115,7 +119,7 @@ redirect src/hyper_macro.power_generated.def {
             } else {
                 puts -nonewline "    NEW"
             }
-            puts " ME$layer $width + SHAPE STRIPE ( 0 $y ) ( 2358200 * )"
+            puts " ME$layer $width + SHAPE STRIPE ( $x_start $y ) ( $x_stop * )"
         }
         if {[string match VSS* $name]} {
             puts "  + USE GROUND"

@@ -5,7 +5,7 @@ set ly 88.8
 set ux [expr $lx + 60]
 set uy 95
 
-# createRegion i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/progdel8_i $lx $ly $ux $uy
+#createRegion i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/progdel8_i $lx $ly $ux $uy
 
 set ddr_pins [list \
     i_deflate/pad_hyper_dq_io_0 \
@@ -59,3 +59,5 @@ for {set i 0} {$i < [llength $iddr_cells]} {incr i} {
 #Add layout of delay line
 #readSdpFile -file ../src/delayline/PROGDEL8.sdp -hierPath i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/progdel8_i
 
+#above rwds pad
+#setObjFPlanBox RplGroup PROGDEL8 704.017 94.32 718.017 97.92

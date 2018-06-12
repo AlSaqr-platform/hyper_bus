@@ -18,15 +18,43 @@ module hyperbus_delay_line (
 
     // assign out = in;
 
-    assign #(1ns) out = in; 
+    //assign #(1ns) out = in; 
 
     // logic [7:0] delay_onehot;
-    // assign delay_onehot = 1<<0;
+    // assign delay_onehot = 1<<delay;
 
     // PROGDEL8 progdel8_i (
     //     .A( in           ),
-    //     .S( 8'b00000010  ),
+    //     .S( delay_onehot ),
     //     .Z( out          )
     // );
+
+    logic left;
+    logic right;
+
+
+    CKMUX2M2R i_clk_mux_top 
+    (
+        .A ( left     ),
+        .B ( right    ),
+        .S ( delay[1] ),
+        .Z ( out      )
+    );
+
+    CKMUX2M2R i_clk_mux_left 
+    (
+        .A ( in       ),
+        .B ( in       ),
+        .S ( delay[0] ),
+        .Z ( left     )
+    );
+
+    CKMUX2M2R i_clk_mux_right 
+    (
+        .A ( in       ),
+        .B ( in       ),
+        .S ( delay[0] ),
+        .Z ( right    )
+    );
 
 endmodule

@@ -5,8 +5,8 @@ set macro_width 2358.2
 
 
 set FPBOX {0.0 0.0 2358.2 100}
-set coreOffsetDieLeft 450
-set coreOffsetDieRight 235
+set coreOffsetDieLeft 456
+set coreOffsetDieRight 243
 floorPlan -b [concat $FPBOX $FPBOX $coreOffsetDieLeft 10 [expr $macro_width - $coreOffsetDieRight] [expr $macro_height - 0.2]]
 
 # setInstancePlacementStatus -status unplaced -name pad_*
