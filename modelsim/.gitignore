@@ -3,6 +3,7 @@ README
 saif
 work
 gate
+scan
 sim_postlayout.csh-example
 modelsim.ini
 vcd
@@ -11,3 +12,4 @@ transcript
 compile_gate.csh-example
 compile_rtl.csh-example
 *.20[0-9]*-[0-9]*-[0-9]*-[0-9]*:[0-9]*:[0-9]*
+wlft*
