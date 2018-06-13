@@ -68,7 +68,7 @@ module read_clk_rwds #(
     `endif
 
     logic resetReadModule;
-    assign resetReadModule = ~rst_ni || ~read_clk_en_i; //todo: second async reset!!!! okay?
+    assign resetReadModule = ~rst_ni || (~read_clk_en_i && ~test_en_ti);
 
     always_ff @(posedge clk_rwds or posedge resetReadModule) begin : proc_read_in_valid
         if(resetReadModule) begin

@@ -119,7 +119,7 @@ module hyperbus_macro #(
     .PIN2(1'b1),
     .PIN1(1'b1),
     .SMT(1'b0),
-    .PD(1'b1),
+    .PD(1'b0),
     .PU(1'b0),
     .SR(1'b0)
   );

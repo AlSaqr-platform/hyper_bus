@@ -376,7 +376,6 @@ module hyperbus_phy_tb;
 
         // stimuli.address_space = 1;
 
-        
         testBasic();
         testWriteWithMask();
         testVariableLatency();
@@ -490,7 +489,6 @@ module hyperbus_phy_tb;
         stimuli = new(32'h2FE, 8);
         stimuli.name("Interrupt last word");
         stimuli.write(writeData8, {2'b00,2'b00,2'b00,2'b00,2'b00,2'b00,2'b00,2'b00});
-        stimuli.addInterruptHandshake(-1, 40);
         stimuli.addInterruptHandshake(6, 40);
 
         doTransaction(stimuli);
@@ -501,7 +499,20 @@ module hyperbus_phy_tb;
 
         result.check(writeData8);
         result.printResult();
-    
+
+        stimuli.addInterruptHandshake(-1, 40);
+        stimuli.isWrite = 1;
+
+        doTransaction(stimuli);
+
+        stimuli.isWrite = 0;
+
+        doTransaction(stimuli);
+
+        result.check(writeData8);
+        result.printResult();
+
+
     endtask : testLastWordInterrupted
 
     task testTimeoutError();
