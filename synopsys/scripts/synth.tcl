@@ -163,15 +163,10 @@ set_scan_element false [ get_cells -hierarchical ddr_clk ]
 set_scan_element false [ get_cells -hierarchical ddr_neg_reg ]
 set_scan_element false [ get_cells -hierarchical pad_* ]
 
-#todo good idea?
-set_scan_element false [ get_cells i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/read_in_valid_reg ]
-
 #set_scan_configuration -internal_clocks multi 
 create_test_protocol 
  
 insert_dft 
-
-
 
 rename_design [current_design] hyperbus_macro_inflate
 

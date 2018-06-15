@@ -96,8 +96,15 @@ update_delay_corner -name worst_io1v8_delay  -power_domain PD_core
 ##
 
 
-create_constraint_mode -name func_mode -sdc_files [list src/mmmc_functional.sdc \
-                                                        src/mmmc_shared.sdc ]   
+create_constraint_mode -name func_wc_mode -sdc_files [list src/mmmc_functional.sdc \
+                                                        src/mmmc_shared.sdc \
+                                                        src/mmmc_delay_wc.sdc ]   
+create_constraint_mode -name func_tc_mode -sdc_files [list src/mmmc_functional.sdc \
+                                                        src/mmmc_shared.sdc \
+                                                        src/mmmc_delay_tc.sdc ]   
+create_constraint_mode -name func_bc_mode -sdc_files [list src/mmmc_functional.sdc \
+                                                        src/mmmc_shared.sdc \
+                                                        src/mmmc_delay_bc.sdc ]   
 create_constraint_mode -name test_mode -sdc_files [list src/mmmc_test.sdc \
                                                         src/mmmc_shared.sdc ]  
 
@@ -106,14 +113,14 @@ create_constraint_mode -name test_mode -sdc_files [list src/mmmc_test.sdc \
 ##
 ## This example uses three views:
 ##
-create_analysis_view -name func_wc -delay_corner worst_delay   -constraint_mode func_mode
-create_analysis_view -name func_tc -delay_corner typical_delay -constraint_mode func_mode
-create_analysis_view -name func_bc -delay_corner best_delay    -constraint_mode func_mode
+create_analysis_view -name func_wc -delay_corner worst_delay   -constraint_mode func_wc_mode
+create_analysis_view -name func_tc -delay_corner typical_delay -constraint_mode func_tc_mode
+create_analysis_view -name func_bc -delay_corner best_delay    -constraint_mode func_bc_mode
 
 create_analysis_view -name test_wc -delay_corner worst_delay   -constraint_mode test_mode
 create_analysis_view -name test_bc -delay_corner best_delay    -constraint_mode test_mode
 
-create_analysis_view -name func_1v8_wc -delay_corner worst_io1v8_delay  -constraint_mode func_mode
+create_analysis_view -name func_1v8_wc -delay_corner worst_io1v8_delay  -constraint_mode func_wc_mode
 
 #################################################################
 ## SET ANALYSIS VIEWS

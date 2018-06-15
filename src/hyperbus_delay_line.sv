@@ -20,41 +20,71 @@ module hyperbus_delay_line (
 
     //assign #(1ns) out = in; 
 
-    // logic [7:0] delay_onehot;
-    // assign delay_onehot = 1<<delay;
+    logic l1_left;
+    logic l1_right;
 
-    // PROGDEL8 progdel8_i (
-    //     .A( in           ),
-    //     .S( delay_onehot ),
-    //     .Z( out          )
-    // );
+    logic l2_0;
+    logic l2_1;
+    logic l2_2;
+    logic l2_3;
 
-    logic left;
-    logic right;
-
-
+// Level 0
     CKMUX2M2R i_clk_mux_top 
     (
-        .A ( left     ),
-        .B ( right    ),
-        .S ( delay[1] ),
+        .A ( l1_left  ),
+        .B ( l1_right ),
+        .S ( delay[2] ),
         .Z ( out      )
     );
 
-    CKMUX2M2R i_clk_mux_left 
+// Level 1
+    CKMUX2M2R i_clk_mux_l1_left 
     (
-        .A ( in       ),
-        .B ( in       ),
-        .S ( delay[0] ),
-        .Z ( left     )
+        .A ( l2_0     ),
+        .B ( l2_1     ),
+        .S ( delay[1] ),
+        .Z ( l1_left  )
     );
 
-    CKMUX2M2R i_clk_mux_right 
+    CKMUX2M2R i_clk_mux_l1_right 
+    (
+        .A ( l2_2     ),
+        .B ( l2_3     ),
+        .S ( delay[1] ),
+        .Z ( l1_right )
+    );
+
+//Level 2
+    CKMUX2M2R i_clk_mux_l2_0
     (
         .A ( in       ),
         .B ( in       ),
         .S ( delay[0] ),
-        .Z ( right    )
+        .Z ( l2_0     )
+    );
+
+    CKMUX2M2R i_clk_mux_l2_1
+    (
+        .A ( in       ),
+        .B ( in       ),
+        .S ( delay[0] ),
+        .Z ( l2_1     )
+    );
+
+    CKMUX2M2R i_clk_mux_l2_2
+    (
+        .A ( in       ),
+        .B ( in       ),
+        .S ( delay[0] ),
+        .Z ( l2_2     )
+    );
+
+    CKMUX2M2R i_clk_mux_l2_3
+    (
+        .A ( in       ),
+        .B ( in       ),
+        .S ( delay[0] ),
+        .Z ( l2_3     )
     );
 
 endmodule

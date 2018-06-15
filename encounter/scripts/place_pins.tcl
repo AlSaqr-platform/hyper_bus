@@ -3,6 +3,9 @@
 editPin -fixedPin 1 -fixOverlap 1 -spreadDirection clockwise -side Top -layer 2 -spreadType range -start 1200.365 100 -end 1250 99.553 \
         -pin {cfg_i_ready axi_i_b_user[0] axi_i_r_user[0]}
 
+editPin -fixedPin 1 -fixOverlap 1 -spreadDirection clockwise -side Top -layer 2 -spreadType range -start 1440 100 -end 1444 99.553 \
+        -pin {debug_hyper_rwds_oe_o debug_hyper_dq_oe_o}
+
 
 # Allow connection to chip only on top of macro
 createPinGroup inChip -cell hyperbus_macro_inflate -optimizeOrder

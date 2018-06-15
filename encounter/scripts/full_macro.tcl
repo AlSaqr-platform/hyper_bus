@@ -31,11 +31,12 @@ globalNetConnect VSS   -netlistOverride -pin VSS
 reset_path_group -all
 createBasicPathGroups -expanded
 set inputs [get_ports hyper_*_io]
-set outputs [get_ports {{hyper_dq_io[*]} hyper_rwds_io}]
+set outputs [get_ports {{hyper_dq_io[*]} hyper_rwds_io hyper_cs_no*}]
 set registers [all_registers]
 group_path   -name hyperIn2reg -from $inputs -to $registers
 group_path   -name reg2hyperOut -from $registers -to $outputs
 timeDesign -prePlace -outDir reports/timing.preplace
+timeDesign -prePlace -hold -outDir reports/timing.preplace
 
 
 # Add custom power grid on top of rows.
@@ -73,6 +74,8 @@ timeDesign -hold -postCTS -outDir reports/timing.postCTS  -expandedView
 
 saveDesign save/postCTS
 
+source scripts/fillcore-insert.tcl
+
 # fix new violations
 #optDesign -postCTS
 
@@ -87,12 +90,11 @@ saveDesign save/postRoute
 
 optDesign -postRoute
 
-source scripts/fillcore-insert.tcl
 
+#source scripts/fillcore-insert.tcl
 # doesn't work, density 100%
 checkPlace
 ecoPlace
-
 
 # Finishing (export all etc)
 source scripts/checkdesign.tcl
@@ -107,6 +109,7 @@ source scripts/exportall.tcl
 saveDesign save/hyperbus_macro_${VERSION}
 # write_io_file
 
+defOutBySection -noNets -noComps -scanChains out/hyperbus_macro_${VERSION}_scan.def
 
 write_lef_abstract ./out/hyperbus_macro_${VERSION}.lef -stripePin -PGpinLayers { 2 3 4 5 6 7 8 }
 

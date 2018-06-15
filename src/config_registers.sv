@@ -59,13 +59,13 @@ module config_registers #(
         .init_val_i ( {
                 init_addr_mapping, //config_addr_mapping
                 32'd3,             //config_t_variable_latency_check
-                32'd1,             //config_t_rwds_delay_line
+                32'd2,             //config_t_rwds_delay_line
                 32'h6,             //config_t_read_write_recovery
                 32'd665,           //config_t_cs_max
                 32'b1,             //config_en_latency_additional
                 32'h6              //config_t_latency_access
             } ),
-        .rd_val_i   ( { config_addr_mapping, config_t_variable_latency_check, config_t_rwds_delay_line & 32'h0003, config_t_read_write_recovery & 32'h000f, config_t_cs_max & 32'h00ff, config_en_latency_additional & 32'h000f, config_t_latency_access & 32'h000f } ),
+        .rd_val_i   ( { config_addr_mapping, config_t_variable_latency_check, config_t_rwds_delay_line & 32'h0007, config_t_read_write_recovery & 32'h000f, config_t_cs_max & 32'h00ff, config_en_latency_additional & 32'h000f, config_t_latency_access & 32'h000f } ),
         .wr_val_o   ( { config_addr_mapping, config_t_variable_latency_check, config_t_rwds_delay_line, config_t_read_write_recovery, config_t_cs_max, config_en_latency_additional, config_t_latency_access } ),
         .wr_evt_o   (       ),
         .reg_i      ( cfg_i )

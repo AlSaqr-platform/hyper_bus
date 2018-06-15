@@ -123,22 +123,32 @@ create_ccopt_skew_group -name hyper_ck -sources i_deflate/i_hyperbus/ddr_clk/r_c
 set_ccopt_property target_skew -skew_group hyper_ck 50ps -delay_corner *
 set_ccopt_property  target_insertion_delay -skew_group hyper_ck 1250ps
 
+#worst case values
 set target_delays [list \
     2200ps \
     2500ps \
-    2800ps \
-    3100ps \
+    3000ps \
+    3600ps \
+    4200ps \
+    5000ps \
+    6000ps \
+    8000ps \
 ]
+
 set pins [list \
-    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_left/A \
-    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_left/B \
-    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_right/A \
-    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_right/B \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_l2_0/A \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_l2_0/B \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_l2_1/A \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_l2_1/B \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_l2_2/A \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_l2_2/B \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_l2_3/A \
+    i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/i_clk_mux_l2_3/B \
 ]
-for {set i 0} {$i < 4} {incr i} {
+for {set i 0} {$i < 8} {incr i} {
     create_ccopt_skew_group -name clk_rwds/del$i -sources hyper_rwds_io -auto_sinks
 
-    for {set j 0} {$j < 4} {incr j} {
+    for {set j 0} {$j < 8} {incr j} {
         if {$j != $i} {
             modify_ccopt_skew_group -skew_group clk_rwds/del$i -add_ignore_pins [lindex $pins $j]
         }

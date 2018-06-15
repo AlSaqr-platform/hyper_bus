@@ -47,10 +47,11 @@ set period_sys 4.0
 # 
 set padDelayInput 1.0
 set padDelayOutput 3.0
-set insertionDelay [expr $period_phy/4 + $padDelayInput ]
+set insertionDelayRwds [expr $period_phy/4 + $padDelayInput - 0.2]
+set insertionDelayRwds 2.3
 
-#et_clock_latency -source [expr - $period_phy/2] hyper_rwds_io
-set_clock_latency  $insertionDelay hyper_rwds_io
+#set_clock_latency  $insertionDelayRwds hyper_rwds_io
+set_propagated_clock hyper_rwds_io
 
 set margin      0.5
 set input_clock hyper_rwds_io;           # Name of input clock
@@ -68,7 +69,7 @@ set_input_delay -clock $input_clock -max [expr $period_phy/2 + $skew_are ] [get_
 set_input_delay -clock $input_clock -min [expr $period_phy/2 - $skew_bre ] [get_ports $input_ports] -clock_fall -add_delay $options;
 
 #Hyperram Datasheet 8.2  -  2V/ns with 20pF load
-set_input_transition [expr 1.8 / 2] [get_ports hyper_*_io]
+set_input_transition [expr 1.8 / 2] [get_ports hyper_*_io] $options
 
 
 #  Double Data Rate Source Synchronous Outputs 
@@ -105,8 +106,7 @@ set_output_delay -clock $fwclk -min [expr  - $thd_r] [get_ports $output_ports];
 set_output_delay -clock $fwclk -max [expr    $tsu_f] [get_ports $output_ports] -clock_fall -add_delay;
 set_output_delay -clock $fwclk -min [expr  - $thd_f] [get_ports $output_ports] -clock_fall -add_delay;
 
-
-set_output_delay -clock $fwclk [expr  $period_phy/2] [get_ports hyper_cs_*];
+set_output_delay -clock $fwclk [expr $period_phy/2] [get_ports hyper_cs_*];
 
 
 # false paths through cdc_2phase cells
@@ -123,7 +123,7 @@ set_max_delay \
 # false paths through cdc_fifo cells
 set_max_delay \
     -from [all_fanin -to [get_nets -hierarchical *src_wptr_gray_q*] -flat -only_cells] \
-    -to [all_fanout -from [get_nets -hierarchical *src_wptr_gray_q*] -flat -only_cells] \
+    -to [all_fanout -from [get_nets -hierarchical *dst_wptr_gray_q[*]] -flat -only_cells] \
     [expr $period_sys/2.0]
 
 # set_false_path -hold \
@@ -132,7 +132,7 @@ set_max_delay \
 
 set_max_delay \
     -from [all_fanin -to [get_nets -hierarchical *dst_rptr_gray_q*] -flat -only_cells] \
-    -to [all_fanout -from [get_nets -hierarchical *src_rptr_gray_q*] -flat -only_cells] \
+    -to [all_fanout -from [get_nets -hierarchical *src_rptr_gray_q[*]] -flat -only_cells] \
     [expr $period_sys/2.0]
 
 # set_false_path -hold \
@@ -181,5 +181,4 @@ set_false_path -hold -from [get_clocks clk_phy_i] -to [get_clocks hyper_rwds_io]
 
 set_false_path -through [get_ports rst_ni]
 
-set_case_analysis 1 i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/delay[0]
-set_case_analysis 0 i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyperbus_delay_line_i/delay[1]
+set_false_path -from [get_pins i_deflate/i_hyperbus/i_rstgen_phy/s_rst_n_reg/Q] -to [get_clocks hyper_rwds_io]

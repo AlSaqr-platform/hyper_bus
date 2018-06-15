@@ -50,8 +50,13 @@ add wave -noupdate /hyperbus_tb/wire_dq_io
 add wave -noupdate /hyperbus_tb/wire_cs_no
 add wave -noupdate /hyperbus_tb/wire_ck_o
 add wave -noupdate /hyperbus_tb/wire_ck_no
+add wave -noupdate /hyperbus_tb/dut_i/i_inflate/i_deflate/hyper_dq_i
+add wave -noupdate /hyperbus_tb/dut_i/i_inflate/i_deflate/hyper_rwds_i
+add wave -noupdate /hyperbus_tb/dut_i/i_inflate/i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/hyper_rwds_i_d
+add wave -noupdate -label clk_rwds /hyperbus_tb/dut_i/i_inflate/i_deflate/i_hyperbus/phy_i/i_read_clk_rwds/CTS_8
+add wave -noupdate /hyperbus_tb/dut_i/i_inflate/i_deflate/i_hyperbus/config_t_rwds_delay_line
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {188 ps} 0}
+WaveRestoreCursors {{Cursor 1} {150000885 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100
@@ -67,4 +72,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ns
 update
-WaveRestoreZoom {0 ps} {1 ns}
+WaveRestoreZoom {0 ps} {157762500 ps}
