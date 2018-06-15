@@ -13,7 +13,7 @@ vsim-${VER} -work ${LIB} \
           -v2k_int_delays +no_neg_tchk +ntc_warn +no_glitch_msg \
           -t 1ps \
           -voptargs=+acc \
-          scanchain_tb
+          hyperbus_macro_inflate_test
 
 
 #	hyperbus_macro_inflate_test

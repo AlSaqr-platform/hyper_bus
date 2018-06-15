@@ -194,3 +194,5 @@ change_names -rules verilog -hier
 write_file -format verilog -hierarchy -output ./netlists/${UNIT}.v
 
 write_sdc -nosplit ./netlists/${UNIT}.sdc
+
+write_test_model -format ctl -output ./netlists/hyperbus_test_model.ctl

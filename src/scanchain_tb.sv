@@ -65,7 +65,7 @@ module scanchain_tb;
 
 
   // Instantiate device under test.
-  hyperbus_macro_inflate  dut_i (
+  hyperbus_macro_inflate  dut (
     .clk_phy_i       ( clk_sys_i      ),
     .clk_sys_i       ( clk_sys_i      ),
     .rst_ni          ( rst_ni         ),
@@ -138,7 +138,6 @@ module scanchain_tb;
     .hyper_rwds_io   ( wire_rwds      ),
     .hyper_dq_io     ( wire_dq_io     )
   );
-  // TODO: Instantiate model of HyperRAM/HyperFlash.
 
   logic done = 0;
 
@@ -176,13 +175,14 @@ module scanchain_tb;
     axi_drv.reset_master();
     @(posedge rst_ni);
 
-
-    #50ns
-
+    #10ns;
+    scan_en_ti = 1;
+    //reset scan
+    #17000ns;
 
     @(posedge clk_sys_i)
-    #(TCLK/2)
-    scan_en_ti = 1;
+    #(TCLK/4)
+   
     scan_in_ti = 1;
     #(TCLK)
     scan_in_ti = 0;
