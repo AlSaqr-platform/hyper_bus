@@ -20,71 +20,80 @@ module hyperbus_delay_line (
 
     //assign #(1ns) out = in; 
 
-    logic l1_left;
-    logic l1_right;
+    `ifndef SYNTHESIS
 
-    logic l2_0;
-    logic l2_1;
-    logic l2_2;
-    logic l2_3;
+        assign #(1.5ns) out = in; 
 
-// Level 0
-    CKMUX2M2R i_clk_mux_top 
-    (
-        .A ( l1_left  ),
-        .B ( l1_right ),
-        .S ( delay[2] ),
-        .Z ( out      )
-    );
+    `else
+    
 
-// Level 1
-    CKMUX2M2R i_clk_mux_l1_left 
-    (
-        .A ( l2_0     ),
-        .B ( l2_1     ),
-        .S ( delay[1] ),
-        .Z ( l1_left  )
-    );
+        logic l1_left;
+        logic l1_right;
 
-    CKMUX2M2R i_clk_mux_l1_right 
-    (
-        .A ( l2_2     ),
-        .B ( l2_3     ),
-        .S ( delay[1] ),
-        .Z ( l1_right )
-    );
+        logic l2_0;
+        logic l2_1;
+        logic l2_2;
+        logic l2_3;
 
-//Level 2
-    CKMUX2M2R i_clk_mux_l2_0
-    (
-        .A ( in       ),
-        .B ( in       ),
-        .S ( delay[0] ),
-        .Z ( l2_0     )
-    );
+    // Level 0
+        CKMUX2M2R i_clk_mux_top 
+        (
+            .A ( l1_left  ),
+            .B ( l1_right ),
+            .S ( delay[2] ),
+            .Z ( out      )
+        );
 
-    CKMUX2M2R i_clk_mux_l2_1
-    (
-        .A ( in       ),
-        .B ( in       ),
-        .S ( delay[0] ),
-        .Z ( l2_1     )
-    );
+    // Level 1
+        CKMUX2M2R i_clk_mux_l1_left 
+        (
+            .A ( l2_0     ),
+            .B ( l2_1     ),
+            .S ( delay[1] ),
+            .Z ( l1_left  )
+        );
 
-    CKMUX2M2R i_clk_mux_l2_2
-    (
-        .A ( in       ),
-        .B ( in       ),
-        .S ( delay[0] ),
-        .Z ( l2_2     )
-    );
+        CKMUX2M2R i_clk_mux_l1_right 
+        (
+            .A ( l2_2     ),
+            .B ( l2_3     ),
+            .S ( delay[1] ),
+            .Z ( l1_right )
+        );
 
-    CKMUX2M2R i_clk_mux_l2_3
-    (
-        .A ( in       ),
-        .B ( in       ),
-        .S ( delay[0] ),
-        .Z ( l2_3     )
-    );
+    //Level 2
+        CKMUX2M2R i_clk_mux_l2_0
+        (
+            .A ( in       ),
+            .B ( in       ),
+            .S ( delay[0] ),
+            .Z ( l2_0     )
+        );
+
+        CKMUX2M2R i_clk_mux_l2_1
+        (
+            .A ( in       ),
+            .B ( in       ),
+            .S ( delay[0] ),
+            .Z ( l2_1     )
+        );
+
+        CKMUX2M2R i_clk_mux_l2_2
+        (
+            .A ( in       ),
+            .B ( in       ),
+            .S ( delay[0] ),
+            .Z ( l2_2     )
+        );
+
+        CKMUX2M2R i_clk_mux_l2_3
+        (
+            .A ( in       ),
+            .B ( in       ),
+            .S ( delay[0] ),
+            .Z ( l2_3     )
+        );
+
+    `endif
 
 endmodule
