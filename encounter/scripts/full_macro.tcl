@@ -1,5 +1,4 @@
 
-
 setMultiCpuUsage -localCpu max
 
 source src/hyperbus_macro.globals
@@ -26,7 +25,9 @@ globalNetConnect VDDIO -netlistOverride -pin VDDIO
 globalNetConnect VDD   -netlistOverride -pin VDD
 globalNetConnect VSS   -netlistOverride -pin VSS
 
-
+# Create pad power pins
+createPGPin VSSIO
+createPGPin VDDIO
 
 reset_path_group -all
 createBasicPathGroups -expanded
