@@ -1,5 +1,4 @@
 
-
 setMultiCpuUsage -localCpu max
 
 source src/hyperbus_macro.globals
@@ -26,7 +25,9 @@ globalNetConnect VDDIO -netlistOverride -pin VDDIO
 globalNetConnect VDD   -netlistOverride -pin VDD
 globalNetConnect VSS   -netlistOverride -pin VSS
 
-
+# Create pad power pins
+createPGPin VSSIO
+createPGPin VDDIO
 
 reset_path_group -all
 createBasicPathGroups -expanded
@@ -74,8 +75,6 @@ timeDesign -hold -postCTS -outDir reports/timing.postCTS  -expandedView
 
 saveDesign save/postCTS
 
-source scripts/fillcore-insert.tcl
-
 # fix new violations
 #optDesign -postCTS
 
@@ -88,23 +87,31 @@ timeDesign -postRoute -hold -outDir reports/timing.postroute
 
 saveDesign save/postRoute
 
-optDesign -postRoute
+optDesign -postRoute -setup -hold
 
+setNanoRouteMode -droutePostRouteSwapVia multiCut
+routeDesign -viaOpt
 
-#source scripts/fillcore-insert.tcl
+source scripts/fillcore-insert.tcl
 # doesn't work, density 100%
 checkPlace
 ecoPlace
 
+#Manual change cell to S type when impArea violations happen
+
+
 # Finishing (export all etc)
+timeDesign -postRoute -outDir reports/timing.postroute
+timeDesign -postRoute -hold -outDir reports/timing.postroute
+
 source scripts/checkdesign.tcl
 
 set DESIGNNAME hyperbus_macro
-source scripts/exportall.tcl
+source scripts/exportall_hyper.tcl
 
-set VERSION wip
+set VERSION 1v0
 set DESIGNNAME hyperbus_macro_$VERSION
-source scripts/exportall.tcl
+source scripts/exportall_hyper.tcl
 
 saveDesign save/hyperbus_macro_${VERSION}
 # write_io_file
@@ -120,9 +127,11 @@ foreach view { func_wc func_tc func_bc test_wc test_bc } {
     do_extract_model -view $view out/hyperbus_macro_${VERSION}_${view}.lib
 }
 
+exec cp ../synopsys/netlists/hyperbus_test_model.ctl ./out/hyperbus_macro_${VERSION}_test_model.ctl
 
 #check for 1.8V
 set_analysis_view -setup { func_1v8_wc} \
                   -hold  { func_wc func_tc func_bc test_bc }
 
 timeDesign -postRoute -outDir reports/timing.postroute_1v8
+timeDesign -postRoute -hold -outDir reports/timing.postroute_1v8

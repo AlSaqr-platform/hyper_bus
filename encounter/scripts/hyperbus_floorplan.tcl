@@ -61,6 +61,7 @@ addIoFiller -cell IFILLER5 -side bottom -from 0 -to 1333
 addIoFiller -cell IFILLER5 -side bottom -from 1666 -to 2358.2
 addIoFiller -cell IFILLER1 -side bottom -from 0 -to 1333
 addIoFiller -cell IFILLER1 -side bottom -from 1666 -to 2358.2
+addIoFiller -cell IFILLER0 -side bottom -from 1666 -to 2358.2
 
 
 # addIoFiller -cell IFILLER0 -side bottom -from 140 -to 1107
