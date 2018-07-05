@@ -1,8 +1,32 @@
+//-------------------------------------------------------------------------------
+//-- Title      : DRAM Wrapper
+//-- Project    : Scarabaeus SOC
+//-------------------------------------------------------------------------------
+//-- File       : hyperbus_soc_axi_wrapper.sv
+//-- Author     : Gian Marti      <gimarti.student.ethz.ch>
+//-- Author     : Thomas Kramer   <tkramer.student.ethz.ch>
+//-- Author     : Thomas E. Benz  <tbenz.student.ethz.ch>
+//-- Company    : Integrated Systems Laboratory, ETH Zurich
+//-- Created    : 2018-06-13
+//-- Last update: 2018-06-13
+//-- Platform   : ModelSim (simulation), Synopsys (synthesis)
+//-- Standard   : SystemVerilog IEEE 1800-2012
+//-------------------------------------------------------------------------------
+//-- Description: Hyperbus Wrapper
+//-------------------------------------------------------------------------------
+//-- Copyright (c) 2018 Integrated Systems Laboratory, ETH Zurich
+//-------------------------------------------------------------------------------
+//-- Revisions  :
+//-- Date        Version  Author  Description
+//-- 2018-06-13  1.0      tbenz   Header Created
+//-------------------------------------------------------------------------------
+
 module hyperbus_soc_axi_wrapper(
 
     input  logic                   sys_clk_i,
     input  logic                   hyp_clk_i,  
-    input  logic                   rst_ni,      
+    input  logic                   rst_ni,   
+    input  logic                   test_en_i,   
 
     AXI_BUS.in                     hyper_cfg_i,
     AXI_BUS.in                     hyper_axi_i,
@@ -39,7 +63,7 @@ module hyperbus_soc_axi_wrapper(
  
     assign cfg_hyper_reg_full.ready          =   cfg_hyper_reg.ready;
     assign cfg_hyper_reg_full.error          =   cfg_hyper_reg.error;
-    assign cfg_hyper_reg_full.rdata[63:32]   =   32'hcafeface;
+    assign cfg_hyper_reg_full.rdata[63:32]   =   32'h0; //32'hcafeface;
     assign cfg_hyper_reg_full.rdata[31: 0]   =   cfg_hyper_reg.rdata;
 
 
@@ -79,6 +103,7 @@ module hyperbus_soc_axi_wrapper(
         .clk_phy_i              ( hyp_clk_i                    ),
         .clk_sys_i              ( sys_clk_i                    ),
         .rst_ni                 ( rst_ni                       ),
+        .test_en_ti             ( test_en_i                    ),
         .cfg_i                  ( cfg_hyper_reg.in             ),
         .axi_i                  ( axi_narrow_narrow_i.in       ),
         .hyper_reset_no         ( hyper_reset_no               ),
@@ -88,7 +113,8 @@ module hyperbus_soc_axi_wrapper(
         .hyper_rwds_io          ( hyper_rwds_io                ),
         .hyper_dq_io            ( hyper_dq_io                  ),
         .debug_hyper_rwds_oe_o  ( debug_hyper_rwds_oe_o        ),
-        .debug_hyper_dq_oe_o    ( debug_hyper_dq_oe_o          )
+        .debug_hyper_dq_oe_o    ( debug_hyper_dq_oe_o          ),
+        .debug_hyper_phy_state_o(                              )
 
     );
 

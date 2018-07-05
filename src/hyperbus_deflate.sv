@@ -7,7 +7,8 @@ module hyperbus_macro_deflate #(
 )(
     input  logic                   clk_phy_i,
     input  logic                   clk_sys_i,
-    input  logic                    rst_ni,         // Asynchronous reset active low
+    input  logic                   rst_ni,         // Asynchronous reset active low
+    input  logic                   test_en_ti,
 
     REG_BUS.in                     cfg_i,
     AXI_BUS.in                     axi_i,
@@ -30,7 +31,7 @@ module hyperbus_macro_deflate #(
         .clk_phy_i       ( clk_phy_i       ),
         .clk_sys_i       ( clk_sys_i       ),
         .rst_ni          ( rst_ni          ),         // Asynchronous reset active low
-        .test_en_ti      ( 1'b0            ),
+        .test_en_ti      ( test_en_ti      ),
         .scan_en_ti      ( 1'b0            ),
         .scan_in_ti      ( 1'b0            ),
         .scan_out_to     (                 ),
