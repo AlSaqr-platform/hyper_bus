@@ -1,0 +1,10 @@
+vendor_models:
+  flags: [
+    skip_synthesis,
+  ]
+  files: [
+    s27ks0641/s27ks0641.v,
+    s27ks0641/s27ks0641_bmod_wrapper.v,
+    s26ks512s/s26ks512s.v,
+    s25fs256s/s25fs256s.v,
+  ]
