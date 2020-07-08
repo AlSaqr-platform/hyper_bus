@@ -1,7 +1,7 @@
 # Revise HyperBus Implementation v2
 
 Goals:
-- have a workinhg HB IP
+- have a working HB IP
 - as portable as possible
 - only few dependencies
 - no interfaces
@@ -15,7 +15,7 @@ Goals:
 TODOs:
 - remove interfaces
 - remove size converter
-- repace config registers (they are non-maintainable rn)
+- replace config registers (they are non-maintainable rn)
 - replace `hyperbus_axi` module - this is "the digital" part
 
 
