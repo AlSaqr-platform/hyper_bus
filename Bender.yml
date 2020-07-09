@@ -1,0 +1,25 @@
+package:
+  name: hyperbus
+  authors:
+    - "Armin"
+    - "Other Guy"
+    - "Thomas Benz <tbenz@iis.ee.ethz.ch>"
+
+dependencies:
+  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.19.0 }
+  axi:                 { git: "https://github.com/pulp-platform/axi.git",                version: 0.23.1 }
+  tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.1  }
+
+workspace:
+   checkout_dir: "./src/deps"
+
+sources:
+  files:
+    # Level 0
+    - src/hyperbus_pkg.sv
+    # Level 1
+    - src/hyperbus_phy.sv
+    # Level 2
+    - src/hyperbus.sv
+
+
