@@ -8,7 +8,7 @@
 // permission from ETH Zurich.
 
 // Description: Generates 4 phase shifted clocks out of one faster clock
-module clk_gen (
+module hyperbus_clk_gen (
     input  logic clk_i,     // input clock
     input  logic rst_ni,
     output logic clk0_o,    // have the input clock - 0deg phase shift
@@ -17,7 +17,6 @@ module clk_gen (
     output logic clk270_o   // have the input clock - 270deg phase shift
 );
 
-`ifndef PULP_FPGA_EMUL
     logic r_clk0_o;
     logic r_clk90_o;
     logic r_clk180_o;
@@ -47,11 +46,5 @@ module clk_gen (
             r_clk270_o <= r_clk180_o;
         end
     end
-`else
-   assign clk0_o = clk_i;
-   assign clk90_o = clk_i;
-   assign clk180_o = clk_i;
-   assign clk270_o = clk_i;
-`endif
-endmodule
 
+endmodule : hyperbus_clk_gen

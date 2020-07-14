@@ -2,7 +2,8 @@
 // Description: Configuration for Hyperbus, v2 (For fixed 32-bit address spaces!)
 
 module hyperbus_cfg_regs #(
-  parameter int unsigned NumChips   = 2,
+  parameter int unsigned NumChips   = 2
+) (
   input logic     clk_i,
   input logic     rst_ni,
 

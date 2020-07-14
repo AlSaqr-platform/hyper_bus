@@ -199,7 +199,7 @@ module hyperbus_axi #(
     );
 
     // chip sel binary to one hot decoding
-    always_comb begin : proc_bin_to_onehoẗ
+    always_comb begin : proc_bin_to_onehot
         trans_cs_o               = '0;
         trans_cs_o[chip_sel_idx] = 1'b1;
     end
