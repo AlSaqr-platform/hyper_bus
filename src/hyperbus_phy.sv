@@ -154,15 +154,13 @@ module hyperbus_phy #(
       .q_o (hyper_rwds_o)
     );
 
-    cmd_addr_gen cmd_addr_gen (
-        .rw_i            ( ~local_write        ),
-        .address_space_i ( local_address_space ),
-        .burst_type_i    ( local_burst_type    ),
-        .address_i       ( local_address       ),
-        .cmd_addr_o      ( cmd_addr            )
-    );
-
-
+    // Generate command address word
+    assign cmd_addr[47] = ~local_write;
+    assign cmd_addr[46] = local_address_space;
+    assign cmd_addr[45] = local_burst_type;
+    assign cmd_addr[44:16] = local_address[31:3];
+    assign cmd_addr[15:3] = '0;
+    assign cmd_addr[2:0] = local_address[2:0];
 
     logic read_fifo_valid;
 
