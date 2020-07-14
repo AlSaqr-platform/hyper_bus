@@ -1,9 +1,10 @@
 package:
   name: hyperbus
   authors:
-    - "Armin"
-    - "Other Guy"
+    - "Armin Berger <bergerar@ethz.ch>"
+    - "Stephan Keck <kecks@ethz.ch>"
     - "Thomas Benz <tbenz@iis.ee.ethz.ch>"
+    - "Paul Scheffler <paulsc@iis.ee.ethz.ch>"
 
 dependencies:
   common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.19.0 }
@@ -13,13 +14,42 @@ dependencies:
 workspace:
    checkout_dir: "./src/deps"
 
+export_include_dirs:
+  # TODO: FLAT
+  - src/flat/register_interface/include
+
 sources:
   files:
+    # TODO: FLAT
+    - src/flat/register_interface/src/reg_intf_pkg.sv
+    - src/flat/register_interface/src/reg_intf.sv
+    - src/flat/register_interface/src/apb_to_reg.sv
+    - src/flat/register_interface/src/axi_to_reg.sv
+    - src/flat/register_interface/src/reg_cdc.sv
+    - src/flat/register_interface/src/reg_demux.sv
+    - src/flat/register_interface/src/reg_mux.sv
+    - src/flat/register_interface/src/reg_to_mem.sv
+    - src/flat/register_interface/src/reg_uniform.sv
+    - src/flat/register_interface/src/axi_lite_to_reg.sv
     # Level 0
     - src/hyperbus_pkg.sv
+    - src/hyperbus_delay_line.sv
+    - src/hyperbus_ddr_in.sv
     # Level 1
-    - src/hyperbus_phy.sv
+    - src/hyperbus_clock_diff_out.sv
+    - src/hyperbus_ddr_out.sv
+    - src/hyperbus_read_clk_rwds.sv
     # Level 2
+    - src/hyperbus_clk_gen.sv
+    - src/hyperbus_cfg_regs.sv
+    - src/hyperbus_phy.sv
+    - src/hyperbus_axi.sv
+    # Level 3
     - src/hyperbus.sv
-
-
+    - src/hyperbus_stub.sv
+    - target: test
+      files:
+        # TODO: FLAT
+        - src/flat/register_interface/src/reg_test.sv
+        # Level 0
+        - test/fixture_hyperbus.sv
