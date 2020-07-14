@@ -16,3 +16,4 @@ scripts
 # Modelsim
 modelsim.ini
 transcript
+*.vstf

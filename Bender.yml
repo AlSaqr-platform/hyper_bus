@@ -46,10 +46,10 @@ sources:
     - src/hyperbus_axi.sv
     # Level 3
     - src/hyperbus.sv
-    - src/hyperbus_stub.sv
+    #- src/hyperbus_stub.sv
     - target: test
       files:
         # TODO: FLAT
         - src/flat/register_interface/src/reg_test.sv
         # Level 0
-        - test/fixture_hyperbus.sv
+        - src/test/fixture_hyperbus.sv
