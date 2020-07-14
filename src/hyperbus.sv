@@ -1,3 +1,11 @@
+// Hyperbus AXI
+
+// this code is unstable and most likely buggy
+// it should not be used by anyone
+
+// Author: Thomas Benz <paulsc@iis.ee.ethz.ch>
+// Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
+
 module hyperbus #(
     parameter int unsigned  NumChips        = -1,
     parameter int unsigned  AxiDataWidth    = -1,
