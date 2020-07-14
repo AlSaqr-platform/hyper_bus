@@ -2,16 +2,17 @@
 // Description: Configuration for Hyperbus, v2 (For fixed 32-bit address spaces!)
 
 module hyperbus_cfg_regs #(
-  parameter int unsigned NumChips   = 2
+  parameter int unsigned NumChips   = -1,
+  parameter type         rule_t     = logic
 ) (
   input logic     clk_i,
   input logic     rst_ni,
 
-  input  reg_intf_pkg::req_a32_d32        reg_req_i,
-  output reg_intf_pkg::rsp_d32            reg_rsp_o,
+  input  reg_intf_pkg::req_a32_d32  reg_req_i,
+  output reg_intf_pkg::rsp_d32      reg_rsp_o,
 
-  output hyperbus_pkg::hyperbus_cfg_t     cfg_o,
-  output logic [NumChips-1:0][1:0][31:0]  chip_addr_range_o,
+  output hyperbus_pkg::hyper_cfg_t  cfg_o,
+  output rule_t [NumChips-1:0]      chip_rules_o,
 );
   `include "common_cells/registers.svh"
 
@@ -21,7 +22,7 @@ module hyperbus_cfg_regs #(
   localparam int unsigned AddrWidth = RegsBits + 2;
 
   // Registers
-  hyperbus_pkg::hyperbus_cfg_t    cfg_d, cfg_q, cfg_rstval;
+  hyperbus_pkg::hyper_cfg_t    cfg_d, cfg_q, cfg_rstval;
   logic [NumChips-1:0][1:0][31:0] crange_d, crange_q, crange_rstval;
 
   // Local signals
@@ -76,7 +77,7 @@ module hyperbus_cfg_regs #(
   end
 
   // Register reset values
-  assign cfg_rstval = hyperbus_pkg::hyperbus_cfg_t'{
+  assign cfg_rstval = hyperbus_pkg::hyper_cfg_t'{
     t_latency_access:         'h6,
     en_latency_additional:    'b1,
     t_cs_max:                 'd665,
@@ -85,7 +86,7 @@ module hyperbus_cfg_regs #(
     t_variable_latency_check: 'h3
   };
 
-  for (genvar i = 0; unsigned'(i) < NumChips; i++) begin
+  for (genvar i = 0; unsigned'(i) < NumChips; i++) begin : gen_crange_rstval
       assign crange_rstval[i][0] = 'h40_0000 * i;
       assign crange_rstval[i][1] = 'h40_0000 * (i+1);  // Address decoder: end noninclusive
   end
@@ -95,7 +96,11 @@ module hyperbus_cfg_regs #(
   `FFARN(crange_q, crange_d, crange_rstval, clk_i, rst_ni);
 
   // Outputs
-  assign cfg_o              = cfg_q;
-  assign chip_addr_range_o  = crange_q;
+  assign cfg_o  = cfg_q;
+  for (genvar i = 0; unsigned'(i) < NumChips; ++i ) begin : gen_crange_out
+    chip_rules_o[i].idx         = unsigned'(i);   // No overlap: keep indices sequential
+    chip_rules_o[i].start_addr  = crange_q[i][0];
+    chip_rules_o[i].end_addr    = crange_q[i][1];
+  end
 
 endmodule

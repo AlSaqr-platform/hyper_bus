@@ -1,4 +1,4 @@
-// Hyperbus AXI 
+// Hyperbus AXI
 
 // this code is unstable and most likely buggy
 // it should not be used by anyone
@@ -14,7 +14,7 @@ module hyperbus_axi #(
     parameter int unsigned AxiIdWidth    = -1,
     parameter type         axi_req_t     = logic,
     parameter type         axi_rsp_t     = logic,
-    parameter int unsigned NumChipSel    = -1,
+    parameter int unsigned NumChips    	 = -1,
     parameter type         rule_t        = logic
 ) (
     input  logic                    clk_i,
@@ -22,36 +22,28 @@ module hyperbus_axi #(
     // AXI port
     input  axi_req_t                axi_req_i,
     output axi_rsp_t                axi_rsp_o,
-    // config data
-    input  rule_t                   addr_map_i,
     // PHI port
-    input  logic [15:0]             rx_data_i,
-    input  logic                    rx_last_i,
-    input  logic                    rx_error_i,
+    input  hyperbus_pkg::hyper_rx_t rx_i,
     input  logic                    rx_valid_i,
     output logic                    rx_ready_o,
 
-    output logic [15:0]             tx_data_o,
-    output logic [ 1:0]             tx_strb_o,
+    output hyperbus_pkg::hyper_tx_t tx_o,
     output logic                    tx_valid_o,
     input  logic                    tx_ready_i,
 
+    input hyperbus_pkg::hyper_b_t   b_i,
     input  logic                    b_valid_i,
     output logic                    b_ready_o,
-    input  logic                    b_last_i,
-    input  logic                    b_error_i,
 
+    output hyperbus_pkg::hyper_tf_t trans_o,
+    output logic [NumChips-1:0]     trans_cs_o,
     output logic                    trans_valid_o,
     input  logic                    trans_ready_i,
-    output logic [AxiAddrWidth-1:0] trans_address_o,
-    output logic [NumChipSel-1:0]   trans_cs_o,        // chipselect
-    output logic                    trans_write_o,     // transaction is a write
-    output axi_pkg::len_t           trans_burst_o,
-    output logic                    trans_burst_type_o,
-    output logic                    trans_address_space_o
+    // Chip address ranges
+    input rule_t [NumChips-1:0]     chip_rules_i
 );
 
-    localparam ChipSelWidth = cf_math_pkg::idx_width(NumChipSel);
+    localparam ChipSelWidth = cf_math_pkg::idx_width(NumChips);
 
     // create axi structs
     localparam int unsigned NarrowDataWidth = 16;
@@ -83,7 +75,7 @@ module hyperbus_axi #(
     narrow_req_t  narrow_req;
     narrow_resp_t narrow_rsp;
 
-    // the phy needs information about the read address, burst length, and burst type. 
+    // the phy needs information about the read address, burst length, and burst type.
     // create a struct holding the information and arbitrating over it
     typedef struct packed {
         axi_addr_t       addr;
@@ -135,9 +127,9 @@ module hyperbus_axi #(
 
     // we use the rr arb tree to arbitrate between reads and writes
     rr_arb_tree #(
-        .NumIn     ( 32'd2            ), 
-        .DataType  ( axi_hyp_ax_tf_t  ), 
-        .AxiVldRdy ( 1'b1             ), 
+        .NumIn     ( 32'd2            ),
+        .DataType  ( axi_hyp_ax_tf_t  ),
+        .AxiVldRdy ( 1'b1             ),
         .LockIn    ( 1'b1             )
     ) i_rr_arb_tree (
         .clk_i     ( clk_i            ),
@@ -154,48 +146,48 @@ module hyperbus_axi #(
     );
 
     // assign arbitrated output to phy
-    assign trans_address_o       = axi_hyp_rr_tf.addr;
-    assign trans_burst_o         = axi_hyp_rr_tf.len;
-    assign trans_burst_type_o    = axi_hyp_rr_tf.burst_type[0];
-    assign trans_address_space_o = axi_hyp_rr_tf.addr[AxiAddrWidth-1];
+    assign trans_o.address       = axi_hyp_rr_tf.addr;
+    assign trans_o.burst         = axi_hyp_rr_tf.len;
+    assign trans_o.burst_type    = axi_hyp_rr_tf.burst_type[0];
+    assign trans_o.address_space = axi_hyp_rr_tf.addr[AxiAddrWidth-1];
 
     // connect the w channel
-    assign tx_data_o          = narrow_req.w.data;
-    assign tx_strb_o          = narrow_req.w.strb;
+    assign tx_o.data          = narrow_req.w.data;
+    assign tx_o.strb          = narrow_req.w.strb;
     assign tx_valid_o         = narrow_req.w_valid;
     assign narrow_rsp.w_valid = tx_ready_i;
 
     // connect the r channel
     assign narrow_rsp.r.id    = axi_hyp_rr_tf.id;
-    assign narrow_rsp.r.data  = rx_data_i;
-    assign narrow_rsp.r.last  = rx_last_i;
-    assign narrow_rsp.r.resp  = rx_error_i ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY
+    assign narrow_rsp.r.data  = rx_i.data;
+    assign narrow_rsp.r.last  = rx_i.last;
+    assign narrow_rsp.r.resp  = rx_i.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY
     assign narrow_rsp.r.user  = 1'b0;
     assign narrow_rsp.r_valid = rx_valid_i;
     assign rx_ready_o         = narrow_req.r_ready;
 
     // connect the b channel
     assign narrow_rsp.b.id    = axi_hyp_rr_tf.id;
-    assign narrow_rsp.b.resp  = b_error_i ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY
+    assign narrow_rsp.b.resp  = b_i.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY
     assign narrow_rsp.b.user  = 1'b0;
-    assign narrow_rsp.b_valid = b_valid_i & b_last_i;
+    assign narrow_rsp.b_valid = b_valid_i & b_i.last;
     assign rx_ready_o         = narrow_req.b_ready;
 
     // handle address mapping to chip select -> one hot
     logic [ChipSelWidth-1:0] chip_sel_idx;
     addr_decode #(
-        .NoIndices       ( NumChipSel        ), 
-        .NoRules         ( NumChipSel        ), 
-        .addr_t          ( axi_addr_t        ), 
-        .rule_t          ( rule_t            )
+        .NoIndices       ( NumChips             ),
+        .NoRules         ( NumChips             ),
+        .addr_t          ( axi_addr_t           ),
+        .rule_t          ( rule_t               )
     ) i_addr_decode_chip_sel (
-        .addr_i          ( axi_hyp_rr_tf.addr  ),
-        .addr_map_i      ( addr_map_i          ),
-        .idx_o           ( chip_sel_idx        ),
+        .addr_i          ( axi_hyp_rr_tf.addr   ),
+        .addr_map_i      ( chip_rules_i         ),
+        .idx_o           ( chip_sel_idx         ),
         .dec_valid_o     ( ),
         .dec_error_o     ( ),
-        .en_default_idx_i( 1'b1                ),
-        .default_idx_i   ( '0                  )
+        .en_default_idx_i( 1'b1                 ),
+        .default_idx_i   ( '0                   )
     );
 
     // chip sel binary to one hot decoding
