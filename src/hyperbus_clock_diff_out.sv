@@ -1,6 +1,6 @@
 `timescale 1ns / 1ps
 
-module clock_diff_out
+module hyperbus_clock_diff_out
 (
     input  logic in_i,
     input  logic en_i, //high enable
@@ -13,11 +13,11 @@ module clock_diff_out
         .en_i      ( en_i  ),
         .test_en_i ( 1'b0  ),
         .clk_o     ( out_o )
-    ); 
+    );
 
     pulp_clock_inverter hyper_ck_no_inv (
         .clk_i ( out_o  ),
         .clk_o ( out_no )
     );
-    
+
 endmodule

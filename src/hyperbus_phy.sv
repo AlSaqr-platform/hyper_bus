@@ -94,7 +94,7 @@ module hyperbus_phy #(
 
     (* keep = "true" *) hyper_trans_t hyper_trans_state;
 
-    clock_diff_out clock_diff_out_i (
+    hyperbus_clock_diff_out clock_diff_out_i (
         .in_i   ( clk90        ),
         .en_i   ( clock_enable ),
         .out_o  ( hyper_ck_o   ),
@@ -129,7 +129,7 @@ module hyperbus_phy #(
     generate
       for(i=0; i<=7; i++)
       begin: ddr_out_bus
-        ddr_out ddr_data (
+        hyperbus_ddr_out ddr_data (
           .rst_ni (rst_ni),
           .clk_i (clk0),
           .d0_i (data_out[i+8]),
@@ -146,7 +146,7 @@ module hyperbus_phy #(
     assign data_out = mode_write ? write_data : CA_out;
     assign data_rwds_out = mode_write ? write_strb : 2'b00; //RWDS low before end of initial latency
 
-    ddr_out ddr_data_strb (
+    hyperbus_ddr_out ddr_data_strb (
       .rst_ni (rst_ni),
       .clk_i (clk0),
       .d0_i (data_rwds_out[1]),
@@ -165,7 +165,7 @@ module hyperbus_phy #(
     logic read_fifo_valid;
 
     //Takes output from hyperram, includes CDC FIFO
-    read_clk_rwds i_read_clk_rwds (
+    hyperbus_read_clk_rwds i_read_clk_rwds (
         .clk0                     ( clk0                        ),
         .rst_ni                   ( rst_ni                      ),
         .clk_test                 ( clk_test                    ),

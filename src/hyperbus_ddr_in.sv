@@ -11,13 +11,13 @@
 // Date:
 // Description: Generate the Command-Address to start a transaction
 
-module ddr_in #(
+module hyperbus_ddr_in #(
 )(
     input logic        clk_i,
     input logic        data_i,
     input logic        rst_ni,
     input logic        enable,
-    
+
     output logic [1:0] data_o
 );
     logic ddr_neg;
@@ -30,7 +30,7 @@ module ddr_in #(
             ddr_pos <= data_i;
         end
     end
-    
+
     always_ff @(negedge clk_i or negedge rst_ni) begin : proc_ddr_neg
         if(~rst_ni) begin
             ddr_neg <= 1'b0;
