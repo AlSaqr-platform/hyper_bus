@@ -21,7 +21,7 @@ module hyperbus_ddr_out #(
     logic q0;
     logic q1;
 
-    pulp_clock_mux2 ddrmux (
+    tc_clk_mux2 ddrmux (
         .clk_o     ( q_o   ),
         .clk0_i    ( q1    ),
         .clk1_i    ( q0    ),

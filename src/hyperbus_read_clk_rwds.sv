@@ -98,7 +98,7 @@ module hyperbus_read_clk_rwds #(
     // Clock gate
     assign clk_rwds_orig = hyper_rwds_i_d && read_clk_en_i;
 
-    pulp_clock_mux2 ddrmux (
+    tc_clk_mux2 ddrmux (
         .clk_o     ( clk_rwds      ),
         .clk0_i    ( clk_rwds_orig ),
         .clk1_i    ( clk_test      ),
