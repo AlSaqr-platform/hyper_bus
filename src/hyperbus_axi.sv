@@ -69,11 +69,11 @@ module hyperbus_axi #(
     `AXI_TYPEDEF_R_CHAN_T(narrow_r_chan_t, narrow_data_t, axi_id_t, logic [0:0])
     // narrow port
     `AXI_TYPEDEF_REQ_T(narrow_req_t, aw_chan_t, narrow_w_chan_t, ar_chan_t)
-    `AXI_TYPEDEF_RESP_T(narrow_resp_t, b_chan_t, narrow_r_chan_t)
+    `AXI_TYPEDEF_RESP_T(narrow_rsp_t, b_chan_t, narrow_r_chan_t)
 
     // create a narrow axi bus
     narrow_req_t  narrow_req;
-    narrow_resp_t narrow_rsp;
+    narrow_rsp_t narrow_rsp;
 
     // the phy needs information about the read address, burst length, and burst type.
     // create a struct holding the information and arbitrating over it
@@ -147,7 +147,7 @@ module hyperbus_axi #(
 
     // assign arbitrated output to phy
     assign trans_o.address       = axi_hyp_rr_tf.addr;
-    assign trans_o.burst         = axi_hyp_rr_tf.len;
+    assign trans_o.burst         = axi_hyp_rr_tf.burst_len;
     assign trans_o.burst_type    = axi_hyp_rr_tf.burst_type[0];
     assign trans_o.address_space = axi_hyp_rr_tf.addr[AxiAddrWidth-1];
 
@@ -155,23 +155,23 @@ module hyperbus_axi #(
     assign tx_o.data          = narrow_req.w.data;
     assign tx_o.strb          = narrow_req.w.strb;
     assign tx_valid_o         = narrow_req.w_valid;
-    assign narrow_rsp.w_valid = tx_ready_i;
+    assign narrow_rsp.w_ready = tx_ready_i;
 
     // connect the r channel
     assign narrow_rsp.r.id    = axi_hyp_rr_tf.id;
     assign narrow_rsp.r.data  = rx_i.data;
     assign narrow_rsp.r.last  = rx_i.last;
-    assign narrow_rsp.r.resp  = rx_i.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY
+    assign narrow_rsp.r.resp  = rx_i.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign narrow_rsp.r.user  = 1'b0;
     assign narrow_rsp.r_valid = rx_valid_i;
     assign rx_ready_o         = narrow_req.r_ready;
 
     // connect the b channel
     assign narrow_rsp.b.id    = axi_hyp_rr_tf.id;
-    assign narrow_rsp.b.resp  = b_i.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY
+    assign narrow_rsp.b.resp  = b_i.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign narrow_rsp.b.user  = 1'b0;
     assign narrow_rsp.b_valid = b_valid_i & b_i.last;
-    assign rx_ready_o         = narrow_req.b_ready;
+    assign b_ready_o          = narrow_req.b_ready;
 
     // handle address mapping to chip select -> one hot
     logic [ChipSelWidth-1:0] chip_sel_idx;

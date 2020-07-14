@@ -260,7 +260,7 @@ module hyperbus_phy #(
                         hyper_trans_state <= WAIT;
                     end
                     if(wait_cnt == cfg.t_latency_access - 2) begin
-                        if(hyper_rwds_i_syn || cfg.en_latency_additional[0]) begin //Check if additinal latency is nesessary (RWDS high or config)
+                        if(hyper_rwds_i_syn || cfg.en_latency_additional) begin //Check if additinal latency is nesessary (RWDS high or config)
                             hyper_trans_state <= WAIT2;
                         end else begin
                             hyper_trans_state <= WAIT;

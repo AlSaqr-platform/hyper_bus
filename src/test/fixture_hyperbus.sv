@@ -37,8 +37,8 @@ module fixture_hyperbus;
     `AXI_TYPEDEF_REQ_T(req_t, aw_chan_t, w_chan_t, ar_chan_t)
     `AXI_TYPEDEF_RESP_T(resp_t, b_chan_t, r_chan_t)
 
-    req_t   axi_master_req; 
-    resp_t  axi_master_rsp; 
+    req_t   axi_master_req;
+    resp_t  axi_master_rsp;
 
     AXI_BUS_DV #(
         .AXI_ADDR_WIDTH(AXI_AW),
@@ -87,7 +87,7 @@ module fixture_hyperbus;
     end
 
     task reset_end;
-        @(posedge rst);
+        @(negedge rst_n);
         @(posedge clk);
     endtask
 
@@ -97,14 +97,14 @@ module fixture_hyperbus;
         input axi_pkg::len_t burst_len;
         automatic axi_test::axi_ax_beat #(.AW(AXI_AW), .IW(AXI_IW), .UW(1)) ar_beat = new();
         automatic axi_test::axi_r_beat  #(.DW(AXI_DW), .IW(AXI_IW), .UW(1)) r_beat  = new();
-    
+
         @(posedge clk);
-    
+
         ar_beat.ax_addr = raddr;
         ar_beat.ax_len  = burst_len;
-    
+
         axi_master_drv.send_ar(ar_beat);
-    
+
         for(int unsigned i = 0; i < burst_len; i++) begin
             axi_master_drv.recv_r(r_beat);
             $display("%p", r_beat);
@@ -120,17 +120,17 @@ module fixture_hyperbus;
         automatic axi_test::axi_ax_beat #(.AW(AXI_AW), .IW(AXI_IW), .UW(1)) aw_beat = new();
         automatic axi_test::axi_r_beat  #(.DW(AXI_DW), .IW(AXI_IW), .UW(1)) w_beat  = new();
         automatic axi_test::axi_r_beat  #(.DW(AXI_DW), .IW(AXI_IW), .UW(1)) b_beat  = new();
-    
+
         @(posedge clk);
-    
+
         aw_beat.ax_addr = waddr;
         aw_beat.ax_len  = burst_len;
 
         w_beat.w_data   = wdata;
         w_beat.w_strb   = wstrb;
-    
+
         axi_master_drv.send_ar(aw_beat);
-    
+
         for(int unsigned i = 0; i < burst_len; i++) begin
             axi_master_drv.send_w(w_beat);
             $display("%p", w_beat);

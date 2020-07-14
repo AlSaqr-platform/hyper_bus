@@ -12,13 +12,13 @@ module hyperbus_cfg_regs #(
     output reg_intf_pkg::rsp_d32        reg_rsp_o,
 
     output hyperbus_pkg::hyper_cfg_t    cfg_o,
-    output rule_t [NumChips-1:0]        chip_rules_o,
+    output rule_t [NumChips-1:0]        chip_rules_o
 );
     `include "common_cells/registers.svh"
 
     // Parameters
     localparam int unsigned NumRegs     = 2*NumChips + 6;
-    localparam int unsigned RegsBits    = $clog2(NumRegs)
+    localparam int unsigned RegsBits    = $clog2(NumRegs);
     localparam int unsigned AddrWidth   = RegsBits + 2;
 
     // Registers
@@ -37,29 +37,33 @@ module hyperbus_cfg_regs #(
     assign reg_rsp_o.error  = reg_req_i.valid & ~sel_reg_mapped;
 
     always_comb begin : proc_read
+        logic [NumRegs-1:0][31:0] rfield;
         reg_rsp_o.rdata = '0;
         if (sel_reg_mapped) begin
-            logic [NumRegs-1:0][31:0] rfield = {
+            rfield = {
                 crange_q,
-                32'(cfg_q.t_t_variable_latency_check),
-                32'(cfg_q.t_t_rwds_delay_line),
-                32'(cfg_q.t_t_read_write_recovery),
-                32'(cfg_q.t_t_cs_max),
-                32'(cfg_q.t_en_latency_additional),
-                32'(cfg_q.t_t_latency_access),
-            }
+                32'(cfg_q.t_variable_latency_check),
+                32'(cfg_q.t_rwds_delay_line),
+                32'(cfg_q.t_read_write_recovery),
+                32'(cfg_q.t_cs_max),
+                32'(cfg_q.en_latency_additional),
+                32'(cfg_q.t_latency_access)
+            };
             reg_rsp_o.rdata = rfield[sel_reg];
-            endcase
         end
     end
 
     always_comb begin : proc_write
+        logic [3:0] ws;
+        logic [31:0] wm;
+        logic  chip_reg;
+        logic [$clog2(NumChips)-1:0] sel_chip;
         cfg_d     = cfg_q;
         crange_d  = crange_q;
         if (reg_req_i.valid & reg_req_i.write & sel_reg_mapped) begin
-            logic [3:0] ws = reg_req_i.wstrb;
-            logic [31:0] wm = {{4{ws[3]}}, {4{ws[2]}}, {4{ws[1]}}, {4{ws[0]}}};
-            case (sel_reg) begin
+            ws = reg_req_i.wstrb;
+            wm = {{4{ws[3]}}, {4{ws[2]}}, {4{ws[1]}}, {4{ws[0]}}};
+            case (sel_reg)
                 'h0: cfg_d.t_latency_access         = (~wm & cfg_q.t_latency_access        ) | (wm & reg_req_i.wdata);
                 'h1: cfg_d.en_latency_additional    = (~wm & cfg_q.en_latency_additional   ) | (wm & reg_req_i.wdata);
                 'h2: cfg_d.t_cs_max                 = (~wm & cfg_q.t_cs_max                ) | (wm & reg_req_i.wdata);
@@ -67,12 +71,10 @@ module hyperbus_cfg_regs #(
                 'h4: cfg_d.t_rwds_delay_line        = (~wm & cfg_q.t_rwds_delay_line       ) | (wm & reg_req_i.wdata);
                 'h5: cfg_d.t_variable_latency_check = (~wm & cfg_q.t_variable_latency_check) | (wm & reg_req_i.wdata);
                 default: begin
-                    logic  chip_reg;
-                    logic [$clog2(NumChips)-1:0] sel_chip;
                     {sel_chip, chip_reg} = sel_reg - 'h6;     // Bad regfile layouts have consequences...
                     crange_d[sel_chip][chip_reg] = (~wm & crange_q[sel_chip][chip_reg]) |  (wm & reg_req_i.wdata);
                 end
-            end
+            endcase // sel_reg
         end
     end
 
@@ -98,9 +100,9 @@ module hyperbus_cfg_regs #(
     // Outputs
     assign cfg_o  = cfg_q;
     for (genvar i = 0; unsigned'(i) < NumChips; ++i ) begin : gen_crange_out
-        chip_rules_o[i].idx         = unsigned'(i);   // No overlap: keep indices sequential
-        chip_rules_o[i].start_addr  = crange_q[i][0];
-        chip_rules_o[i].end_addr    = crange_q[i][1];
+        assign chip_rules_o[i].idx         = unsigned'(i);   // No overlap: keep indices sequential
+        assign chip_rules_o[i].start_addr  = crange_q[i][0];
+        assign chip_rules_o[i].end_addr    = crange_q[i][1];
     end
 
 endmodule : hyperbus_cfg_regs

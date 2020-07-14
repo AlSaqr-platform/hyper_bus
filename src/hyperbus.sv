@@ -8,6 +8,7 @@
 
 module hyperbus #(
     parameter int unsigned  NumChips        = -1,
+    parameter int unsigned  AxiAddrWidth    = -1,
     parameter int unsigned  AxiDataWidth    = -1,
     parameter int unsigned  AxiIdWidth      = -1,
     parameter type          axi_req_t       = logic,
@@ -57,7 +58,7 @@ module hyperbus #(
 
     // Register file
     hyperbus_pkg::hyper_cfg_t   cfg;
-    rule_t                      chip_rules;
+    axi_rule_t                  chip_rules;
 
     // AXI slave
     hyperbus_pkg::hyper_rx_t    axi_rx;
@@ -102,13 +103,15 @@ module hyperbus #(
         .clk_o      ( clk0          ),
         .clk0_i     ( clk0_gen      ),
         .clk1_i     ( clk_sys_i     ),
-        .clk_sel_i  ( test_mode_i   );
+        .clk_sel_i  ( test_mode_i   )
+    );
 
     tc_clk_mux2 i_test_mux_clk90 (
         .clk_o      ( clk90         ),
         .clk0_i     ( clk90_gen     ),
         .clk1_i     ( clk_sys_i     ),
-        .clk_sel_i  ( test_mode_i   ) ;
+        .clk_sel_i  ( test_mode_i   )
+    );
 
     // Register File
     hyperbus_cfg_regs #(
@@ -199,7 +202,7 @@ module hyperbus #(
     );
 
     cdc_2phase #(
-        .T  ( tf_cdc_t  ),
+        .T  ( tf_cdc_t  )
     ) i_cdc_2phase_trans (
         .src_rst_ni     ( rst_sys_n         ),
         .src_clk_i      ( clk_sys_i         ),
