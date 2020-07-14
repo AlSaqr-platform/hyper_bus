@@ -13,54 +13,35 @@
 `timescale 1ps/1ps
 
 module hyperbus_phy #(
-    parameter BURST_WIDTH = 12,
-    parameter NR_CS = 2,
-    parameter WAIT_CYCLES = 6
+    parameter NumChips = 2,
+    parameter WaitCycles = 6
 )(
-    input  logic                   clk0,    // Clock
-    input  logic                   clk90,    // Clock
-
-    input  logic                   rst_ni,   // Asynchronous reset active low
-
+    input  logic                   clk0,
+    input  logic                   clk90,
+    input  logic                   rst_ni,
     input  logic                   clk_test,
-    input  logic                   test_en_ti,
-
-    // configuration
-    input  logic [31:0]            config_t_latency_access,
-    input  logic [31:0]            config_en_latency_additional,
-    input  logic [31:0]            config_t_cs_max,
-    input  logic [31:0]            config_t_read_write_recovery,
-    input  logic [31:0]            config_t_rwds_delay_line,
-    input  logic [31:0]            config_t_variable_latency_check,
-
-    // transactions
-    input  logic                   trans_valid_i,
-    output logic                   trans_ready_o,
-    input  logic [31:0]            trans_address_i,
-    input  logic [NR_CS-1:0]       trans_cs_i,        // chipselect
-    input  logic                   trans_write_i,     // transaction is a write
-    input  logic [BURST_WIDTH-1:0] trans_burst_i,
-    input  logic                   trans_burst_type_i,
-    input  logic                   trans_address_space_i,
-
-    // transmitting
-    input  logic                   tx_valid_i,
-    output logic                   tx_ready_o,
-    input  logic [15:0]            tx_data_i,
-    input  logic [1:0]             tx_strb_i,   // mask data
-    // receiving channel
-    output logic                   rx_valid_o,
-    input  logic                   rx_ready_i,
-    output logic [15:0]            rx_data_o,
-    output logic                   rx_last_o, //signals the last transfer in a read burst 
-    output logic                   rx_error_o,
-
-    output logic                   b_valid_o,
-    output logic                   b_last_o,
-    output logic                   b_error_o,
-
-    // physical interface
-    output logic [NR_CS-1:0]       hyper_cs_no,
+    input  logic                   test_mode_i,
+    // Config registers
+    input  hyperbus_pkg::hyper_cfg_t    cfg,
+    // Transactions
+    input  logic                        trans_valid_i,
+    output logic                        trans_ready_o,
+    input  hyperbus_pkg::hyper_tf_t     trans_i,
+    input  logic [NumChips-1:0]         trans_cs_i,
+    // Transmitting channel
+    input  logic                        tx_valid_i,
+    output logic                        tx_ready_o,
+    input  hyperbus_pkg::hyper_tx_t     tx_i,
+    // Receiving channel
+    output logic                        rx_valid_o,
+    input  logic                        rx_ready_i,
+    output hyperbus_pkg::hyper_rx_t     rx_o,
+    // B response
+    output logic                        b_valid_o,
+    input  logic                        b_ready_i,   // TODO TODO TODO: Why TF was this not here??
+    output hyperbus_pkg::hyper_b_t      b_o,
+    // Physical interface
+    output logic [NumChips-1:0]    hyper_cs_no,
     output logic                   hyper_ck_o,
     output logic                   hyper_ck_no,
     output logic                   hyper_rwds_o,
@@ -70,8 +51,7 @@ module hyperbus_phy #(
     output logic [7:0]             hyper_dq_o,
     output logic                   hyper_dq_oe_o,
     output logic                   hyper_reset_no,
-
-    //debug
+    // Debug
     output logic                   debug_hyper_rwds_oe_o,
     output logic                   debug_hyper_dq_oe_o,
     output logic [3:0]             debug_hyper_phy_state_o
@@ -90,9 +70,9 @@ module hyperbus_phy #(
 
     //local copy of transaction
     (* dont_touch = "true" *) logic [31:0]            local_address;
-    logic [NR_CS-1:0]       local_cs;
+    logic [NumChips-1:0]    local_cs;
     logic                   local_write;
-    logic [BURST_WIDTH-1:0] local_burst;
+    axi_pkg::len_t          local_burst;
     logic                   local_burst_type;
     logic                   local_address_space;
 
@@ -108,7 +88,7 @@ module hyperbus_phy #(
     (* keep = "true" *) logic read_fifo_rst;
 
     (* keep = "true" *) logic [3:0] wait_cnt;
-    logic [BURST_WIDTH-1:0] burst_cnt;
+    axi_pkg::len_t burst_cnt;
 
     typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END_R, END} hyper_trans_t;
 
@@ -126,10 +106,10 @@ module hyperbus_phy #(
     //selecting ram must be in sync with future hyper_ck_o
     always_ff @(posedge clk90 or negedge rst_ni) begin : proc_hyper_cs_no
         if(~rst_ni) begin
-            hyper_cs_no <= {NR_CS{1'b1}};
+            hyper_cs_no <= {NumChips{1'b1}};
         end else begin
             hyper_cs_no[0] <= ~ (en_cs && local_cs[0]);
-            hyper_cs_no[1] <= ~ (en_cs && local_cs[1]); //ToDo Use NR_CS
+            hyper_cs_no[1] <= ~ (en_cs && local_cs[1]); //ToDo Use NumChips
         end
     end
 
@@ -159,8 +139,8 @@ module hyperbus_phy #(
       end
     endgenerate
 
-    assign write_data = tx_data_i;
-    assign write_strb = tx_strb_i;
+    assign write_data = tx_i.data;
+    assign write_strb = tx_i.strb;
     assign write_valid = tx_valid_i && tx_ready_o;
 
     assign data_out = mode_write ? write_data : CA_out;
@@ -182,7 +162,7 @@ module hyperbus_phy #(
         .cmd_addr_o      ( cmd_addr            )
     );
 
-    
+
 
     logic read_fifo_valid;
 
@@ -191,19 +171,19 @@ module hyperbus_phy #(
         .clk0                     ( clk0                        ),
         .rst_ni                   ( rst_ni                      ),
         .clk_test                 ( clk_test                    ),
-        .test_en_ti               ( test_en_ti                  ),
-        .config_t_rwds_delay_line ( config_t_rwds_delay_line    ),
+        .test_en_ti               ( test_mode_i                 ),
+        .config_t_rwds_delay_line ( cfg.t_rwds_delay_line       ),
         .hyper_rwds_i             ( hyper_rwds_i                ),
         .hyper_dq_i               ( hyper_dq_i                  ),
         .read_clk_en_i            ( read_clk_en                 ),
         .en_ddr_in_i              ( en_ddr_in                   ),
         .ready_i                  ( rx_ready_i || read_fifo_rst ),
-        .data_o                   ( rx_data_o                   ),
+        .data_o                   ( rx_o.data                   ),
         .valid_o                  ( read_fifo_valid             )
     );
 
-    assign rx_valid_o = (read_fifo_valid && !read_fifo_rst) || rx_error_o;
-    assign rx_last_o =  (burst_cnt == {BURST_WIDTH{1'b0}});
+    assign rx_valid_o = (read_fifo_valid && !read_fifo_rst) || rx_o.error;
+    assign rx_o.last =  (burst_cnt == axi_pkg::len_t'(0));
 
 
     logic hyper_rwds_i_syn;
@@ -229,8 +209,8 @@ module hyperbus_phy #(
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
         if(~rst_ni) begin
             hyper_trans_state <= STANDBY;
-            wait_cnt <= WAIT_CYCLES;
-            burst_cnt <= {BURST_WIDTH{1'b0}};
+            wait_cnt <= WaitCycles;
+            burst_cnt <= axi_pkg::len_t'(0);
             cmd_addr_sel <= 2'b11;
             en_cs <= 1'b0;
             clock_enable <= 1'b0;
@@ -253,7 +233,7 @@ module hyperbus_phy #(
                 CMD_ADDR: begin
                      clock_enable <= 1'b1;
                     if(cmd_addr_sel == 3) begin
-                        wait_cnt <= config_t_latency_access - 2;
+                        wait_cnt <= cfg.t_latency_access - 2;
                         hyper_trans_state <= WAIT2;
                     end else begin
                         cmd_addr_sel <= cmd_addr_sel + 1;
@@ -264,13 +244,13 @@ module hyperbus_phy #(
                             hyper_trans_state <= REG_WRITE;
                         end
                     end
-                end 
+                end
                 REG_WRITE: begin
                     clock_enable <= 1'b1;
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin
                         clock_enable <= 1'b0;
-                        wait_cnt <= config_t_read_write_recovery - 1;
+                        wait_cnt <= cfg.t_read_write_recovery - 1;
                         hyper_trans_state <= END;
                     end
                 end
@@ -278,11 +258,11 @@ module hyperbus_phy #(
                     wait_cnt <= wait_cnt - 1;
                     clock_enable <= 1'b1;
                     if(wait_cnt == 4'h0) begin
-                        wait_cnt <= config_t_latency_access - 1;
+                        wait_cnt <= cfg.t_latency_access - 1;
                         hyper_trans_state <= WAIT;
                     end
-                    if(wait_cnt == config_t_latency_access - 2) begin
-                        if(hyper_rwds_i_syn || config_en_latency_additional[0]) begin //Check if additinal latency is nesessary (RWDS high or config)
+                    if(wait_cnt == cfg.t_latency_access - 2) begin
+                        if(hyper_rwds_i_syn || cfg.en_latency_additional[0]) begin //Check if additinal latency is nesessary (RWDS high or config)
                             hyper_trans_state <= WAIT2;
                         end else begin
                             hyper_trans_state <= WAIT;
@@ -310,7 +290,7 @@ module hyperbus_phy #(
                 DATA_R: begin
                     clock_enable <= 1'b1;
                     if(rx_valid_o && rx_ready_i) begin
-                        if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
+                        if(burst_cnt == axi_pkg::len_t'(0)) begin
                             clock_enable <= 1'b0;
                             hyper_trans_state <= END_R;
                         end else begin
@@ -328,7 +308,7 @@ module hyperbus_phy #(
                         clock_enable <= 1'b0;
                     end
                     if(burst_cnt == 0) begin
-                        wait_cnt <= config_t_read_write_recovery - 1;
+                        wait_cnt <= cfg.t_read_write_recovery - 1;
                         hyper_trans_state <= END;
                     end
                 end
@@ -350,20 +330,20 @@ module hyperbus_phy #(
                     if (~local_write) begin //read
                         if (rx_ready_i) begin
                             burst_cnt <= burst_cnt - 1;
-                            if(burst_cnt == {BURST_WIDTH{1'b0}}) begin
-                                wait_cnt <= config_t_read_write_recovery - 2;
+                            if(burst_cnt == axi_pkg::len_t'(0)) begin
+                                wait_cnt <= cfg.t_read_write_recovery - 2;
                                 hyper_trans_state <= END;
                             end
                         end
                     end else begin  //write
                         if (~tx_valid_i) begin
-                            wait_cnt <= config_t_read_write_recovery - 2;
+                            wait_cnt <= cfg.t_read_write_recovery - 2;
                             hyper_trans_state <= END;
                         end
                     end
                 end
                 END_R: begin
-                    wait_cnt <= config_t_read_write_recovery - 2;
+                    wait_cnt <= cfg.t_read_write_recovery - 2;
                     hyper_trans_state <= END;
                 end
                 END: begin
@@ -397,10 +377,10 @@ module hyperbus_phy #(
         read_fifo_rst = 1'b0;
         mode_write = 1'b0;
         en_rwds = 1'b0;
-        rx_error_o = 1'b0;
+        rx_o.error = 1'b0;
         b_valid_o = 1'b0;
-        b_last_o = 1'b0;
-        b_error_o = 1'b0;
+        b_o.last = 1'b0;
+        b_o.error = 1'b0;
 
         case(hyper_trans_state)
             STANDBY: begin
@@ -413,7 +393,7 @@ module hyperbus_phy #(
             end
             CMD_ADDR: begin
                 hyper_dq_oe_n = 1'b1;
-                if (cmd_addr_sel == config_t_variable_latency_check) begin
+                if (cmd_addr_sel == cfg.t_variable_latency_check) begin
                     en_rwds = 1'b1;
                 end
             end
@@ -421,7 +401,7 @@ module hyperbus_phy #(
                 hyper_dq_oe_n = 1'b1;
                 mode_write = 1'b1;
                 b_valid_o = 1'b1;
-                b_last_o = 1'b1;
+                b_o.last = 1'b1;
                 if(wait_cnt == 4'h1) begin
                     tx_ready_o = 1'b1;
                 end
@@ -432,10 +412,10 @@ module hyperbus_phy #(
                         hyper_rwds_oe_n = 1'b1;
                         hyper_dq_oe_n = 1'b1;
                     end
-                    if (wait_cnt == 4'b0000) begin 
+                    if (wait_cnt == 4'b0000) begin
                         hyper_rwds_oe_n = 1'b1;
                         hyper_dq_oe_n = 1'b1;
-                        tx_ready_o = 1'b1; 
+                        tx_ready_o = 1'b1;
                         mode_write = 1'b1;
                     end
                 end
@@ -458,7 +438,7 @@ module hyperbus_phy #(
                 mode_write = 1'b1;
                 if(burst_cnt == 0) begin
                     b_valid_o = 1'b1;
-                    b_last_o = 1'b1;
+                    b_o.last = 1'b1;
                 end
             end
             WAIT_W: begin
@@ -467,14 +447,14 @@ module hyperbus_phy #(
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
             end
-            ERROR: begin //Recover state after timeout for t_CSM 
+            ERROR: begin //Recover state after timeout for t_CSM
                 read_fifo_rst = 1'b1;
                 if(~local_write) begin
-                    rx_error_o = 1'b1;
+                    rx_o.error = 1'b1;
                 end else begin
                     tx_ready_o = 1'b1;
                     b_valid_o = 1'b1;
-                    b_error_o = 1'b1;   
+                    b_o.error = 1'b1;
                 end
             end
             END_R: begin
@@ -491,11 +471,11 @@ module hyperbus_phy #(
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cs_max
         if(~rst_ni) begin
             cs_max <= 'b0;
-        end else begin 
+        end else begin
             if (en_cs) begin
                 cs_max <= cs_max - 1;
             end else begin
-                cs_max <= config_t_cs_max - 1; //30
+                cs_max <= cfg.t_cs_max - 1; //30
             end
         end
     end
@@ -503,18 +483,18 @@ module hyperbus_phy #(
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_local_transaction
         if(~rst_ni) begin
             local_address <= 32'h0;
-            local_cs <= {NR_CS{1'b0}};
+            local_cs <= {NumChips{1'b0}};
             local_write <= 1'b0;
-            local_burst <= {BURST_WIDTH{1'b0}};
+            local_burst <= axi_pkg::len_t'(0);
             local_address_space <= 1'b0;
             local_burst_type <= 1'b1;
         end else if(en_read_transaction) begin
-            local_address <= trans_address_i;
+            local_address <= trans_i.address;
             local_cs <= trans_cs_i;
-            local_write <= trans_write_i;
-            local_burst <= trans_burst_i;
-            local_burst_type <= trans_burst_type_i;
-            local_address_space <= trans_address_space_i;
+            local_write <= trans_i.write;
+            local_burst <= trans_i.burst;
+            local_burst_type <= trans_i.burst_type;
+            local_address_space <= trans_i.address_space;
         end
     end
 
