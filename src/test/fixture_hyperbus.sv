@@ -10,19 +10,29 @@
 
 module fixture_hyperbus;
 
-    localparam TCK  = 1ns;
-    localparam TA   = 0.01 * TCK;
-    localparam TT   = 0.99 * TCK;
+    localparam SYS_TCK  = 1ns;
+    localparam SYS_TA   = 0.01 * SYS_TCK;
+    localparam SYS_TT   = 0.99 * SYS_TCK;
 
-    logic clk   = 0;
-    logic rst_n = 1;
-    logic eos   = 0; // end of sim
+    localparam PHY_TCK  = 0.66ns;
+    localparam PHY_TA   = 0.01 * PHY_TCK;
+    localparam PHY_TT   = 0.99 * PHY_TCK;
+
+    logic sys_clk   = 0;
+    logic phy_clk   = 0;
+    logic test_mode = 0;
+    logic rst_n     = 1;
+    logic eos       = 0; // end of sim
 
     // -------------------- AXI drivers --------------------
+
+    typedef axi_pkg::xbar_rule_32_t rule_t; 
 
     parameter AXI_AW = 32;
     parameter AXI_DW = 64;
     parameter AXI_IW = 6;
+
+    parameter NumChips = 2;
 
     typedef logic [AXI_AW-1:0]   axi_addr_t;
     typedef logic [AXI_DW-1:0]   axi_data_t;
@@ -59,37 +69,172 @@ module fixture_hyperbus;
     `AXI_ASSIGN_TO_REQ(axi_master_req, axi_master)
     `AXI_ASSIGN_FROM_RESP(axi_master, axi_master_rsp)
 
-    axi_test::axi_driver #(.AW(AXI_AW), .DW(AXI_DW), .IW(AXI_IW), .UW(1), .TA(TA), .TT(TT)) axi_master_drv = new(axi_dv);
+    axi_test::axi_driver #(.AW(AXI_AW), .DW(AXI_DW), .IW(AXI_IW), .UW(1), .TA(SYS_TA), .TT(SYS_TT)) axi_master_drv = new(axi_dv);
+
+    // -------------------------- Regbus driver --------------------------
+
+    reg_intf_pkg::req_a32_d32 reg_req;
+    reg_intf_pkg::rsp_d32     reg_rsp;
+
+    REG_BUS #(
+        .ADDR_WIDTH(32),
+        .DATA_WIDTH(32)
+    ) i_rbus (
+        .clk_i (clk)
+    );
+
+    reg_test::reg_driver #(
+        .AW (32    ),
+        .DW (32    ),
+        .TA (SYS_TA),
+        .TT (SYS_TT)
+    ) i_rmaster = new( i_rbus );
+
+    assign reg_req = reg_intf_pkg::req_a32_d32'{
+        addr:   i_rbus.addr,
+        write:  i_rbus.write,
+        wdata:  i_rbus.wdata,
+        wstrb:  i_rbus.wstrb,
+        valid:  i_rbus.valid
+    };
+
+    assign i_rbus.rdata = reg_rsp.rdata;
+    assign i_rbus.ready = reg_rsp.ready;
+    assign i_rbus.error = reg_rsp.error;
+
+
+
+    // -------------------------- DUT --------------------------
+
+    wire  [1:0] hyper_cs_n_wire;
+    wire        hyper_ck_wire;
+    wire        hyper_ck_n_wire;
+    wire        hyper_rwds_o;
+    wire        hyper_rwds_i;
+    wire        hyper_rwds_oe;
+    wire        hyper_rwds_wire;
+
+    wire  [7:0] hyper_dq_i;
+    wire  [7:0] hyper_dq_o;
+    wire        hyper_dq_oe;
+    wire  [7:0] hyper_dq_wire;
+
+    wire        hyper_reset_n_wire;
+
+    tristate_shim i_tristate_shim_rwds (
+        .out_ena_i  ( hyper_rwds_oe   ),
+        .out_i      ( hyper_rwds_o    ),
+        .in_o       ( hyper_rwds_i    ),
+        .line_io    ( hyper_rwds_wire )
+    );
+
+    for (genvar i = 0; i < 8; i++) begin
+        tristate_shim i_tristate_shim_dq (
+            .out_ena_i  ( hyper_dq_oe       ),
+            .out_i      ( hyper_dq_o    [i] ),
+            .in_o       ( hyper_dq_i    [i] ),
+            .line_io    ( hyper_dq_wire [i] )
+        );
+    end
+
+    // DUT
+    hyperbus #(
+        .NumChips       ( NumChips    ),
+        .AxiAddrWidth   ( AXI_AW      ),
+        .AxiDataWidth   ( AXI_DW      ),
+        .AxiIdWidth     ( AXI_IW      ),
+        .axi_req_t      ( req_t       ),
+        .axi_rsp_t      ( resp_t      ),
+        .axi_rule_t     ( rule_t      )
+    ) i_dut (
+        .clk_phy_i              ( phy_clk               ),
+        .clk_sys_i              ( sys_clk               ),
+        .rst_ni                 ( rst_n                 ),
+        .test_mode_i            ( test_mode             ),
+        .axi_req_i              ( axi_master_req        ),
+        .axi_rsp_o              ( axi_master_rsp        ),
+        .reg_req_i              ( reg_req               ),
+        .reg_rsp_o              ( reg_rsp               ),
+        .hyper_cs_no            ( hyper_cs_n_wire       ),
+        .hyper_ck_o             ( hyper_ck_wire         ),
+        .hyper_ck_no            ( hyper_ck_n_wire       ),
+        .hyper_rwds_o           ( hyper_rwds_o          ),
+        .hyper_rwds_i           ( hyper_rwds_i          ),
+        .hyper_rwds_oe_o        ( hyper_rwds_oe         ),
+        .hyper_dq_i             ( hyper_dq_i            ),
+        .hyper_dq_o             ( hyper_dq_o            ),
+        .hyper_dq_oe_o          ( hyper_dq_oe           ),
+        .hyper_reset_no         ( hyper_reset_n_wire    ),
+        .debug_hyper_rwds_oe_o  ( ),
+        .debug_hyper_dq_oe_o    ( ),
+        .debug_hyper_phy_state_o( )
+    );
+
+    // modell 
+      s27ks0641 #(
+        .mem_file_name ( "src/s27ks0641.mem"    ), 
+        .TimingModel   ( "S27KS0641DPBHI020"    )
+    ) i_s27ks0641 (
+      .DQ7           ( hyper_dq_wire[7]    ),
+      .DQ6           ( hyper_dq_wire[6]    ),
+      .DQ5           ( hyper_dq_wire[5]    ),
+      .DQ4           ( hyper_dq_wire[4]    ),
+      .DQ3           ( hyper_dq_wire[3]    ),
+      .DQ2           ( hyper_dq_wire[2]    ),
+      .DQ1           ( hyper_dq_wire[1]    ),
+      .DQ0           ( hyper_dq_wire[0]    ),
+      .RWDS          ( hyper_rwds_wire     ),
+      .CSNeg         ( hyper_cs_n_wire[0]  ),
+      .CK            ( hyper_ck_wire       ),
+      .CKNeg         ( hyper_ck_n_wire     ),
+      .RESETNeg      ( hyper_reset_n_wire  )    
+    );
 
     // -------------------------- TB TASKS --------------------------
     // Initial reset
     initial begin
         rst_n = 0;
         axi_master_drv.reset_master();
-        #(0.25*TCK);
-        #(10*TCK);
+        #(0.25*SYS_TCK);
+        #(10*SYS_TCK);
         rst_n = 1;
     end
 
     // Generate clock
     initial begin
         while (!eos) begin
-            clk = 1;
-            #(TCK/2);
-            clk = 0;
-            #(TCK/2);
+            sys_clk = 1;
+            #(SYS_TCK/2);
+            sys_clk = 0;
+            #(SYS_TCK/2);
         end
         // Extra cycle after sim
-        clk = 1;
-        #(TCK/2);
-        clk = 0;
-        #(TCK/2);
+        sys_clk = 1;
+        #(SYS_TCK/2);
+        sys_clk = 0;
+        #(SYS_TCK/2);
+    end
+
+    // Generate clock
+    initial begin
+        while (!eos) begin
+            phy_clk = 1;
+            #(PHY_TCK/2);
+            phy_clk = 0;
+            #(PHY_TCK/2);
+        end
+        // Extra cycle after sim
+        phy_clk = 1;
+        #(PHY_TCK/2);
+        phy_clk = 0;
+        #(PHY_TCK/2);
     end
 
     task reset_end;
         @(negedge rst_n);
-        @(posedge clk);
+        @(posedge sys_clk);
     endtask
+
 
     // axi read task
     task read_axi;
@@ -98,7 +243,7 @@ module fixture_hyperbus;
         automatic axi_test::axi_ax_beat #(.AW(AXI_AW), .IW(AXI_IW), .UW(1)) ar_beat = new();
         automatic axi_test::axi_r_beat  #(.DW(AXI_DW), .IW(AXI_IW), .UW(1)) r_beat  = new();
 
-        @(posedge clk);
+        @(posedge sys_clk);
 
         ar_beat.ax_addr = raddr;
         ar_beat.ax_len  = burst_len;
@@ -121,7 +266,7 @@ module fixture_hyperbus;
         automatic axi_test::axi_r_beat  #(.DW(AXI_DW), .IW(AXI_IW), .UW(1)) w_beat  = new();
         automatic axi_test::axi_r_beat  #(.DW(AXI_DW), .IW(AXI_IW), .UW(1)) b_beat  = new();
 
-        @(posedge clk);
+        @(posedge sys_clk);
 
         aw_beat.ax_addr = waddr;
         aw_beat.ax_len  = burst_len;
@@ -142,4 +287,20 @@ module fixture_hyperbus;
     endtask
 
 
+
+
+
 endmodule : fixture_hyperbus
+
+
+module tristate_shim (
+    input  wire out_ena_i,
+    input  wire out_i,
+    output wire in_o,
+    inout  wire line_io
+);
+
+    assign line_io = out_ena_i ? out_i : 1'bz;
+    assign in_o    = out_ena_i ? 1'bx  : line_io;
+
+endmodule : tristate_shim

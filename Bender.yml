@@ -51,5 +51,6 @@ sources:
       files:
         # TODO: FLAT
         - src/flat/register_interface/src/reg_test.sv
+        - models/s27ks0641/s27ks0641.v
         # Level 0
         - src/test/fixture_hyperbus.sv
