@@ -15,6 +15,7 @@ module hyperbus_tb;
         #150us;
         #200ns;
         fix.write_axi('h100, 'h0, 'hbeef, '1 );
+        fix.read_axi('h100, 'h0);
         #500ns;
         $stop();
     end

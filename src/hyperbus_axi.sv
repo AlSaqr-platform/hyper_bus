@@ -147,7 +147,7 @@ module hyperbus_axi #(
 
     // assign arbitrated output to phy
     assign trans_o.address       = axi_hyp_rr_tf.addr;
-    assign trans_o.burst         = axi_hyp_rr_tf.burst_len;
+    assign trans_o.burst         = axi_hyp_rr_tf.burst_len + 1;
     assign trans_o.burst_type    = axi_hyp_rr_tf.burst_type[0];
     assign trans_o.address_space = axi_hyp_rr_tf.addr[AxiAddrWidth-1];
 

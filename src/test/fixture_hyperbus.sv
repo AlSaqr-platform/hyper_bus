@@ -31,7 +31,7 @@ module fixture_hyperbus #(
     typedef axi_pkg::xbar_rule_32_t rule_t;
 
     localparam AxiAw  = 32;
-    localparam AxiDw  = 32;
+    localparam AxiDw  = 64;
     localparam AxiIw  = 6;
 
     typedef logic [AxiAw-1:0]   axi_addr_t;
@@ -251,12 +251,14 @@ module fixture_hyperbus #(
 
         @(posedge sys_clk);
 
-        ar_beat.ax_addr = raddr;
-        ar_beat.ax_len  = burst_len;
+        ar_beat.ax_addr  = raddr;
+        ar_beat.ax_len   = burst_len;
+        ar_beat.ax_burst = axi_pkg::BURST_INCR;
+        ar_beat.ax_size  = $clog2(AxiDw / 8);
 
         axi_master_drv.send_ar(ar_beat);
 
-        for(int unsigned i = 0; i < burst_len; i++) begin
+        for(int unsigned i = 0; i < burst_len + 1; i++) begin
             axi_master_drv.recv_r(r_beat);
             $display("%p", r_beat);
         end
@@ -271,15 +273,17 @@ module fixture_hyperbus #(
 
         @(posedge sys_clk);
 
-        aw_beat.ax_addr = waddr;
-        aw_beat.ax_len  = burst_len;
+        aw_beat.ax_addr  = waddr;
+        aw_beat.ax_len   = burst_len;
+        aw_beat.ax_burst = axi_pkg::BURST_INCR;
+        aw_beat.ax_size  = $clog2(AxiDw / 8);
 
         w_beat.w_data   = wdata;
         w_beat.w_strb   = wstrb;
 
-        axi_master_drv.send_ar(aw_beat);
+        axi_master_drv.send_aw(aw_beat);
 
-        for(int unsigned i = 0; i < burst_len; i++) begin
+        for(int unsigned i = 0; i < burst_len + 1; i++) begin
             axi_master_drv.send_w(w_beat);
             $display("%p", w_beat);
         end
