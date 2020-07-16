@@ -142,7 +142,7 @@ module hyperbus_axi #(
         .gnt_i     ( trans_ready_i                                  ),
         .req_o     ( trans_valid_o                                  ),
         .data_o    ( axi_hyp_rr_tf                                  ),
-        .idx_o     ( trans_write_o                                  )
+        .idx_o     ( trans_o.write                                  )
     );
 
     // assign arbitrated output to phy

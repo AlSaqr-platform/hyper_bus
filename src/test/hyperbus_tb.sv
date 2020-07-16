@@ -8,11 +8,14 @@
 
 module hyperbus_tb;
 
-    fixture_hyperbus #(.AxiAw(32), .AxiDw(64), .AxiIw(6), .NumChips(2)) fix ();
+    fixture_hyperbus #(.NumChips(2)) fix ();
 
     initial begin
         fix.reset_end();
+        #150us;
         #200ns;
+        fix.write_axi('h100, 'h0, 'hbeef, '1 );
+        #500ns;
         $stop();
     end
 

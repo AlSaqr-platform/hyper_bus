@@ -9,9 +9,6 @@
 `include "axi/typedef.svh"
 
 module fixture_hyperbus #(
-    parameter int unsigned AxiAw    = 32,
-    parameter int unsigned AxiDw    = 64,
-    parameter int unsigned AxiIw    = 6,
     parameter int unsigned NumChips = 2
 );
 
@@ -31,16 +28,16 @@ module fixture_hyperbus #(
 
     // -------------------- AXI drivers --------------------
 
-    typedef axi_pkg::xbar_rule_32_t rule_t; 
+    typedef axi_pkg::xbar_rule_32_t rule_t;
 
-    localparam AXI_AW = AxiAw;
-    localparam AXI_DW = AxiDw;
-    localparam AXI_IW = AxiIw;
+    localparam AxiAw  = 32;
+    localparam AxiDw  = 32;
+    localparam AxiIw  = 6;
 
-    typedef logic [AXI_AW-1:0]   axi_addr_t;
-    typedef logic [AXI_DW-1:0]   axi_data_t;
-    typedef logic [AXI_DW/8-1:0] axi_strb_t;
-    typedef logic [AXI_IW-1:0]   axi_id_t;
+    typedef logic [AxiAw-1:0]   axi_addr_t;
+    typedef logic [AxiDw-1:0]   axi_data_t;
+    typedef logic [AxiDw/8-1:0] axi_strb_t;
+    typedef logic [AxiIw-1:0]   axi_id_t;
 
     `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, axi_addr_t, axi_id_t, logic [0:0])
     `AXI_TYPEDEF_W_CHAN_T(w_chan_t, axi_data_t, axi_strb_t, logic [0:0])
@@ -54,16 +51,16 @@ module fixture_hyperbus #(
     resp_t  axi_master_rsp;
 
     AXI_BUS_DV #(
-        .AXI_ADDR_WIDTH(AXI_AW),
-        .AXI_DATA_WIDTH(AXI_DW),
-        .AXI_ID_WIDTH  (AXI_IW),
+        .AXI_ADDR_WIDTH(AxiAw ),
+        .AXI_DATA_WIDTH(AxiDw ),
+        .AXI_ID_WIDTH  (AxiIw ),
         .AXI_USER_WIDTH(1     )
     ) axi_dv(sys_clk);
 
     AXI_BUS #(
-        .AXI_ADDR_WIDTH(AXI_AW),
-        .AXI_DATA_WIDTH(AXI_DW),
-        .AXI_ID_WIDTH  (AXI_IW),
+        .AXI_ADDR_WIDTH(AxiAw ),
+        .AXI_DATA_WIDTH(AxiDw ),
+        .AXI_ID_WIDTH  (AxiIw ),
         .AXI_USER_WIDTH(1     )
     ) axi_master();
 
@@ -72,14 +69,14 @@ module fixture_hyperbus #(
     `AXI_ASSIGN_TO_REQ(axi_master_req, axi_master)
     `AXI_ASSIGN_FROM_RESP(axi_master, axi_master_rsp)
 
-    typedef axi_test::axi_driver #(.AW(AXI_AW), .DW(AXI_DW), .IW(AXI_IW), .UW(1), .TA(SYS_TA), .TT(SYS_TT)) axi_drv_t;
+    typedef axi_test::axi_driver #(.AW(AxiAw ), .DW(AxiDw ), .IW(AxiIw ), .UW(1), .TA(SYS_TA), .TT(SYS_TT)) axi_drv_t;
     axi_drv_t axi_master_drv = new(axi_dv);
 
-    axi_test::axi_ax_beat #(.AW(AXI_AW), .IW(AXI_IW), .UW(1)) ar_beat = new();
-    axi_test::axi_r_beat  #(.DW(AXI_DW), .IW(AXI_IW), .UW(1)) r_beat  = new();
-    axi_test::axi_ax_beat #(.AW(AXI_AW), .IW(AXI_IW), .UW(1)) aw_beat = new();
-    axi_test::axi_w_beat  #(.DW(AXI_DW), .UW(1))              w_beat  = new();
-    axi_test::axi_b_beat  #(.IW(AXI_IW), .UW(1))              b_beat  = new();
+    axi_test::axi_ax_beat #(.AW(AxiAw ), .IW(AxiIw ), .UW(1)) ar_beat = new();
+    axi_test::axi_r_beat  #(.DW(AxiDw ), .IW(AxiIw ), .UW(1)) r_beat  = new();
+    axi_test::axi_ax_beat #(.AW(AxiAw ), .IW(AxiIw ), .UW(1)) aw_beat = new();
+    axi_test::axi_w_beat  #(.DW(AxiDw ), .UW(1))              w_beat  = new();
+    axi_test::axi_b_beat  #(.IW(AxiIw ), .UW(1))              b_beat  = new();
 
     // -------------------------- Regbus driver --------------------------
 
@@ -150,9 +147,9 @@ module fixture_hyperbus #(
     // DUT
     hyperbus #(
         .NumChips       ( NumChips    ),
-        .AxiAddrWidth   ( AXI_AW      ),
-        .AxiDataWidth   ( AXI_DW      ),
-        .AxiIdWidth     ( AXI_IW      ),
+        .AxiAddrWidth   ( AxiAw       ),
+        .AxiDataWidth   ( AxiDw       ),
+        .AxiIdWidth     ( AxiIw       ),
         .axi_req_t      ( req_t       ),
         .axi_rsp_t      ( resp_t      ),
         .axi_rule_t     ( rule_t      )
@@ -180,9 +177,9 @@ module fixture_hyperbus #(
         .debug_hyper_phy_state_o( )
     );
 
-    // modell 
+    // modell
       s27ks0641 #(
-        .mem_file_name ( "src/s27ks0641.mem"    ), 
+        .mem_file_name ( "src/s27ks0641.mem"    ),
         .TimingModel   ( "S27KS0641DPBHI020"    )
     ) i_s27ks0641 (
       .DQ7           ( hyper_dq_wire[7]    ),
@@ -197,7 +194,7 @@ module fixture_hyperbus #(
       .CSNeg         ( hyper_cs_n_wire[0]  ),
       .CK            ( hyper_ck_wire       ),
       .CKNeg         ( hyper_ck_n_wire     ),
-      .RESETNeg      ( hyper_reset_n_wire  )    
+      .RESETNeg      ( hyper_reset_n_wire  )
     );
 
     // -------------------------- TB TASKS --------------------------
@@ -248,55 +245,49 @@ module fixture_hyperbus #(
 
 
     // axi read task
-    // task read_axi;
-    //     input axi_addr_t     raddr;
-    //     input axi_pkg::len_t burst_len;
-    initial begin
+    task read_axi;
+        input axi_addr_t     raddr;
+        input axi_pkg::len_t burst_len;
 
         @(posedge sys_clk);
 
-        // ar_beat.ax_addr = raddr;
-        // ar_beat.ax_len  = burst_len;
+        ar_beat.ax_addr = raddr;
+        ar_beat.ax_len  = burst_len;
 
         axi_master_drv.send_ar(ar_beat);
 
-        // for(int unsigned i = 0; i < burst_len; i++) begin
-        //     axi_master_drv.recv_r(r_beat);
-        //     $display("%p", r_beat);
-        // end
-    // endtask
-    end
+        for(int unsigned i = 0; i < burst_len; i++) begin
+            axi_master_drv.recv_r(r_beat);
+            $display("%p", r_beat);
+        end
+    endtask
 
     // axi write task
-    // task write_axi;
-    //     input axi_addr_t     waddr;
-    //     input axi_pkg::len_t burst_len;
-    //     input axi_data_t     wdata;
-    //     input axi_strb_t     wstrb;
+    task write_axi;
+        input axi_addr_t     waddr;
+        input axi_pkg::len_t burst_len;
+        input axi_data_t     wdata;
+        input axi_strb_t     wstrb;
 
-    //     @(posedge sys_clk);
+        @(posedge sys_clk);
 
-        // aw_beat.ax_addr = waddr;
-        // aw_beat.ax_len  = burst_len;
+        aw_beat.ax_addr = waddr;
+        aw_beat.ax_len  = burst_len;
 
-        // w_beat.w_data   = wdata;
-        // w_beat.w_strb   = wstrb;
+        w_beat.w_data   = wdata;
+        w_beat.w_strb   = wstrb;
 
-        // axi_master_drv.send_ar(aw_beat);
+        axi_master_drv.send_ar(aw_beat);
 
-        // for(int unsigned i = 0; i < burst_len; i++) begin
-        //     axi_master_drv.send_w(w_beat);
-        //     $display("%p", w_beat);
-        // end
+        for(int unsigned i = 0; i < burst_len; i++) begin
+            axi_master_drv.send_w(w_beat);
+            $display("%p", w_beat);
+        end
 
-        // axi_master_drv.recv_b(b_beat);
-        // $display("%p", b_beat);
+        axi_master_drv.recv_b(b_beat);
+        $display("%p", b_beat);
 
-    // endtask
-
-
-
-
+    endtask
 
 endmodule : fixture_hyperbus
 
