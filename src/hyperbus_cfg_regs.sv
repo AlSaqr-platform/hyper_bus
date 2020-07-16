@@ -31,7 +31,7 @@ module hyperbus_cfg_regs #(
 
     // Regbus
     assign sel_reg          = reg_req_i.addr[AddrWidth-1:2];
-    assign sel_reg_mapped   = (sel_reg >= NumRegs);
+    assign sel_reg_mapped   = (sel_reg < NumRegs);
 
     assign reg_rsp_o.ready  = 1'b1;
     assign reg_rsp_o.error  = reg_req_i.valid & ~sel_reg_mapped;

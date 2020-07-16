@@ -35,13 +35,14 @@ module hyperbus_read_clk_rwds #(
     logic hyper_rwds_i_d;
     logic clk_rwds;
 
+    // //Delay of rwds for center aligned read
+    // hyperbus_delay_line hyperbus_delay_line_i (
+    //     .in  (hyper_rwds_i),
+    //     .out (hyper_rwds_i_d),
+    //     .delay(config_t_rwds_delay_line)
+    // );
 
-    //Delay of rwds for center aligned read
-    hyperbus_delay_line hyperbus_delay_line_i (
-        .in  (hyper_rwds_i),
-        .out (hyper_rwds_i_d),
-        .delay(config_t_rwds_delay_line)
-    );
+    assign #(1.5ns) hyper_rwds_i_d = hyper_rwds_i;
 
     logic cdc_input_fifo_ready;
     logic read_in_valid;

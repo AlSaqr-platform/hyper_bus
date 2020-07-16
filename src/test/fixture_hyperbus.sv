@@ -12,13 +12,11 @@ module fixture_hyperbus #(
     parameter int unsigned NumChips = 2
 );
 
-    localparam SYS_TCK  = 1ns;
+    localparam SYS_TCK  = 20ns;
     localparam SYS_TA   = 0.01 * SYS_TCK;
     localparam SYS_TT   = 0.99 * SYS_TCK;
 
-    localparam PHY_TCK  = 0.66ns;
-    localparam PHY_TA   = 0.01 * PHY_TCK;
-    localparam PHY_TT   = 0.99 * PHY_TCK;
+    localparam PHY_TCK  = 66.6ns;
 
     logic sys_clk   = 0;
     logic phy_clk   = 0;
@@ -31,7 +29,7 @@ module fixture_hyperbus #(
     typedef axi_pkg::xbar_rule_32_t rule_t;
 
     localparam AxiAw  = 32;
-    localparam AxiDw  = 64;
+    localparam AxiDw  = 128;
     localparam AxiIw  = 6;
 
     typedef logic [AxiAw-1:0]   axi_addr_t;
@@ -179,7 +177,7 @@ module fixture_hyperbus #(
 
     // modell
       s27ks0641 #(
-        .mem_file_name ( "src/s27ks0641.mem"    ),
+        /*.mem_file_name ( "src/s27ks0641.mem"    ),*/
         .TimingModel   ( "S27KS0641DPBHI020"    )
     ) i_s27ks0641 (
       .DQ7           ( hyper_dq_wire[7]    ),
@@ -194,8 +192,13 @@ module fixture_hyperbus #(
       .CSNeg         ( hyper_cs_n_wire[0]  ),
       .CK            ( hyper_ck_wire       ),
       .CKNeg         ( hyper_ck_n_wire     ),
-      .RESETNeg      ( hyper_reset_n_wire  )
+      .RESETNeg      ( ~hyper_reset_n_wire  )
     );
+
+    initial begin
+        automatic string sdf_file_path = "models/s27ks0641/s27ks0641.sdf";
+        $sdf_annotate(sdf_file_path, i_s27ks0641);
+    end
 
     // -------------------------- TB TASKS --------------------------
     // Initial reset

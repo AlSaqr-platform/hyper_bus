@@ -140,7 +140,7 @@ module hyperbus_phy #(
     endgenerate
 
     assign write_data = tx_i.data;
-    assign write_strb = tx_i.strb;
+    assign write_strb = ~tx_i.strb;
     assign write_valid = tx_valid_i && tx_ready_o;
 
     assign data_out = mode_write ? write_data : CA_out;
