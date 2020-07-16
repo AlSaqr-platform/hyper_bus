@@ -19,5 +19,5 @@ scripts/compile.tcl: | scripts
 	$(call generate_vsim, $@, -t rtl -t test,..)
 
 clean:
-	rm -rf scripts
+	rm -rf scripts/compile.tcl
 	rm -rf work

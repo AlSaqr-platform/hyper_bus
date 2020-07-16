@@ -13,7 +13,7 @@
 module hyperbus_delay_line (
     input        in,
     output       out,
-    input [31:0] delay
+    input [7:0]  delay
 );
 
     // assign out = in;

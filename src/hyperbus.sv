@@ -58,7 +58,7 @@ module hyperbus #(
 
     // Register file
     hyperbus_pkg::hyper_cfg_t   cfg;
-    axi_rule_t                  chip_rules;
+    axi_rule_t [NumChips-1:0]   chip_rules;
 
     // AXI slave
     hyperbus_pkg::hyper_rx_t    axi_rx;
@@ -222,13 +222,13 @@ module hyperbus #(
     ) i_cdc_2phase_b (
         .src_rst_ni     ( rst_phy_n     ),
         .src_clk_i      ( clk0          ),
-        .src_data_i     ( phy_b_resp    ),
+        .src_data_i     ( /*phy_b_resp*/    ),
         .src_valid_i    ( phy_b_valid   ),
         .src_ready_o    (               ),
 
         .dst_rst_ni     ( rst_sys_n     ),
         .dst_clk_i      ( clk_sys_i     ),
-        .dst_data_o     ( axi_b_resp    ),
+        .dst_data_o     ( /*axi_b_resp*/    ),
         .dst_valid_o    ( axi_b_valid   ),
         .dst_ready_i    ( axi_b_ready   )
     );
