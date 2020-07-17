@@ -440,7 +440,11 @@ module hyperbus_phy #(
             hyperbus_pkg::DATA_W: begin
                 hyper_dq_oe_n = 1'b1;
                 hyper_rwds_oe_n = 1'b1;
-                tx_ready_o = 1'b1;
+
+                if(burst_cnt == 0) begin
+                    tx_ready_o = 1'b1;
+                end
+
                 mode_write = 1'b1;
                 // if(burst_cnt == 0) begin
                 //     b_valid_o = 1'b1;
@@ -460,6 +464,7 @@ module hyperbus_phy #(
                 end else begin
                     // should never happen :S
                     $fatal("Too bad for you!");
+                    // hyper_trans_state <= hyperbus_pkg::WAIT_FOR_B;
                     // tx_ready_o = 1'b1;
                     // b_valid_o = 1'b1;
                     // b_o.error = 1'b1;

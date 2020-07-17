@@ -114,6 +114,14 @@ module hyperbus_axi #(
         .mst_resp_i             ( narrow_rsp          )
     );
 
+    always @(posedge clk_i) begin
+        if (narrow_req.aw_valid & narrow_rsp.aw_ready) $display("%d> AW %p", $time, narrow_req.aw);
+        if (narrow_req.ar_valid & narrow_rsp.ar_ready) $display("%d> AR %p", $time, narrow_req.ar);
+        // if (narrow_req.w_valid  & narrow_rsp.w_ready)  $display("%d> W  %p", $time, narrow_req.w);
+        // if (narrow_req.r_ready  & narrow_rsp.r_valid)  $display("%d> R  %p", $time, narrow_rsp.r);
+        if (narrow_req.b_ready  & narrow_rsp.b_valid)  $display("%d> B  %p", $time, narrow_rsp.b);
+    end
+
     // feed arbiter with data from ar and aw channels
     assign axi_hyp_aw_tf.addr       = narrow_req.aw.addr;
     assign axi_hyp_aw_tf.burst_len  = narrow_req.aw.len;
@@ -145,9 +153,32 @@ module hyperbus_axi #(
         .idx_o     ( trans_o.write                                  )
     );
 
+    // id has to be buffered
+    logic    id_used;
+    axi_id_t id_head;
+    fifo_v3 #(
+        .FALL_THROUGH ( 1'b0      ), 
+        .DEPTH        ( 2         ), 
+        .dtype        ( axi_id_t  )
+    ) i_fifo_v3_id_fifo (
+        .clk_i        ( clk_i                         ),
+        .rst_ni       ( rst_ni                        ),
+        .flush_i      ( 1'b0                          ),
+        .testmode_i   ( 1'b0                          ),
+        .full_o       ( ),
+        .empty_o      ( ),
+        .usage_o      ( ),
+        .data_i       ( axi_hyp_rr_tf.id              ),
+        .push_i       ( trans_ready_i & trans_valid_o ),
+        .data_o       ( id_head                       ),
+        .pop_i        ( id_used                       )
+    );
+    assign id_used = rx_ready_o & rx_valid_i & rx_i.last | b_ready_o & b_valid_i & b_i.last;
+
+
     // assign arbitrated output to phy
-    assign trans_o.address       = axi_hyp_rr_tf.addr;
-    assign trans_o.burst         = axi_hyp_rr_tf.burst_len + 1;
+    assign trans_o.address       = axi_hyp_rr_tf.addr >> 1; // Hyperbus is a word address!
+    assign trans_o.burst         = axi_hyp_rr_tf.burst_len;
     assign trans_o.burst_type    = axi_hyp_rr_tf.burst_type[0];
     assign trans_o.address_space = axi_hyp_rr_tf.addr[AxiAddrWidth-1];
 
@@ -158,7 +189,7 @@ module hyperbus_axi #(
     assign narrow_rsp.w_ready = tx_ready_i;
 
     // connect the r channel
-    assign narrow_rsp.r.id    = axi_hyp_rr_tf.id;
+    assign narrow_rsp.r.id    = id_head;
     assign narrow_rsp.r.data  = rx_i.data;
     assign narrow_rsp.r.last  = rx_i.last;
     assign narrow_rsp.r.resp  = rx_i.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
@@ -167,7 +198,7 @@ module hyperbus_axi #(
     assign rx_ready_o         = narrow_req.r_ready;
 
     // connect the b channel
-    assign narrow_rsp.b.id    = axi_hyp_rr_tf.id;
+    assign narrow_rsp.b.id    = id_head;
     assign narrow_rsp.b.resp  = b_i.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign narrow_rsp.b.user  = 1'b0;
     assign narrow_rsp.b_valid = b_valid_i & b_i.last;

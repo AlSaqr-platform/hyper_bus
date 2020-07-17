@@ -17,9 +17,10 @@ module hyperbus_tb;
         #150us;
         // fix.i_rmaster.send_write('h4, 'h1, '1, error);
         // #200ns;
-        fix.write_axi('h00, 'h0, 'hcafecafebeefb0081234abcdaa55f0f0, 'hff00 );
-        fix.read_axi('h00, 'h0);
-        #500ns;
+        // fix.write_axi('h00, 'h0, 'hcafecafebeefb0081234abcdaa55f0f0, 'hff00 );
+        // fix.read_axi('h00, 'h0);
+        fix.start_rand_master(100, 100);
+        #5us;
         $stop();
     end
 
