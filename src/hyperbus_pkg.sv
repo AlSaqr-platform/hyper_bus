@@ -48,7 +48,8 @@ package hyperbus_pkg;
         WAIT_W, 
         ERROR, 
         END_R, 
-        END
+        END,
+        WAIT_FOR_B
     } hyper_trans_t;
 
 endpackage

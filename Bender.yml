@@ -33,7 +33,6 @@ sources:
     - src/flat/register_interface/src/axi_lite_to_reg.sv
     # Level 0
     - src/hyperbus_pkg.sv
-    - src/hyperbus_delay_line.sv
     - src/hyperbus_ddr_in.sv
     # Level 1
     - src/hyperbus_clock_diff_out.sv

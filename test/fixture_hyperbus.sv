@@ -180,19 +180,19 @@ module fixture_hyperbus #(
         /*.mem_file_name ( "s27ks0641.mem"    ),*/
         .TimingModel   ( "S27KS0641DPBHI020"    )
     ) i_s27ks0641 (
-      .DQ7           ( hyper_dq_wire[7]    ),
-      .DQ6           ( hyper_dq_wire[6]    ),
-      .DQ5           ( hyper_dq_wire[5]    ),
-      .DQ4           ( hyper_dq_wire[4]    ),
-      .DQ3           ( hyper_dq_wire[3]    ),
-      .DQ2           ( hyper_dq_wire[2]    ),
-      .DQ1           ( hyper_dq_wire[1]    ),
-      .DQ0           ( hyper_dq_wire[0]    ),
-      .RWDS          ( hyper_rwds_wire     ),
-      .CSNeg         ( hyper_cs_n_wire[0]  ),
-      .CK            ( hyper_ck_wire       ),
-      .CKNeg         ( hyper_ck_n_wire     ),
-      .RESETNeg      ( ~hyper_reset_n_wire  )
+      .DQ7           ( hyper_dq_wire[7]      ),
+      .DQ6           ( hyper_dq_wire[6]      ),
+      .DQ5           ( hyper_dq_wire[5]      ),
+      .DQ4           ( hyper_dq_wire[4]      ),
+      .DQ3           ( hyper_dq_wire[3]      ),
+      .DQ2           ( hyper_dq_wire[2]      ),
+      .DQ1           ( hyper_dq_wire[1]      ),
+      .DQ0           ( hyper_dq_wire[0]      ),
+      .RWDS          ( hyper_rwds_wire       ),
+      .CSNeg         ( hyper_cs_n_wire[0]    ),
+      .CK            ( hyper_ck_wire         ),
+      .CKNeg         ( hyper_ck_n_wire       ),
+      .RESETNeg      ( hyper_reset_n_wire    )
     );
 
     initial begin

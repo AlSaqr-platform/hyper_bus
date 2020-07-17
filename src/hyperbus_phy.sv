@@ -204,7 +204,7 @@ module hyperbus_phy #(
 
     always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
         if(~rst_ni) begin
-            hyper_trans_state <= STANDBY;
+            hyper_trans_state <= hyperbus_pkg::STANDBY;
             wait_cnt <= WaitCycles;
             burst_cnt <= axi_pkg::len_t'(0);
             cmd_addr_sel <= 2'b11;
@@ -214,63 +214,64 @@ module hyperbus_phy #(
             clock_enable <= 1'b0;
 
             case(hyper_trans_state)
-                STANDBY: begin
+                hyperbus_pkg::STANDBY: begin
                     if(trans_valid_i) begin
-                        hyper_trans_state <= SET_CMD_ADDR;
+                        hyper_trans_state <= hyperbus_pkg::SET_CMD_ADDR;
                         cmd_addr_sel <= 1'b0;
                         en_cs <= 1'b1;
                     end
                 end
-                SET_CMD_ADDR: begin
+                hyperbus_pkg::SET_CMD_ADDR: begin
                     cmd_addr_sel <= cmd_addr_sel + 1;
-                    hyper_trans_state <= CMD_ADDR;
+                    hyper_trans_state <= hyperbus_pkg::CMD_ADDR;
                     clock_enable <= 1'b1;
                 end
-                CMD_ADDR: begin
+                hyperbus_pkg::CMD_ADDR: begin
                      clock_enable <= 1'b1;
                     if(cmd_addr_sel == 3) begin
                         wait_cnt <= cfg.t_latency_access - 2;
-                        hyper_trans_state <= WAIT2;
+                        hyper_trans_state <= hyperbus_pkg::WAIT2;
                     end else begin
                         cmd_addr_sel <= cmd_addr_sel + 1;
                     end
                     if(cmd_addr_sel == 2) begin
                         if (local_address_space && local_write) begin //Write to memory config register
                             wait_cnt <= 1;
-                            hyper_trans_state <= REG_WRITE;
+                            hyper_trans_state <= hyperbus_pkg::REG_WRITE;
                         end
                     end
                 end
-                REG_WRITE: begin
+                hyperbus_pkg::REG_WRITE: begin
                     clock_enable <= 1'b1;
                     wait_cnt <= wait_cnt - 1;
                     if(wait_cnt == 4'h0) begin
                         clock_enable <= 1'b0;
                         wait_cnt <= cfg.t_read_write_recovery - 1;
-                        hyper_trans_state <= END;
+                        // hyper_trans_state <= hyperbus_pkg::END;
+                        hyper_trans_state <= hyperbus_pkg::WAIT_FOR_B;
                     end
                 end
-                WAIT2: begin  //Additional latency (If RWDS HIGH)
+                hyperbus_pkg::WAIT2: begin  //Additional latency (If RWDS HIGH)
                     wait_cnt <= wait_cnt - 1;
                     clock_enable <= 1'b1;
                     if(wait_cnt == 4'h0) begin
                         wait_cnt <= cfg.t_latency_access - 1;
-                        hyper_trans_state <= WAIT;
+                        hyper_trans_state <= hyperbus_pkg::WAIT;
                     end
                     if(wait_cnt == cfg.t_latency_access - 2) begin
                         if(hyper_rwds_i_syn || cfg.en_latency_additional) begin //Check if additinal latency is nesessary (RWDS high or config)
-                            hyper_trans_state <= WAIT2;
+                            hyper_trans_state <= hyperbus_pkg::WAIT2;
                         end else begin
-                            hyper_trans_state <= WAIT;
+                            hyper_trans_state <= hyperbus_pkg::WAIT;
                         end
                     end
                 end
-                WAIT: begin  //t_ACC
+                hyperbus_pkg::WAIT: begin  //t_ACC
                     wait_cnt <= wait_cnt - 1;
                     clock_enable <= 1'b1;
                     if(wait_cnt == 4'h0) begin
                         if (local_write) begin
-                            hyper_trans_state <= DATA_W;
+                            hyper_trans_state <= hyperbus_pkg::DATA_W;
                             if(write_valid) begin
                                 burst_cnt <= local_burst - 1;
                             end else begin //Data to write not ready yet
@@ -279,24 +280,24 @@ module hyperbus_phy #(
                             end
                         end else begin
                             burst_cnt <= local_burst - 1;
-                            hyper_trans_state <= DATA_R;
+                            hyper_trans_state <= hyperbus_pkg::DATA_R;
                         end
                     end
                 end
-                DATA_R: begin
+                hyperbus_pkg::DATA_R: begin
                     clock_enable <= 1'b1;
                     if(rx_valid_o && rx_ready_i) begin
                         if(burst_cnt == axi_pkg::len_t'(0)) begin
                             clock_enable <= 1'b0;
-                            hyper_trans_state <= END_R;
+                            hyper_trans_state <= hyperbus_pkg::END_R;
                         end else begin
                             burst_cnt <= burst_cnt - 1;
                         end
                     end else if(~rx_ready_i) begin
-                        hyper_trans_state <= WAIT_R;
+                        hyper_trans_state <= hyperbus_pkg::WAIT_R;
                     end
                 end
-                DATA_W: begin
+                hyperbus_pkg::DATA_W: begin
                     if(tx_valid_i && tx_ready_o) begin
                         clock_enable <= 1'b1;
                         burst_cnt <= burst_cnt - 1;
@@ -305,58 +306,67 @@ module hyperbus_phy #(
                     end
                     if(burst_cnt == 0) begin
                         wait_cnt <= cfg.t_read_write_recovery - 1;
-                        hyper_trans_state <= END;
+                        // hyper_trans_state <= hyperbus_pkg::END;
+                        hyper_trans_state <= hyperbus_pkg::WAIT_FOR_B;
                     end
                 end
-                WAIT_R: begin
+                hyperbus_pkg::WAIT_R: begin
                     if(rx_valid_o && rx_ready_i) begin
                         burst_cnt <= burst_cnt - 1;
                     end
                     if(rx_ready_i) begin
-                        hyper_trans_state <= DATA_R;
+                        hyper_trans_state <= hyperbus_pkg::DATA_R;
                     end
                 end
-                WAIT_W: begin
+                hyperbus_pkg::WAIT_W: begin
                     if(tx_valid_i) begin
-                        hyper_trans_state <= DATA_W;
+                        hyper_trans_state <= hyperbus_pkg::DATA_W;
                     end
                 end
-                ERROR: begin
+                hyperbus_pkg::ERROR: begin
                     en_cs <= 1'b0;
                     if (~local_write) begin //read
                         if (rx_ready_i) begin
                             burst_cnt <= burst_cnt - 1;
                             if(burst_cnt == axi_pkg::len_t'(0)) begin
                                 wait_cnt <= cfg.t_read_write_recovery - 2;
-                                hyper_trans_state <= END;
+                                hyper_trans_state <= hyperbus_pkg::END;
                             end
                         end
                     end else begin  //write
                         if (~tx_valid_i) begin
                             wait_cnt <= cfg.t_read_write_recovery - 2;
-                            hyper_trans_state <= END;
+                            hyper_trans_state <= hyperbus_pkg::END;
                         end
                     end
                 end
-                END_R: begin
+                hyperbus_pkg::END_R: begin
                     wait_cnt <= cfg.t_read_write_recovery - 2;
-                    hyper_trans_state <= END;
+                    hyper_trans_state <= hyperbus_pkg::END;
                 end
-                END: begin
+                hyperbus_pkg::END: begin
                     en_cs <= 1'b0;
                     if(wait_cnt == 4'h0) begin //t_RWR
-                        hyper_trans_state <= STANDBY;
+                        hyper_trans_state <= hyperbus_pkg::STANDBY;
                     end else begin
                         wait_cnt <= wait_cnt - 1;
                     end
                 end
                 default: begin
-                    hyper_trans_state <= STANDBY;
+                    hyper_trans_state <= hyperbus_pkg::STANDBY;
+                end
+                hyperbus_pkg::WAIT_FOR_B: begin
+                    en_cs <= 1'b0;
+                    if (~b_ready_i) begin
+                        hyper_trans_state <= hyperbus_pkg::WAIT_FOR_B;
+                    end else begin
+                        hyper_trans_state <= hyperbus_pkg::END;
+                    end 
                 end
             endcase
 
             if(cs_max == 1) begin
-                hyper_trans_state <= ERROR;
+                hyper_trans_state <= hyperbus_pkg::ERROR;
             end
         end
     end
@@ -379,30 +389,30 @@ module hyperbus_phy #(
         b_o.error = 1'b0;
 
         case(hyper_trans_state)
-            STANDBY: begin
+            hyperbus_pkg::STANDBY: begin
                 en_read_transaction = 1'b1;
                 hyper_dq_oe_n = 1'b1;
             end
-            SET_CMD_ADDR: begin
+            hyperbus_pkg::SET_CMD_ADDR: begin
                 trans_ready_o = 1'b1;
                 hyper_dq_oe_n = 1'b1;
             end
-            CMD_ADDR: begin
+            hyperbus_pkg::CMD_ADDR: begin
                 hyper_dq_oe_n = 1'b1;
                 if (cmd_addr_sel == cfg.t_variable_latency_check) begin
                     en_rwds = 1'b1;
                 end
             end
-            REG_WRITE: begin
+            hyperbus_pkg::REG_WRITE: begin
                 hyper_dq_oe_n = 1'b1;
                 mode_write = 1'b1;
-                b_valid_o = 1'b1;
-                b_o.last = 1'b1;
+                // b_valid_o = 1'b1;
+                // b_o.last = 1'b1;
                 if(wait_cnt == 4'h1) begin
                     tx_ready_o = 1'b1;
                 end
             end
-            WAIT: begin  //t_ACC
+            hyperbus_pkg::WAIT: begin  //t_ACC
                 if(local_write == 1'b1) begin
                     if(wait_cnt == 4'b0001) begin
                         hyper_rwds_oe_n = 1'b1;
@@ -419,47 +429,53 @@ module hyperbus_phy #(
                     read_clk_en_n = 1'b1;
                 end
             end
-            DATA_R: begin
+            hyperbus_pkg::DATA_R: begin
                 en_ddr_in = 1'b1;
                 read_clk_en_n = 1'b1;
             end
-            WAIT_R: begin
+            hyperbus_pkg::WAIT_R: begin
                 en_ddr_in = 1'b1;
                 read_clk_en_n = 1'b1;
             end
-            DATA_W: begin
+            hyperbus_pkg::DATA_W: begin
                 hyper_dq_oe_n = 1'b1;
                 hyper_rwds_oe_n = 1'b1;
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
-                if(burst_cnt == 0) begin
-                    b_valid_o = 1'b1;
-                    b_o.last = 1'b1;
-                end
+                // if(burst_cnt == 0) begin
+                //     b_valid_o = 1'b1;
+                //     b_o.last = 1'b1;
+                // end
             end
-            WAIT_W: begin
+            hyperbus_pkg::WAIT_W: begin
                 hyper_dq_oe_n = 1'b1;
                 hyper_rwds_oe_n = 1'b1;
                 tx_ready_o = 1'b1;
                 mode_write = 1'b1;
             end
-            ERROR: begin //Recover state after timeout for t_CSM
+            hyperbus_pkg::ERROR: begin //Recover state after timeout for t_CSM
                 read_fifo_rst = 1'b1;
                 if(~local_write) begin
                     rx_o.error = 1'b1;
                 end else begin
-                    tx_ready_o = 1'b1;
-                    b_valid_o = 1'b1;
-                    b_o.error = 1'b1;
+                    // should never happen :S
+                    $fatal("Too bad for you!");
+                    // tx_ready_o = 1'b1;
+                    // b_valid_o = 1'b1;
+                    // b_o.error = 1'b1;
                 end
             end
-            END_R: begin
+            hyperbus_pkg::END_R: begin
                 read_clk_en_n = 1'b1;
                 read_fifo_rst = 1'b1;
             end
-            END: begin
+            hyperbus_pkg::END: begin
                 read_fifo_rst = 1'b1;
                 en_read_transaction = 1'b1;
+            end
+            hyperbus_pkg::WAIT_FOR_B: begin
+                b_valid_o = 1'b1;
+                b_o.last = 1'b1;
             end
         endcase
     end

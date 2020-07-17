@@ -224,7 +224,7 @@ module hyperbus #(
         .src_clk_i      ( clk0          ),
         .src_data_i     ( phy_b         ),
         .src_valid_i    ( phy_b_valid   ),
-        .src_ready_o    (               ),
+        .src_ready_o    ( phy_b_ready   ),
 
         .dst_rst_ni     ( rst_sys_n     ),
         .dst_clk_i      ( clk_sys_i     ),
