@@ -35,4 +35,20 @@ package hyperbus_pkg;
         logic [31:0]    address;
     } hyper_tf_t;
 
+    typedef enum logic[3:0] {
+        STANDBY,
+        SET_CMD_ADDR, 
+        CMD_ADDR, 
+        REG_WRITE, 
+        WAIT2, 
+        WAIT, 
+        DATA_W, 
+        DATA_R, 
+        WAIT_R, 
+        WAIT_W, 
+        ERROR, 
+        END_R, 
+        END
+    } hyper_trans_t;
+
 endpackage

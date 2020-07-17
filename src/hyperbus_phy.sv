@@ -52,9 +52,9 @@ module hyperbus_phy #(
     output logic                   hyper_dq_oe_o,
     output logic                   hyper_reset_no,
     // Debug
-    output logic                   debug_hyper_rwds_oe_o,
-    output logic                   debug_hyper_dq_oe_o,
-    output logic [3:0]             debug_hyper_phy_state_o
+    output logic                       debug_hyper_rwds_oe_o,
+    output logic                       debug_hyper_dq_oe_o,
+    output hyperbus_pkg::hyper_trans_t debug_hyper_phy_state_o
 );
 
     logic [47:0] cmd_addr;
@@ -90,9 +90,8 @@ module hyperbus_phy #(
     (* keep = "true" *) logic [3:0] wait_cnt;
     axi_pkg::len_t burst_cnt;
 
-    typedef enum logic[3:0] {STANDBY,SET_CMD_ADDR, CMD_ADDR, REG_WRITE, WAIT2, WAIT, DATA_W, DATA_R, WAIT_R, WAIT_W, ERROR, END_R, END} hyper_trans_t;
 
-    (* keep = "true" *) hyper_trans_t hyper_trans_state;
+    (* keep = "true" *) hyperbus_pkg::hyper_trans_t hyper_trans_state;
 
     hyperbus_clock_diff_out clock_diff_out_i (
         .in_i   ( clk90        ),
@@ -108,8 +107,7 @@ module hyperbus_phy #(
         if(~rst_ni) begin
             hyper_cs_no <= {NumChips{1'b1}};
         end else begin
-            hyper_cs_no[0] <= ~ (en_cs && local_cs[0]);
-            hyper_cs_no[1] <= ~ (en_cs && local_cs[1]); //ToDo Use NumChips
+            hyper_cs_no <= en_cs ? ~local_cs : {NumChips{1'b1}};
         end
     end
 

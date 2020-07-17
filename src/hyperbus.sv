@@ -39,7 +39,7 @@ module hyperbus #(
     // Debug interface
     output logic                        debug_hyper_rwds_oe_o,
     output logic                        debug_hyper_dq_oe_o,
-    output logic [3:0]                  debug_hyper_phy_state_o
+    output hyperbus_pkg::hyper_trans_t  debug_hyper_phy_state_o
 );
 
     // Combined transfer type for CDC
