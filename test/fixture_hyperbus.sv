@@ -12,11 +12,11 @@ module fixture_hyperbus #(
     parameter int unsigned NumChips = 2
 );
 
-    localparam time SYS_TCK  = 20ns;
+    localparam time SYS_TCK  = 5ns;
     localparam time SYS_TA   = 1ns;
     localparam time SYS_TT   = SYS_TCK - 1ns;
 
-    localparam time PHY_TCK  = 66.6ns;
+    localparam time PHY_TCK  = 12ns;
 
     logic sys_clk      = 0;
     logic phy_clk      = 0;
@@ -27,7 +27,7 @@ module fixture_hyperbus #(
     // -------------------- AXI drivers --------------------
 
     localparam AxiAw  = 32;
-    localparam AxiDw  = 16;
+    localparam AxiDw  = 128;
     localparam AxiIw  = 6;
 
     typedef axi_pkg::xbar_rule_32_t rule_t;
@@ -85,12 +85,12 @@ module fixture_hyperbus #(
         .AXI_USER_WIDTH(1     )
     ) axi_dv(sys_clk);
 
-    AXI_BUS_DV #(
-        .AXI_ADDR_WIDTH(AxiAw ),
-        .AXI_DATA_WIDTH(AxiDw ),
-        .AXI_ID_WIDTH  (AxiIw ),
-        .AXI_USER_WIDTH(1     )
-    ) axi_monitor_dv(sys_clk);
+    // AXI_BUS_DV #(
+    //     .AXI_ADDR_WIDTH(AxiAw ),
+    //     .AXI_DATA_WIDTH(AxiDw ),
+    //     .AXI_ID_WIDTH  (AxiIw ),
+    //     .AXI_USER_WIDTH(1     )
+    // ) axi_monitor_dv(sys_clk);
 
     AXI_BUS #(
         .AXI_ADDR_WIDTH(AxiAw ),
@@ -104,13 +104,13 @@ module fixture_hyperbus #(
     `AXI_ASSIGN_TO_REQ(axi_master_req, axi_master)
     `AXI_ASSIGN_FROM_RESP(axi_master, axi_master_rsp)
 
-    `AXI_ASSIGN_MONITOR(axi_monitor_dv, axi_dv)
+    // `AXI_ASSIGN_MONITOR(axi_monitor_dv, axi_dv)
 
-    // typedef axi_test::axi_driver #(.AW(AxiAw ), .DW(AxiDw ), .IW(AxiIw ), .UW(1), .TA(SYS_TA), .TT(SYS_TT)) axi_drv_t;
-    // axi_drv_t axi_master_drv = new(axi_dv);
+    typedef axi_test::axi_driver #(.AW(AxiAw ), .DW(AxiDw ), .IW(AxiIw ), .UW(1), .TA(SYS_TA), .TT(SYS_TT)) axi_drv_t;
+    axi_drv_t axi_master_drv = new(axi_dv);
 
-    static axi_scoreboard_t scoreboard = new( axi_monitor_dv );
-    static rand_axi_master_t rand_axi_master = new ( axi_dv );
+    // static axi_scoreboard_t scoreboard = new( axi_monitor_dv );
+    // static rand_axi_master_t rand_axi_master = new ( axi_dv );
 
     axi_test::axi_ax_beat #(.AW(AxiAw ), .IW(AxiIw ), .UW(1)) ar_beat = new();
     axi_test::axi_r_beat  #(.DW(AxiDw ), .IW(AxiIw ), .UW(1)) r_beat  = new();
@@ -246,7 +246,7 @@ module fixture_hyperbus #(
     // Initial reset
     initial begin
         rst_n = 0;
-        // axi_master_drv.reset_master();
+        axi_master_drv.reset_master();
         i_rmaster.reset_master();
         #(0.25*SYS_TCK);
         #(10*SYS_TCK);
@@ -283,33 +283,33 @@ module fixture_hyperbus #(
         #(PHY_TCK/2);
     end
 
-    // random axi master
-    initial begin
-        rand_axi_master.add_memory_region('h0, 4096, axi_pkg::DEVICE_NONBUFFERABLE);
-        @(posedge rst_n);
-        rand_axi_master.reset();
-        // #200us;
-        // repeat (50) @(posedge sys_clk);
-        // rand_axi_master.run(2, 0);
+    // // random axi master
+    // initial begin
+    //     rand_axi_master.add_memory_region('h0, 4096, axi_pkg::DEVICE_NONBUFFERABLE);
+    //     @(posedge rst_n);
+    //     rand_axi_master.reset();
+    //     // #200us;
+    //     // repeat (50) @(posedge sys_clk);
+    //     // rand_axi_master.run(2, 0);
     
-        scoreboard.reset();
-        scoreboard.enable_all_checks();
-        scoreboard.monitor();
-     end
+    //     scoreboard.reset();
+    //     scoreboard.enable_all_checks();
+    //     scoreboard.monitor();
+    //  end
 
     task reset_end;
         @(posedge rst_n);
         @(posedge sys_clk);
     endtask
 
-    task start_rand_master;
-        input integer unsigned reads;
-        input integer unsigned writes;
-        rand_axi_master.run(reads, writes);
-    endtask
+    // task start_rand_master;
+    //     input integer unsigned reads;
+    //     input integer unsigned writes;
+    //     rand_axi_master.run(reads, writes);
+    // endtask
 
 
-    /*// axi read task
+    // axi read task
     task read_axi;
         input axi_addr_t     raddr;
         input axi_pkg::len_t burst_len;
@@ -326,6 +326,7 @@ module fixture_hyperbus #(
         for(int unsigned i = 0; i < burst_len + 1; i++) begin
             axi_master_drv.recv_r(r_beat);
             $display("%p", r_beat);
+            $display("%x", r_beat.r_data);
         end
     endtask
 
@@ -351,12 +352,13 @@ module fixture_hyperbus #(
         for(int unsigned i = 0; i < burst_len + 1; i++) begin
             axi_master_drv.send_w(w_beat);
             $display("%p", w_beat);
+            $display("%x", w_beat.w_data);
         end
 
         axi_master_drv.recv_b(b_beat);
         $display("%p", b_beat);
 
-    endtask*/ 
+    endtask
 
 endmodule : fixture_hyperbus
 

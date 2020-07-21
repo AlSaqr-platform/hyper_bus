@@ -39,6 +39,7 @@ sources:
     - src/hyperbus_ddr_out.sv
     - src/hyperbus_read_clk_rwds.sv
     # Level 2
+    - src/hyperbus_delay.sv
     - src/hyperbus_clk_gen.sv
     - src/hyperbus_cfg_regs.sv
     - src/hyperbus_phy.sv

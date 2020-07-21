@@ -67,8 +67,12 @@ add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/local_burst_type
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/local_address
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/en_cs
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/read_fifo_valid
+add wave -noupdate /hyperbus_tb/fix/i_dut/clk0_gen
+add wave -noupdate /hyperbus_tb/fix/i_dut/clk0_gen_old
+add wave -noupdate /hyperbus_tb/fix/i_dut/clk90_gen
+add wave -noupdate /hyperbus_tb/fix/i_dut/clk90_gen_old
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {153285383 ps} 0}
+WaveRestoreCursors {{Cursor 1} {152993578 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 299
 configure wave -valuecolwidth 40

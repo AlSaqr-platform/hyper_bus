@@ -92,11 +92,18 @@ module hyperbus #(
     hyperbus_clk_gen i_ddr_clk (
         .clk_i      ( clk_phy_i ),
         .rst_ni     ( rst_phy_n ),
-        .clk0_o     ( clk0_gen  ),
-        .clk90_o    ( clk90_gen ),
+        .clk0_o     ( clk0_gen_old  ),
+        .clk90_o    ( clk90_gen_old ),
         .clk180_o   (  ),
         .clk270_o   (  )
     );
+
+    // shift clock
+    hyperbus_delay clock_delay (
+        .in_i  ( clk_phy_i    ), 
+        .out_o ( clk90_gen    )
+    );
+    assign clk0_gen = clk_phy_i;
 
     // Test mode muxes. TODO: substitute for pulp_clock_mux2
     tc_clk_mux2 i_test_mux_clk0 (

@@ -42,7 +42,11 @@ module hyperbus_read_clk_rwds #(
     //     .delay(config_t_rwds_delay_line)
     // );
 
-    assign #(1.5ns) hyper_rwds_i_d = hyper_rwds_i;
+    hyperbus_delay rwds_delay (
+        .in_i  ( hyper_rwds_i    ), 
+        .out_o ( hyper_rwds_i_d  )
+    );
+
 
     logic cdc_input_fifo_ready;
     logic read_in_valid;
