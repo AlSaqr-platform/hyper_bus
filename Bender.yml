@@ -10,27 +10,13 @@ dependencies:
   common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.19.0 }
   axi:                 { git: "https://github.com/pulp-platform/axi.git",                version: 0.23.1 }
   tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.1  }
+  register_interface:  { path: "src/flat/register_interface" }
 
 workspace:
    checkout_dir: "./src/deps"
 
-export_include_dirs:
-  # TODO: FLAT
-  - src/flat/register_interface/include
-
 sources:
   files:
-    # TODO: FLAT
-    - src/flat/register_interface/src/reg_intf_pkg.sv
-    - src/flat/register_interface/src/reg_intf.sv
-    - src/flat/register_interface/src/apb_to_reg.sv
-    - src/flat/register_interface/src/axi_to_reg.sv
-    - src/flat/register_interface/src/reg_cdc.sv
-    - src/flat/register_interface/src/reg_demux.sv
-    - src/flat/register_interface/src/reg_mux.sv
-    - src/flat/register_interface/src/reg_to_mem.sv
-    - src/flat/register_interface/src/reg_uniform.sv
-    - src/flat/register_interface/src/axi_lite_to_reg.sv
     # Level 0
     - src/hyperbus_pkg.sv
     - src/hyperbus_ddr_in.sv
@@ -49,8 +35,6 @@ sources:
     #- src/hyperbus_stub.sv
     - target: test
       files:
-        # TODO: FLAT
-        - src/flat/register_interface/src/reg_test.sv
         - models/s27ks0641/s27ks0641.v
         # Level 0
         - test/fixture_hyperbus.sv
