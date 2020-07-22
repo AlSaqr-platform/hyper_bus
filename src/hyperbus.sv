@@ -13,6 +13,8 @@ module hyperbus #(
     parameter int unsigned  AxiIdWidth      = -1,
     parameter type          axi_req_t       = logic,
     parameter type          axi_rsp_t       = logic,
+    parameter type          reg_req_t       = logic,
+    parameter type          reg_rsp_t       = logic,
     parameter type          axi_rule_t      = logic
 ) (
     input  logic                        clk_phy_i,
@@ -23,8 +25,8 @@ module hyperbus #(
     input  axi_req_t                    axi_req_i,
     output axi_rsp_t                    axi_rsp_o,
     // Reg bus
-    input  reg_intf_pkg::req_a32_d32    reg_req_i,
-    output reg_intf_pkg::rsp_d32        reg_rsp_o,
+    input  reg_req_t                    reg_req_i,
+    output reg_rsp_t                    reg_rsp_o,
     // PHY interface
     output logic [NumChips-1:0]         hyper_cs_no,
     output logic                        hyper_ck_o,
@@ -100,7 +102,7 @@ module hyperbus #(
 
     // shift clock
     hyperbus_delay clock_delay (
-        .in_i  ( clk_phy_i    ), 
+        .in_i  ( clk_phy_i    ),
         .out_o ( clk90_gen    )
     );
     assign clk0_gen = clk_phy_i;
@@ -123,6 +125,8 @@ module hyperbus #(
     // Register File
     hyperbus_cfg_regs #(
         .NumChips       ( NumChips      ),
+        .reg_req_t      ( reg_req_t     ),
+        .reg_rsp_t      ( reg_rsp_t     ),
         .rule_t         ( axi_rule_t    )
     ) i_cfg_regs (
         .clk_i          ( clk_sys_i     ),

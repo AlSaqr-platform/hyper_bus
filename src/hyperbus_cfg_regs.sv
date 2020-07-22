@@ -3,13 +3,15 @@
 
 module hyperbus_cfg_regs #(
     parameter int unsigned NumChips = -1,
+    parameter type         reg_req_t       = logic,
+    parameter type         reg_rsp_t       = logic,
     parameter type         rule_t   = logic
 ) (
     input logic     clk_i,
     input logic     rst_ni,
 
-    input  reg_intf_pkg::req_a32_d32    reg_req_i,
-    output reg_intf_pkg::rsp_d32        reg_rsp_o,
+    input  reg_req_t reg_req_i,
+    output reg_rsp_t reg_rsp_o,
 
     output hyperbus_pkg::hyper_cfg_t    cfg_o,
     output rule_t [NumChips-1:0]        chip_rules_o
