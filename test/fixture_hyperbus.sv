@@ -192,6 +192,8 @@ module fixture_hyperbus #(
         .AxiIdWidth     ( AxiIw       ),
         .axi_req_t      ( req_t       ),
         .axi_rsp_t      ( resp_t      ),
+        .reg_req_t      ( reg_intf_pkg::req_a32_d32 ),
+        .reg_rsp_t      ( reg_intf_pkg::rsp_d32     ),
         .axi_rule_t     ( rule_t      )
     ) i_dut (
         .clk_phy_i              ( phy_clk               ),
