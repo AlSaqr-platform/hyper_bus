@@ -123,12 +123,12 @@ module hyperbus_axi #(
     end
 
     // feed arbiter with data from ar and aw channels
-    assign axi_hyp_aw_tf.addr       = narrow_req.aw.addr;
+    assign axi_hyp_aw_tf.addr       = narrow_req.aw.addr >> 1;
     assign axi_hyp_aw_tf.burst_len  = narrow_req.aw.len;
     assign axi_hyp_aw_tf.burst_type = narrow_req.aw.burst;
     assign axi_hyp_aw_tf.id         = narrow_req.aw.id;
 
-    assign axi_hyp_ar_tf.addr       = narrow_req.ar.addr;
+    assign axi_hyp_ar_tf.addr       = narrow_req.ar.addr >> 1;
     assign axi_hyp_ar_tf.burst_len  = narrow_req.ar.len;
     assign axi_hyp_ar_tf.burst_type = narrow_req.ar.burst;
     assign axi_hyp_ar_tf.id         = narrow_req.ar.id;

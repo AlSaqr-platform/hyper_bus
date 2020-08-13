@@ -803,16 +803,17 @@ package axi_test;
         // Randomize address.  Make sure that the burst does not cross a 4KiB boundary.
         forever begin
           // Randomize burst length.
-          rand_success = std::randomize(len) with {
-            len <= this.max_len;
-            (ax_beat.ax_burst == BURST_WRAP) ->
-                len inside {len_t'(1), len_t'(3), len_t'(7), len_t'(15)};
-          }; assert(rand_success);
           rand_success = std::randomize(size) with {
             2**size <= AXI_STRB_WIDTH;
             size > 0;
           }; assert(rand_success);
           ax_beat.ax_size = size;
+          rand_success = std::randomize(len) with {
+            len <= this.max_len;
+            (ax_beat.ax_burst == BURST_WRAP) ->
+                len inside {len_t'(1), len_t'(3), len_t'(7), len_t'(15)};
+            (ax_beat.ax_size == 0) -> len inside {len_t'(0)};
+          }; assert(rand_success);
           ax_beat.ax_len = len;
 
           // Randomize address

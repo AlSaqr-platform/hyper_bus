@@ -32,35 +32,35 @@ module fixture_hyperbus #(
 
     typedef axi_pkg::xbar_rule_32_t rule_t;
 
-    typedef axi_test::rand_axi_master #(
-        // AXI interface parameters
-        .AW ( AxiAw   ),
-        .DW ( AxiDw   ),
-        .IW ( AxiIw   ),
-        .UW ( 1       ),
-        // Stimuli application and test time
-        .TA                   ( SYS_TA           ),
-        .TT                   ( SYS_TT           ),
-        .MAX_READ_TXNS        ( 2                ),
-        .MAX_WRITE_TXNS       ( 2                ),
-        .AX_MIN_WAIT_CYCLES   ( 0                ),
-        .AX_MAX_WAIT_CYCLES   ( 0                ),
-        .W_MIN_WAIT_CYCLES    ( 0                ),
-        .W_MAX_WAIT_CYCLES    ( 0                ),
-        .RESP_MIN_WAIT_CYCLES ( 0                ),
-        .RESP_MAX_WAIT_CYCLES ( 0                ),
-        .AXI_BURST_FIXED      ( 1'b0             ),
-        .AXI_BURST_INCR       ( 1'b1             ),
-        .AXI_BURST_WRAP       ( 1'b0             )
-    ) rand_axi_master_t;
+    // typedef axi_test::rand_axi_master #(
+    //     // AXI interface parameters
+    //     .AW ( AxiAw   ),
+    //     .DW ( AxiDw   ),
+    //     .IW ( AxiIw   ),
+    //     .UW ( 1       ),
+    //     // Stimuli application and test time
+    //     .TA                   ( SYS_TA           ),
+    //     .TT                   ( SYS_TT           ),
+    //     .MAX_READ_TXNS        ( 2                ),
+    //     .MAX_WRITE_TXNS       ( 2                ),
+    //     .AX_MIN_WAIT_CYCLES   ( 0                ),
+    //     .AX_MAX_WAIT_CYCLES   ( 0                ),
+    //     .W_MIN_WAIT_CYCLES    ( 0                ),
+    //     .W_MAX_WAIT_CYCLES    ( 0                ),
+    //     .RESP_MIN_WAIT_CYCLES ( 0                ),
+    //     .RESP_MAX_WAIT_CYCLES ( 0                ),
+    //     .AXI_BURST_FIXED      ( 1'b0             ),
+    //     .AXI_BURST_INCR       ( 1'b1             ),
+    //     .AXI_BURST_WRAP       ( 1'b0             )
+    // ) rand_axi_master_t;
 
-    typedef axi_test::axi_scoreboard #(
-        .IW ( AxiIw   ),
-        .AW ( AxiAw   ),
-        .DW ( AxiDw   ),
-        .UW ( 1       ),
-        .TT ( SYS_TT  )
-    ) axi_scoreboard_t;
+    // typedef axi_test::axi_scoreboard #(
+    //     .IW ( AxiIw   ),
+    //     .AW ( AxiAw   ),
+    //     .DW ( AxiDw   ),
+    //     .UW ( 1       ),
+    //     .TT ( SYS_TT  )
+    // ) axi_scoreboard_t;
 
     typedef logic [AxiAw-1:0]   axi_addr_t;
     typedef logic [AxiDw-1:0]   axi_data_t;
@@ -247,7 +247,7 @@ module fixture_hyperbus #(
     initial begin
         rst_n = 0;
         axi_master_drv.reset_master();
-        i_rmaster.reset_master();
+        // i_rmaster.reset_master();
         #(0.25*SYS_TCK);
         #(10*SYS_TCK);
         rst_n = 1;
@@ -285,17 +285,17 @@ module fixture_hyperbus #(
 
     // // random axi master
     // initial begin
-    //     rand_axi_master.add_memory_region('h0, 4096, axi_pkg::DEVICE_NONBUFFERABLE);
-    //     @(posedge rst_n);
-    //     rand_axi_master.reset();
-    //     // #200us;
-    //     // repeat (50) @(posedge sys_clk);
-    //     // rand_axi_master.run(2, 0);
-    
-    //     scoreboard.reset();
-    //     scoreboard.enable_all_checks();
-    //     scoreboard.monitor();
-    //  end
+    //    rand_axi_master.add_memory_region('h0, 16*1024, axi_pkg::DEVICE_NONBUFFERABLE);
+    //    @(posedge rst_n);
+    //    rand_axi_master.reset();
+    //    // #200us;
+    //    // repeat (50) @(posedge sys_clk);
+    //    // rand_axi_master.run(2, 0);
+    // 
+    //    scoreboard.reset();
+    //    scoreboard.enable_all_checks();
+    //    scoreboard.monitor();
+    // end
 
     task reset_end;
         @(posedge rst_n);
@@ -308,18 +308,19 @@ module fixture_hyperbus #(
     //     rand_axi_master.run(reads, writes);
     // endtask
 
-
+    
     // axi read task
     task read_axi;
-        input axi_addr_t     raddr;
-        input axi_pkg::len_t burst_len;
+        input axi_addr_t      raddr;
+        input axi_pkg::len_t  burst_len;
+        input axi_pkg::size_t size;
 
         @(posedge sys_clk);
 
         ar_beat.ax_addr  = raddr;
         ar_beat.ax_len   = burst_len;
         ar_beat.ax_burst = axi_pkg::BURST_INCR;
-        ar_beat.ax_size  = $clog2(AxiDw / 8);
+        ar_beat.ax_size  = size;
 
         axi_master_drv.send_ar(ar_beat);
 
@@ -332,18 +333,18 @@ module fixture_hyperbus #(
 
     // axi write task
     task write_axi;
-        input axi_addr_t     waddr;
-        input axi_pkg::len_t burst_len;
-        input axi_data_t     wdata;
-        input axi_strb_t     wstrb;
+        input axi_addr_t      waddr;
+        input axi_pkg::len_t  burst_len;
+        input axi_pkg::size_t size;
+        input axi_data_t      wdata;
+        input axi_strb_t      wstrb;
 
         @(posedge sys_clk);
 
         aw_beat.ax_addr  = waddr;
         aw_beat.ax_len   = burst_len;
         aw_beat.ax_burst = axi_pkg::BURST_INCR;
-        aw_beat.ax_size  = $clog2(AxiDw / 8);
-
+        aw_beat.ax_size  = size;
         w_beat.w_data   = wdata;
         w_beat.w_strb   = wstrb;
 
@@ -359,6 +360,7 @@ module fixture_hyperbus #(
         $display("%p", b_beat);
 
     endtask
+    
 
 endmodule : fixture_hyperbus
 
