@@ -7,10 +7,13 @@
 // work. Any reuse/redistribution is strictly forbidden without written
 // permission from ETH Zurich.
 
-/// A single to double data rate converter.
+// Description: : A single to double data rate converter.
+
+// Author: Armin Berger <bergerar@ethz.ch>
+// Author: Stephan Keck <kecks@ethz.ch>
 
 module hyperbus_ddr_out #(
-    parameter logic INIT = 1'b0
+    parameter logic Init = 1'b0
 )(
     input  logic clk_i,
     input  logic rst_ni,
@@ -21,7 +24,7 @@ module hyperbus_ddr_out #(
     logic q0;
     logic q1;
 
-    tc_clk_mux2 ddrmux (
+    tc_clk_mux2 i_ddrmux (
         .clk_o     ( q_o   ),
         .clk0_i    ( q1    ),
         .clk1_i    ( q0    ),
@@ -30,8 +33,8 @@ module hyperbus_ddr_out #(
 
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (~rst_ni) begin
-            q0 <= INIT;
-            q1 <= INIT;
+            q0 <= Init;
+            q1 <= Init;
         end else begin
             q0 <= d0_i;
             q1 <= d1_i;

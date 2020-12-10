@@ -7,9 +7,10 @@
 // work. Any reuse/redistribution is strictly forbidden without written
 // permission from ETH Zurich.
 
-// Author:
-// Date:
-// Description: Generate the Command-Address to start a transaction
+// Description: : A double to single rate data converter.
+
+// Author: Armin Berger <bergerar@ethz.ch>
+// Author: Stephan Keck <kecks@ethz.ch>
 
 module hyperbus_ddr_in #(
 )(
