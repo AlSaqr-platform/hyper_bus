@@ -11,7 +11,8 @@ work
 .bender
 
 # Gitignore scripts for now
-scripts
+scripts/
+!scripts/*.do
 
 # Modelsim
 modelsim.ini

@@ -346,10 +346,14 @@ module fixture_hyperbus #(
         aw_beat.ax_size  = size;
         w_beat.w_data   = wdata;
         w_beat.w_strb   = wstrb;
+        w_beat.w_last   = 1'b0;
 
         axi_master_drv.send_aw(aw_beat);
 
         for(int unsigned i = 0; i < burst_len + 1; i++) begin
+            if (i == 0) begin
+                w_beat.w_last = 1'b1;
+            end
             axi_master_drv.send_w(w_beat);
             $display("%p", w_beat);
             $display("%x", w_beat.w_data);

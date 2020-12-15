@@ -27,12 +27,12 @@ module hyperbus_tb;
         // fix.start_rand_master(20, 0);
 
         // 128 bit access (burst)
-        fix.write_axi('h00, 3, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
-        fix.read_axi('h00, 3, 4);
+        // fix.write_axi('h00, 3, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+        // fix.read_axi('h00, 3, 4);
 
-        // 128 bit access 
+        // 128 bit access
         fix.write_axi('h00, 0, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
-        fix.read_axi('h00, 0, 4);
+        /*fix.read_axi('h00, 0, 4);
 
         // 64 bit access (aligned)
         fix.write_axi('h00, 0, 3, 'h5555_5555_5555_5555_4444_3333_2222_1111, 'h00ff);
@@ -109,7 +109,7 @@ module hyperbus_tb;
         fix.read_axi('h3c, 0, 0);
         fix.read_axi('h3d, 0, 0);
         fix.read_axi('h3e, 0, 0);
-        fix.read_axi('h3f, 0, 0);
+        fix.read_axi('h3f, 0, 0);*/
 
         #5us;
         $stop();
