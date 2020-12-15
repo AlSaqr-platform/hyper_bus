@@ -15,29 +15,33 @@
 // Author: Stephan Keck <kecks@ethz.ch>
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
+// TODO: delay lines!
+
 module hyperbus_trx #(
-    parameter int unsigned NumChips = 2,
+    parameter int unsigned NumChips = 2
 )(
     // Global signals
-    input  logic            clk_0_i
+    input  logic            clk_0_i,
     input  logic            clk_90_i,
     input  logic            clk_test_i,
     input  logic            rst_ni,
     input  logic            test_mode_i,
     // Transciever control: facing controller
-    logic                   clk_ena_i,
-    logic [NumChips-1:0]    cs_i,
-    logic                   cs_ena_i,
+    input  logic                   clk_ena_i,
+    input  logic [NumChips-1:0]    cs_i,
+    input  logic                   cs_ena_i,
+    output logic                   rwds_sample_o,
+    input  logic                   rwds_sample_ena_i,
 
-    logic [15:0]            tx_data_i,
-    logic                   tx_data_oe_i,
-    logic [1:0]             tx_rwds_i,
-    logic                   tx_rwds_oe_i,
+    input  logic [15:0]            tx_data_i,
+    input  logic                   tx_data_oe_i,
+    input  logic [1:0]             tx_rwds_i,
+    input  logic                   tx_rwds_oe_i,
 
-    logic                   rx_clk_ena_i,
-    logic [15:0]            rx_data_o,
-    logic                   rx_valid_o,
-    logic                   rx_ready_i,
+    input  logic                   rx_clk_ena_i,
+    output logic [15:0]            rx_data_o,
+    output logic                   rx_valid_o,
+    input  logic                   rx_ready_i,
     // Physical interace: facing HyperBus
     output logic [NumChips-1:0]    hyper_cs_no,
     output logic                   hyper_ck_o,
@@ -116,12 +120,18 @@ module hyperbus_trx #(
         end
     end
 
+    // Sample RWDS on demand for extra latency determination
+    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_rwds_sample
+        if (~rst_ni)                rwds_sample_o <= '0;
+        else if (rwds_sample_ena_i) rwds_sample_o <= hyper_rwds_i;
+    end
+
     // ========
     //    RX
     // ========
 
     // Synchronize RX clock enable into RWDS domain
-    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_tx_delay
+    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_rx_delay
         if (~rst_ni)    rx_rwds_clk_ena <= '0;
         else            rx_rwds_clk_ena <= rx_clk_ena_i;
     end
@@ -130,10 +140,10 @@ module hyperbus_trx #(
     assign rx_rwds_clk_orig = hyper_rwds_i & rx_rwds_clk_ena;
 
      // Reset RX state on async reset or on gated clock (whenever inactive)
-    assign rx_rwds_soft_rst = ~rst_ni | (~read_clk_en_i & ~test_mode_i);
+    assign rx_rwds_soft_rst = ~rst_ni | (~rx_rwds_clk_ena & ~test_mode_i);
 
     // RX data is valid one cycle after each RX soft reset
-    always_ff @(posedge clk_rwds or posedge rx_rwds_soft_rst) begin : proc_read_in_valid
+    always_ff @(posedge rx_rwds_clk or posedge rx_rwds_soft_rst) begin : proc_read_in_valid
         if (rx_rwds_soft_rst)   rx_rwds_data_valid <= 1'b0;
         else                    rx_rwds_data_valid <= 1'b1;
     end
@@ -142,8 +152,8 @@ module hyperbus_trx #(
     tc_clk_mux2 i_rx_rwds_clk_mux (
         .clk0_i    ( rx_rwds_clk_orig   ),
         .clk1_i    ( clk_test_i         ),
-        .clk_sel_i ( test_mode_i        )
-        .clk_o     ( rx_rwds_clk        ),
+        .clk_sel_i ( test_mode_i        ),
+        .clk_o     ( rx_rwds_clk        )
     );
 
     // Data input DDR converters

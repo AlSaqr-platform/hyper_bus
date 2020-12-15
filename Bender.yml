@@ -10,19 +10,20 @@ dependencies:
   common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.19.0 }
   axi:                 { git: "https://github.com/pulp-platform/axi.git",                version: 0.23.1 }
   tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.1  }
-  register_interface:  { git: "https://github.com/pulp-platform/register_interface.git", rev: master } # TODO: fix this to meaningful commit?
+  register_interface:  { git: "https://github.com/pulp-platform/register_interface.git", rev: master     } # TODO: fix this to meaningful commit?
 
 sources:
   files:
     # Level 0
     - src/hyperbus_pkg.sv
     - src/hyperbus_ddr_in.sv
-    # Level 1
     - src/hyperbus_clock_diff_out.sv
     - src/hyperbus_ddr_out.sv
-    - src/hyperbus_read_clk_rwds.sv
-    # Level 2
+    # TODO
     - src/hyperbus_delay.sv
+    # Level 1
+    - src/hyperbus_trx.sv
+    # Level 2
     - src/hyperbus_clk_gen.sv
     - src/hyperbus_cfg_regs.sv
     - src/hyperbus_phy.sv

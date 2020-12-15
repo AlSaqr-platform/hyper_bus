@@ -213,10 +213,7 @@ module fixture_hyperbus #(
         .hyper_dq_i             ( hyper_dq_i            ),
         .hyper_dq_o             ( hyper_dq_o            ),
         .hyper_dq_oe_o          ( hyper_dq_oe           ),
-        .hyper_reset_no         ( hyper_reset_n_wire    ),
-        .debug_hyper_rwds_oe_o  ( ),
-        .debug_hyper_dq_oe_o    ( ),
-        .debug_hyper_phy_state_o( )
+        .hyper_reset_no         ( hyper_reset_n_wire    )
     );
 
     // modell
@@ -293,7 +290,7 @@ module fixture_hyperbus #(
     //    // #200us;
     //    // repeat (50) @(posedge sys_clk);
     //    // rand_axi_master.run(2, 0);
-    // 
+    //
     //    scoreboard.reset();
     //    scoreboard.enable_all_checks();
     //    scoreboard.monitor();
@@ -310,7 +307,7 @@ module fixture_hyperbus #(
     //     rand_axi_master.run(reads, writes);
     // endtask
 
-    
+
     // axi read task
     task read_axi;
         input axi_addr_t      raddr;
@@ -362,7 +359,7 @@ module fixture_hyperbus #(
         $display("%p", b_beat);
 
     endtask
-    
+
 
 endmodule : fixture_hyperbus
 

@@ -7,518 +7,310 @@
 // work. Any reuse/redistribution is strictly forbidden without written
 // permission from ETH Zurich.
 
-// Author:
-// Date:
-// Description: Connect the AXI interface with the actual HyperBus
-`timescale 1ps/1ps
+// Description: The HyperBus PHY
 
-module hyperbus_phy #(
-    parameter NumChips = 2,
-    parameter WaitCycles = 6
+// Author: Armin Berger <bergerar@ethz.ch>
+// Author: Stephan Keck <kecks@ethz.ch>
+// Author: Thomas Benz <tbenz@iis.ee.ethz.ch>
+// Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
+
+// TODO: hyperflash!!!!
+// TODO: rename, change t_cs_max to t_burst_max
+
+module hyperbus_phy import hyperbus_pkg::*; #(
+    parameter int unsigned NumChips     = 2,
+    parameter int unsigned TimerWidth   = 4
 )(
-    input  logic                   clk0,
-    input  logic                   clk90,
-    input  logic                   rst_ni,
-    input  logic                   clk_test,
-    input  logic                   test_mode_i,
+    input  logic                clk_0_i,
+    input  logic                clk_90_i,
+    input  logic                rst_ni,
+    input  logic                clk_test_i,
+    input  logic                test_mode_i,
     // Config registers
-    input  hyperbus_pkg::hyper_cfg_t    cfg,
+    input  hyper_cfg_t          cfg_i,
     // Transactions
-    input  logic                        trans_valid_i,
-    output logic                        trans_ready_o,
-    input  hyperbus_pkg::hyper_tf_t     trans_i,
-    input  logic [NumChips-1:0]         trans_cs_i,
+    input  logic                trans_valid_i,
+    output logic                trans_ready_o,
+    input  hyper_tf_t           trans_i,            // TODO: increase burst width!
+    input  logic [NumChips-1:0] trans_cs_i,
     // Transmitting channel
-    input  logic                        tx_valid_i,
-    output logic                        tx_ready_o,
-    input  hyperbus_pkg::hyper_tx_t     tx_i,
+    input  logic                tx_valid_i,
+    output logic                tx_ready_o,
+    input  hyper_tx_t           tx_i,
     // Receiving channel
-    output logic                        rx_valid_o,
-    input  logic                        rx_ready_i,
-    output hyperbus_pkg::hyper_rx_t     rx_o,
+    output logic                rx_valid_o,
+    input  logic                rx_ready_i,
+    output hyper_rx_t           rx_o,
     // B response
-    output logic                        b_valid_o,
-    input  logic                        b_ready_i,   // TODO TODO TODO: Why TF was this not here??
-    output hyperbus_pkg::hyper_b_t      b_o,
+    output logic                b_valid_o,
+    input  logic                b_ready_i,
+    output hyper_b_t            b_o,
     // Physical interface
-    output logic [NumChips-1:0]    hyper_cs_no,
-    output logic                   hyper_ck_o,
-    output logic                   hyper_ck_no,
-    output logic                   hyper_rwds_o,
-    input  logic                   hyper_rwds_i,
-    output logic                   hyper_rwds_oe_o,
-    input  logic [7:0]             hyper_dq_i,
-    output logic [7:0]             hyper_dq_o,
-    output logic                   hyper_dq_oe_o,
-    output logic                   hyper_reset_no,
-    // Debug
-    output logic                       debug_hyper_rwds_oe_o,
-    output logic                       debug_hyper_dq_oe_o,
-    output hyperbus_pkg::hyper_trans_t debug_hyper_phy_state_o
+    output logic [NumChips-1:0] hyper_cs_no,
+    output logic                hyper_ck_o,
+    output logic                hyper_ck_no,
+    output logic                hyper_rwds_o,
+    input  logic                hyper_rwds_i,
+    output logic                hyper_rwds_oe_o,
+    input  logic [7:0]          hyper_dq_i,
+    output logic [7:0]          hyper_dq_o,
+    output logic                hyper_dq_oe_o,
+    output logic                hyper_reset_no
 );
 
-    logic [47:0] cmd_addr;
-    logic [15:0] data_out;
-    logic [1:0]  data_rwds_out;
-    logic [15:0] CA_out;
-    logic [1:0]  cmd_addr_sel;
-    logic [15:0] write_data;
-    logic [1:0]  write_strb;
-    logic [15:0] cs_max;
-    logic        write_valid;
+    // PHY state
+    hyper_phy_state_t       state_d,    state_q;
+    logic [TimerWidth-1:0]  timer_d,    timer_q;
+    hyper_tf_t              tf_d,       tf_q;
+    logic [NumChips-1:0]    cs_d,       cs_q;
 
+    // Auxiliar control signals
+    logic ctl_write_zero_lat;
+    logic ctl_add_latency;
+    logic ctl_burst_last;
+    logic ctl_tf_burst_last;
+    logic ctl_tf_burst_done;
+    logic ctl_timer_one;
+    logic ctl_timer_zero;
+    logic ctl_timer_rwr_done;
+    logic ctl_read_ena;
+    logic ctl_write_ena;
 
-    //local copy of transaction
-    (* dont_touch = "true" *) logic [31:0]            local_address;
-    logic [NumChips-1:0]    local_cs;
-    logic                   local_write;
-    axi_pkg::len_t          local_burst;
-    logic                   local_burst_type;
-    logic                   local_address_space;
+    // Command-address
+    hyper_phy_ca_t  ca;
+    logic [15:0]    ca_tx_data;
 
-    (* keep = "true" *) logic clock_enable;
-    logic en_cs;
-    logic en_ddr_in;
-    logic en_read_transaction;
-    logic hyper_rwds_oe_n;
-    logic hyper_dq_oe_n;
-    logic mode_write;
-    logic read_clk_en;
-    logic read_clk_en_n;
-    (* keep = "true" *) logic read_fifo_rst;
+    // Transciever IO
+    logic           trx_clk_ena;
+    logic           trx_cs_ena;
+    logic           trx_rwds_sample;
+    logic           trx_rwds_sample_ena;
+    logic [15:0]    trx_tx_data;
+    logic           trx_tx_data_oe;
+    logic [1:0]     trx_tx_rwds;
+    logic           trx_tx_rwds_oe;
+    logic           trx_rx_clk_ena;
+    logic [15:0]    trx_rx_data;
+    logic           trx_rx_valid;
+    logic           trx_rx_ready;
 
-    (* keep = "true" *) logic [3:0] wait_cnt;
-    axi_pkg::len_t burst_cnt;
+    // =================
+    //    Transciever
+    // =================
 
-
-    (* keep = "true" *) hyperbus_pkg::hyper_trans_t hyper_trans_state;
-
-    hyperbus_clock_diff_out clock_diff_out_i (
-        .in_i   ( clk90        ),
-        .en_i   ( clock_enable ),
-        .out_o  ( hyper_ck_o   ),
-        .out_no ( hyper_ck_no  )
+    hyperbus_trx #(
+        .NumChips       ( NumChips )
+    ) i_trx (
+        .clk_0_i,
+        .clk_90_i,
+        .clk_test_i,
+        .rst_ni,
+        .test_mode_i,
+        .clk_ena_i          ( trx_clk_ena           ),
+        .cs_i               ( cs_q                  ),
+        .cs_ena_i           ( trx_cs_ena            ),
+        .rwds_sample_o      ( trx_rwds_sample       ),
+        .rwds_sample_ena_i  ( trx_rwds_sample_ena   ),
+        .tx_data_i          ( trx_tx_data           ),
+        .tx_data_oe_i       ( trx_tx_data_oe        ),
+        .tx_rwds_i          ( trx_tx_rwds           ),
+        .tx_rwds_oe_i       ( trx_tx_rwds_oe        ),
+        .rx_clk_ena_i       ( trx_rx_clk_ena        ),
+        .rx_data_o          ( trx_rx_data           ),
+        .rx_valid_o         ( trx_rx_valid          ),
+        .rx_ready_i         ( trx_rx_ready          ),
+        .hyper_cs_no,
+        .hyper_ck_o,
+        .hyper_ck_no,
+        .hyper_rwds_o,
+        .hyper_rwds_i,
+        .hyper_rwds_oe_o,
+        .hyper_dq_i,
+        .hyper_dq_o,
+        .hyper_dq_oe_o,
+        .hyper_reset_no
     );
 
-    assign hyper_reset_no = rst_ni;
+    // ==============
+    //    Dataflow
+    // ==============
 
-    //selecting ram must be in sync with future hyper_ck_o
-    always_ff @(posedge clk90 or negedge rst_ni) begin : proc_hyper_cs_no
-        if(~rst_ni) begin
-            hyper_cs_no <= {NumChips{1'b1}};
-        end else begin
-            hyper_cs_no <= en_cs ? ~local_cs : {NumChips{1'b1}};
+    // Command-address
+    assign ca = hyper_phy_ca_t '{
+        write:      tf_q.write,
+        addr_space: tf_q.address_space,
+        burst_type: tf_q.burst_type,
+        addr_upper: tf_q.address[31:3],
+        reserved:   '0,
+        addr_lower: tf_q.address[2:0]
+    };
+
+    // Data to send in CA phase: use timer to select word
+    assign ca_tx_data = ca[(timer_q << 4) +: 16];
+
+    // Write dataflow
+    assign trx_tx_data  = (state_q == SendCA) ? ca_tx_data : tx_i.data;
+    assign trx_tx_rwds  =  tx_i.strb;
+    assign b_o          = hyper_b_t'{
+        last:   ctl_tf_burst_last,
+        error:  1'b0    // TODO
+    };
+
+    always_comb begin : proc_comb_tx
+        trx_tx_data_oe  = 1'b0;
+        trx_tx_rwds_oe  = 1'b0;
+        tx_ready_o      = 1'b0;
+        ctl_write_ena   = 1'b0;
+        if (state_q == SendCA) begin
+            trx_tx_data_oe  = 1'b1;
+        end else if (state_q == Write) begin
+            trx_tx_data_oe  = 1'b1;
+            trx_tx_rwds_oe  = 1'b1;
+            tx_ready_o      = 1'b1;
+            ctl_write_ena   = tx_valid_i & tx_ready_o;
         end
     end
 
-    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_rwds_oe
-        if(~rst_ni) begin
-            hyper_rwds_oe_o <= 0;
-            hyper_dq_oe_o <= 0;
-            read_clk_en <= 0;
-        end else begin
-            hyper_rwds_oe_o <= hyper_rwds_oe_n;
-            hyper_dq_oe_o <= hyper_dq_oe_n;
-            read_clk_en <= read_clk_en_n;
+    // Read dataflow
+    assign rx_o = hyper_rx_t'{
+        data:   trx_rx_data,
+        last:   ctl_tf_burst_last,
+        error:  1'b0    // TODO
+    };
+
+    always_comb begin : proc_comb_rx
+        rx_valid_o      = 1'b0;
+        trx_rx_ready    = 1'b0;
+        ctl_read_ena    = 1'b0;
+        if (state_q == Read) begin
+            trx_rx_ready    = rx_ready_i;
+            rx_valid_o      = trx_rx_valid;
+            ctl_read_ena    = rx_valid_o & rx_ready_i;
         end
     end
 
-    genvar i;
-    generate
-      for(i=0; i<=7; i++)
-      begin: ddr_out_bus
-        hyperbus_ddr_out ddr_data (
-          .rst_ni (rst_ni),
-          .clk_i (clk0),
-          .d0_i (data_out[i+8]),
-          .d1_i (data_out[i]),
-          .q_o (hyper_dq_o[i])
-        );
-      end
-    endgenerate
+    // =============
+    //    Control
+    // =============
 
-    assign write_data = tx_i.data;
-    assign write_strb = ~tx_i.strb;
-    assign write_valid = tx_valid_i && tx_ready_o;
+    // Auxiliary control signals
+    assign ctl_write_zero_lat   = tf_q.address_space & tf_q.write;
+    assign ctl_add_latency      = trx_rwds_sample | cfg_i.en_latency_additional;
 
-    assign data_out = mode_write ? write_data : CA_out;
-    assign data_rwds_out = mode_write ? write_strb : 2'b00; //RWDS low before end of initial latency
+    assign ctl_tf_burst_last    = (tf_q.burst == 1);
+    assign ctl_tf_burst_done    = (tf_q.burst == 0);
 
-    hyperbus_ddr_out ddr_data_strb (
-      .rst_ni (rst_ni),
-      .clk_i (clk0),
-      .d0_i (data_rwds_out[1]),
-      .d1_i (data_rwds_out[0]),
-      .q_o (hyper_rwds_o)
-    );
+    assign ctl_timer_rwr_done   = (timer_q <= 3);
+    assign ctl_timer_one        = (timer_q == 1);
+    assign ctl_timer_zero       = (timer_q == 0);
 
-    // Generate command address word
-    assign cmd_addr[47] = ~local_write;
-    assign cmd_addr[46] = local_address_space;
-    assign cmd_addr[45] = local_burst_type;
-    assign cmd_addr[44:16] = local_address[31:3];
-    assign cmd_addr[15:3] = '0;
-    assign cmd_addr[2:0] = local_address[2:0];
+    assign ctl_burst_last       = ctl_timer_one | ctl_tf_burst_last;
 
-    logic read_fifo_valid;
-
-    //Takes output from hyperram, includes CDC FIFO
-    hyperbus_read_clk_rwds i_read_clk_rwds (
-        .clk0                     ( clk0                        ),
-        .rst_ni                   ( rst_ni                      ),
-        .clk_test                 ( clk_test                    ),
-        .test_en_ti               ( test_mode_i                 ),
-        .config_t_rwds_delay_line ( cfg.t_rwds_delay_line       ),
-        .hyper_rwds_i             ( hyper_rwds_i                ),
-        .hyper_dq_i               ( hyper_dq_i                  ),
-        .read_clk_en_i            ( read_clk_en                 ),
-        .en_ddr_in_i              ( en_ddr_in                   ),
-        .ready_i                  ( rx_ready_i || read_fifo_rst ),
-        .data_o                   ( rx_o.data                   ),
-        .valid_o                  ( read_fifo_valid             )
-    );
-
-    assign rx_valid_o = (read_fifo_valid && !read_fifo_rst) || rx_o.error;
-    assign rx_o.last =  (burst_cnt == axi_pkg::len_t'(0));
-
-
-    logic hyper_rwds_i_syn;
-    (* keep = "true" *) logic en_rwds;
-
-    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_rwds_i
-        if(~rst_ni) begin
-            hyper_rwds_i_syn <= 0;
-        end else if (en_rwds) begin
-            hyper_rwds_i_syn <= hyper_rwds_i;
-        end
-    end
-
-    always @* begin
-        case(cmd_addr_sel)
-            0: CA_out = cmd_addr[47:32];
-            1: CA_out = cmd_addr[31:16];
-            2: CA_out = cmd_addr[15:0];
-            default: CA_out = 16'b0;
-        endcase // cmd_addr_sel
-    end
-
-    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_hyper_trans_state
-        if(~rst_ni) begin
-            hyper_trans_state <= hyperbus_pkg::STANDBY;
-            wait_cnt <= WaitCycles;
-            burst_cnt <= axi_pkg::len_t'(0);
-            cmd_addr_sel <= 2'b11;
-            en_cs <= 1'b0;
-            clock_enable <= 1'b0;
-        end else begin
-            clock_enable <= 1'b0;
-
-            case(hyper_trans_state)
-                hyperbus_pkg::STANDBY: begin
-                    if(trans_valid_i) begin
-                        hyper_trans_state <= hyperbus_pkg::SET_CMD_ADDR;
-                        cmd_addr_sel <= 1'b0;
-                        en_cs <= 1'b1;
-                    end
+    // FSM logic
+    always_comb begin : proc_comb_phy_fsm
+        // Default outputs
+        trans_ready_o       = 1'b0;
+        b_valid_o           = 1'b0;
+        trx_cs_ena          = 1'b1;
+        trx_clk_ena         = 1'b0;
+        trx_rx_clk_ena      = 1'b0;
+        trx_rwds_sample_ena = 1'b0;
+        // Default next state
+        state_d = state_q;
+        timer_d = timer_q - 1;
+        tf_d    = tf_q;
+        cs_d    = cs_q;
+        // State-dependent logic
+        case (state_q)
+            Idle: begin
+                trx_cs_ena  = 1'b0;
+                timer_d     = timer_q;
+                // Signal ready for, pop next transfer
+                 trans_ready_o   = 1'b1;
+                if (trans_valid_i) begin
+                    tf_d    = trans_i;
+                    cs_d    = trans_cs_i;
+                    state_d = WaitCSS;
                 end
-                hyperbus_pkg::SET_CMD_ADDR: begin
-                    cmd_addr_sel <= cmd_addr_sel + 1;
-                    hyper_trans_state <= hyperbus_pkg::CMD_ADDR;
-                    clock_enable <= 1'b1;
-                end
-                hyperbus_pkg::CMD_ADDR: begin
-                     clock_enable <= 1'b1;
-                    if(cmd_addr_sel == 3) begin
-                        wait_cnt <= cfg.t_latency_access - 2;
-                        hyper_trans_state <= hyperbus_pkg::WAIT2;
+            end
+            WaitCSS: begin
+                // Wait for one cycle (t_CSS), then send 3 CA words
+                timer_d = 2;
+                state_d = SendCA;
+            end
+            SendCA: begin
+                // Dataflow handled outside FSM
+                trx_clk_ena         = 1'b1;
+                trx_rwds_sample_ena = ~ctl_write_zero_lat;
+                if (ctl_timer_zero) begin
+                    if (ctl_write_zero_lat) begin
+                        timer_d = cfg_i.t_cs_max;
+                        state_d = Write;
                     end else begin
-                        cmd_addr_sel <= cmd_addr_sel + 1;
+                        timer_d = TimerWidth'(cfg_i.t_latency_access) << ctl_add_latency;
+                        state_d = WaitLatAccess;
                     end
-                    if(cmd_addr_sel == 2) begin
-                        if (local_address_space && local_write) begin //Write to memory config register
-                            wait_cnt <= 1;
-                            hyper_trans_state <= hyperbus_pkg::REG_WRITE;
-                        end
-                    end
-                end
-                hyperbus_pkg::REG_WRITE: begin
-                    clock_enable <= 1'b1;
-                    wait_cnt <= wait_cnt - 1;
-                    if(wait_cnt == 4'h0) begin
-                        clock_enable <= 1'b0;
-                        wait_cnt <= cfg.t_read_write_recovery - 1;
-                        // hyper_trans_state <= hyperbus_pkg::END;
-                        hyper_trans_state <= hyperbus_pkg::WAIT_FOR_B;
-                    end
-                end
-                hyperbus_pkg::WAIT2: begin  //Additional latency (If RWDS HIGH)
-                    wait_cnt <= wait_cnt - 1;
-                    clock_enable <= 1'b1;
-                    if(wait_cnt == 4'h0) begin
-                        wait_cnt <= cfg.t_latency_access - 1;
-                        hyper_trans_state <= hyperbus_pkg::WAIT;
-                    end
-                    if(wait_cnt == cfg.t_latency_access - 2) begin
-                        if(hyper_rwds_i_syn || cfg.en_latency_additional) begin //Check if additinal latency is nesessary (RWDS high or config)
-                            hyper_trans_state <= hyperbus_pkg::WAIT2;
-                        end else begin
-                            hyper_trans_state <= hyperbus_pkg::WAIT;
-                        end
-                    end
-                end
-                hyperbus_pkg::WAIT: begin  //t_ACC
-                    wait_cnt <= wait_cnt - 1;
-                    clock_enable <= 1'b1;
-                    if(wait_cnt == 4'h0) begin
-                        if (local_write) begin
-                            hyper_trans_state <= hyperbus_pkg::DATA_W;
-                            if(write_valid) begin
-                                burst_cnt <= local_burst - 1;
-                            end else begin //Data to write not ready yet
-                                burst_cnt <= local_burst;
-                                clock_enable <= 1'b0;
-                            end
-                        end else begin
-                            burst_cnt <= local_burst - 1;
-                            hyper_trans_state <= hyperbus_pkg::DATA_R;
-                        end
-                    end
-                end
-                hyperbus_pkg::DATA_R: begin
-                    clock_enable <= 1'b1;
-                    if(rx_valid_o && rx_ready_i) begin
-                        if(burst_cnt == axi_pkg::len_t'(0)) begin
-                            clock_enable <= 1'b0;
-                            hyper_trans_state <= hyperbus_pkg::END_R;
-                        end else begin
-                            burst_cnt <= burst_cnt - 1;
-                        end
-                    end else if(~rx_ready_i) begin
-                        hyper_trans_state <= hyperbus_pkg::WAIT_R;
-                    end
-                end
-                hyperbus_pkg::DATA_W: begin
-                    if(tx_valid_i && tx_ready_o) begin
-                        clock_enable <= 1'b1;
-                        burst_cnt <= burst_cnt - 1;
-                    end else begin
-                        clock_enable <= 1'b0;
-                    end
-                    if(burst_cnt == 0) begin
-                        wait_cnt <= cfg.t_read_write_recovery - 1;
-                        // hyper_trans_state <= hyperbus_pkg::END;
-                        hyper_trans_state <= hyperbus_pkg::WAIT_FOR_B;
-                    end
-                end
-                hyperbus_pkg::WAIT_R: begin
-                    if(rx_valid_o && rx_ready_i) begin
-                        burst_cnt <= burst_cnt - 1;
-                    end
-                    if(rx_ready_i) begin
-                        hyper_trans_state <= hyperbus_pkg::DATA_R;
-                    end
-                end
-                hyperbus_pkg::WAIT_W: begin
-                    if(tx_valid_i) begin
-                        hyper_trans_state <= hyperbus_pkg::DATA_W;
-                    end
-                end
-                hyperbus_pkg::ERROR: begin
-                    en_cs <= 1'b0;
-                    if (~local_write) begin //read
-                        if (rx_ready_i) begin
-                            burst_cnt <= burst_cnt - 1;
-                            if(burst_cnt == axi_pkg::len_t'(0)) begin
-                                wait_cnt <= cfg.t_read_write_recovery - 2;
-                                hyper_trans_state <= hyperbus_pkg::END;
-                            end
-                        end
-                    end else begin  //write
-                        if (~tx_valid_i) begin
-                            wait_cnt <= cfg.t_read_write_recovery - 2;
-                            hyper_trans_state <= hyperbus_pkg::END;
-                        end
-                    end
-                end
-                hyperbus_pkg::END_R: begin
-                    wait_cnt <= cfg.t_read_write_recovery - 2;
-                    hyper_trans_state <= hyperbus_pkg::END;
-                end
-                hyperbus_pkg::END: begin
-                    en_cs <= 1'b0;
-                    if(wait_cnt == 4'h0) begin //t_RWR
-                        hyper_trans_state <= hyperbus_pkg::STANDBY;
-                    end else begin
-                        wait_cnt <= wait_cnt - 1;
-                    end
-                end
-                default: begin
-                    hyper_trans_state <= hyperbus_pkg::STANDBY;
-                end
-                hyperbus_pkg::WAIT_FOR_B: begin
-                    en_cs <= 1'b0;
-                    if (~b_ready_i) begin
-                        hyper_trans_state <= hyperbus_pkg::WAIT_FOR_B;
-                    end else begin
-                        hyper_trans_state <= hyperbus_pkg::END;
-                    end 
-                end
-            endcase
-
-            if(cs_max == 1) begin
-                hyper_trans_state <= hyperbus_pkg::ERROR;
-            end
-        end
-    end
-
-    always @* begin
-        //defaults
-        en_ddr_in = 1'b0;
-        trans_ready_o = 1'b0;
-        tx_ready_o = 1'b0;
-        hyper_dq_oe_n = 1'b0;
-        hyper_rwds_oe_n = 1'b0;
-        en_read_transaction = 1'b0; //Read the transaction
-        read_clk_en_n = 1'b0;
-        read_fifo_rst = 1'b0;
-        mode_write = 1'b0;
-        en_rwds = 1'b0;
-        rx_o.error = 1'b0;
-        b_valid_o = 1'b0;
-        b_o.last = 1'b0;
-        b_o.error = 1'b0;
-
-        case(hyper_trans_state)
-            hyperbus_pkg::STANDBY: begin
-                en_read_transaction = 1'b1;
-                hyper_dq_oe_n = 1'b1;
-            end
-            hyperbus_pkg::SET_CMD_ADDR: begin
-                trans_ready_o = 1'b1;
-                hyper_dq_oe_n = 1'b1;
-            end
-            hyperbus_pkg::CMD_ADDR: begin
-                hyper_dq_oe_n = 1'b1;
-                if (cmd_addr_sel == cfg.t_variable_latency_check) begin
-                    en_rwds = 1'b1;
                 end
             end
-            hyperbus_pkg::REG_WRITE: begin
-                hyper_dq_oe_n = 1'b1;
-                mode_write = 1'b1;
-                // b_valid_o = 1'b1;
-                // b_o.last = 1'b1;
-                if(wait_cnt == 4'h1) begin
-                    tx_ready_o = 1'b1;
+            WaitLatAccess: begin
+                trx_clk_ena = 1'b1;
+                if (ctl_timer_one) begin
+                    timer_d = cfg_i.t_cs_max;
+                    state_d = tf_q.write ? Write : Read;
                 end
             end
-            hyperbus_pkg::WAIT: begin  //t_ACC
-                if(local_write == 1'b1) begin
-                    if(wait_cnt == 4'b0001) begin
-                        hyper_rwds_oe_n = 1'b1;
-                        hyper_dq_oe_n = 1'b1;
-                    end
-                    if (wait_cnt == 4'b0000) begin
-                        hyper_rwds_oe_n = 1'b1;
-                        hyper_dq_oe_n = 1'b1;
-                        tx_ready_o = 1'b1;
-                        mode_write = 1'b1;
+            Read: begin
+                // TODO: ensure FIFO sufficiently vacant after resuming after stall
+                // Dataflow handled outside FSM
+                trx_rx_clk_ena = 1'b1;
+                if (ctl_read_ena) begin
+                    trx_clk_ena = 1'b1;
+                    if (ctl_burst_last) begin
+                        timer_d = cfg_i.t_read_write_recovery;
+                        state_d = WaitRWR;
                     end
                 end
-                else begin
-                    read_clk_en_n = 1'b1;
+            end
+            Write: begin
+                // Dataflow handled outside FSM
+                if (ctl_write_ena) begin
+                    trx_clk_ena = 1'b1;
+                    if (ctl_burst_last) begin
+                        timer_d = cfg_i.t_read_write_recovery;
+                        state_d = SendB;
+                    end
                 end
             end
-            hyperbus_pkg::DATA_R: begin
-                en_ddr_in = 1'b1;
-                read_clk_en_n = 1'b1;
-            end
-            hyperbus_pkg::WAIT_R: begin
-                en_ddr_in = 1'b1;
-                read_clk_en_n = 1'b1;
-            end
-            hyperbus_pkg::DATA_W: begin
-                hyper_dq_oe_n = 1'b1;
-                hyper_rwds_oe_n = 1'b1;
-
-                // if(burst_cnt == 0) begin
-                //     
-                // end
-
-                tx_ready_o = 1'b1;
-
-                mode_write = 1'b1;
-                // if(burst_cnt == 0) begin
-                //     b_valid_o = 1'b1;
-                //     b_o.last = 1'b1;
-                // end
-            end
-            hyperbus_pkg::WAIT_W: begin
-                hyper_dq_oe_n = 1'b1;
-                hyper_rwds_oe_n = 1'b1;
-                tx_ready_o = 1'b1;
-                mode_write = 1'b1;
-            end
-            hyperbus_pkg::ERROR: begin //Recover state after timeout for t_CSM
-                read_fifo_rst = 1'b1;
-                if(~local_write) begin
-                    rx_o.error = 1'b1;
-                end else begin
-                    // should never happen :S
-                    $fatal(1, "Too bad for you!");
-                    // hyper_trans_state <= hyperbus_pkg::WAIT_FOR_B;
-                    // tx_ready_o = 1'b1;
-                    // b_valid_o = 1'b1;
-                    // b_o.error = 1'b1;
-                end
-            end
-            hyperbus_pkg::END_R: begin
-                read_clk_en_n = 1'b1;
-                read_fifo_rst = 1'b1;
-            end
-            hyperbus_pkg::END: begin
-                read_fifo_rst = 1'b1;
-                en_read_transaction = 1'b1;
-            end
-            hyperbus_pkg::WAIT_FOR_B: begin
+            SendB: begin
+                trx_cs_ena = 1'b0;
+                // Saturate timer to prevent overflow
+                if (ctl_timer_rwr_done) timer_d = timer_q;
+                // Move on to RWR once B response sent
                 b_valid_o = 1'b1;
-                b_o.last = 1'b1;
+                if (b_ready_i) state_d = WaitRWR;
+            end
+            WaitRWR: begin
+                trx_cs_ena = 1'b0;
+                if (ctl_timer_rwr_done) begin
+                    state_d = ctl_tf_burst_done ? Idle : WaitCSS;
+                end
             end
         endcase
     end
 
-    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_cs_max
-        if(~rst_ni) begin
-            cs_max <= 'b0;
+    // PHY state registers, including timer and transfer
+    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_phy
+        if (~rst_ni) begin
+            state_q <= Idle;
+            timer_q <= '0;
+            tf_q    <= hyper_tf_t'{burst_type: 1'b1, default:'0};
+            cs_q    <= '0;
         end else begin
-            if (en_cs) begin
-                cs_max <= cs_max - 1;
-            end else begin
-                cs_max <= cfg.t_cs_max - 1; //30
-            end
+            state_q <= state_d;
+            timer_q <= timer_d;
+            tf_q    <= tf_d;
+            cs_q    <= cs_d;
         end
     end
-
-    always_ff @(posedge clk0 or negedge rst_ni) begin : proc_local_transaction
-        if(~rst_ni) begin
-            local_address <= 32'h0;
-            local_cs <= {NumChips{1'b0}};
-            local_write <= 1'b0;
-            local_burst <= axi_pkg::len_t'(0);
-            local_address_space <= 1'b0;
-            local_burst_type <= 1'b1;
-        end else if(en_read_transaction) begin
-            local_address <= trans_i.address;
-            local_cs <= trans_cs_i;
-            local_write <= trans_i.write;
-            local_burst <= trans_i.burst;
-            local_burst_type <= trans_i.burst_type;
-            local_address_space <= trans_i.address_space;
-        end
-    end
-
-    assign debug_hyper_rwds_oe_o = hyper_rwds_oe_o;
-    assign debug_hyper_dq_oe_o = hyper_dq_oe_o;
-    assign debug_hyper_phy_state_o = hyper_trans_state;
 
 endmodule

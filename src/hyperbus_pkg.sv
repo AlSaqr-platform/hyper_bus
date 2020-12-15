@@ -36,20 +36,25 @@ package hyperbus_pkg;
     } hyper_tf_t;
 
     typedef enum logic[3:0] {
-        STANDBY,
-        SET_CMD_ADDR, 
-        CMD_ADDR, 
-        REG_WRITE, 
-        WAIT2, 
-        WAIT, 
-        DATA_W, 
-        DATA_R, 
-        WAIT_R, 
-        WAIT_W, 
-        ERROR, 
-        END_R, 
-        END,
-        WAIT_FOR_B
-    } hyper_trans_t;
+        Idle,
+        WaitCSS,
+        SendCA,
+        WaitLatAccess,
+        Read,
+        Write,
+        SendB,
+        WaitRWR
+    } hyper_phy_state_t;
+
+
+    typedef struct packed {
+        logic           write;
+        logic           addr_space;
+        logic           burst_type;
+        logic [28:0]    addr_upper;
+        logic           reserved;
+        logic [2:0]     addr_lower;
+    } hyper_phy_ca_t;
+
 
 endpackage

@@ -37,11 +37,7 @@ module hyperbus #(
     input  logic [7:0]                  hyper_dq_i,
     output logic [7:0]                  hyper_dq_o,
     output logic                        hyper_dq_oe_o,
-    output logic                        hyper_reset_no,
-    // Debug interface
-    output logic                        debug_hyper_rwds_oe_o,
-    output logic                        debug_hyper_dq_oe_o,
-    output hyperbus_pkg::hyper_trans_t  debug_hyper_phy_state_o
+    output logic                        hyper_reset_no
 );
 
     // Combined transfer type for CDC
@@ -173,14 +169,14 @@ module hyperbus #(
     hyperbus_phy #(
         .NumChips       ( NumChips          )
     ) i_phy (
-        .clk0           ( clk0              ),
-        .clk90          ( clk90             ),
+        .clk_0_i        ( clk0              ),
+        .clk_90_i       ( clk90             ),
         .rst_ni         ( rst_phy_n         ),
 
-        .clk_test       ( clk_sys_i         ),
+        .clk_test_i     ( clk_sys_i         ),
         .test_mode_i    ( test_mode_i       ),
 
-        .cfg            ( cfg               ),
+        .cfg_i          ( cfg               ),
 
         .rx_o           ( phy_rx            ),
         .rx_valid_o     ( phy_rx_valid      ),
@@ -205,11 +201,7 @@ module hyperbus #(
         .hyper_dq_i         ( hyper_dq_i        ),
         .hyper_dq_o         ( hyper_dq_o        ),
         .hyper_dq_oe_o      ( hyper_dq_oe_o     ),
-        .hyper_reset_no     ( hyper_reset_no    ),
-
-        .debug_hyper_rwds_oe_o      ( debug_hyper_rwds_oe_o     ),
-        .debug_hyper_dq_oe_o        ( debug_hyper_dq_oe_o       ),
-        .debug_hyper_phy_state_o    ( debug_hyper_phy_state_o   )
+        .hyper_reset_no     ( hyper_reset_no    )
     );
 
     cdc_2phase #(
