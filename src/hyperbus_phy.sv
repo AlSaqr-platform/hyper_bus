@@ -44,7 +44,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // B response
     output logic                b_valid_o,
     input  logic                b_ready_i,
-    output hyper_b_t            b_o,
+    output hyper_b_t            b_error_o,
     // Physical interface
     output logic [NumChips-1:0] hyper_cs_no,
     output logic                hyper_ck_o,
@@ -64,12 +64,18 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     hyper_tf_t              tf_d,       tf_q;
     logic [NumChips-1:0]    cs_d,       cs_q;
 
+    // Whether B response is pending
+    logic b_pending_d, b_pending_q;
+    logic b_pending_set;
+    logic b_pending_clear;
+
     // Auxiliar control signals
     logic ctl_write_zero_lat;
     logic ctl_add_latency;
-    logic ctl_burst_last;
+    logic ctl_tx_burst_last;
     logic ctl_tf_burst_last;
     logic ctl_tf_burst_done;
+    logic ctl_timer_two;
     logic ctl_timer_one;
     logic ctl_timer_zero;
     logic ctl_timer_rwr_done;
@@ -137,7 +143,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
 
     // Command-address
     assign ca = hyper_phy_ca_t '{
-        write:      tf_q.write,
+        write:      ~tf_q.write,
         addr_space: tf_q.address_space,
         burst_type: tf_q.burst_type,
         addr_upper: tf_q.address[31:3],
@@ -146,15 +152,11 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     };
 
     // Data to send in CA phase: use timer to select word
-    assign ca_tx_data = ca[(timer_q << 4) +: 16];
+    assign ca_tx_data = ca[(8'(timer_q) << 4) +: 16];
 
     // Write dataflow
     assign trx_tx_data  = (state_q == SendCA) ? ca_tx_data : tx_i.data;
-    assign trx_tx_rwds  =  tx_i.strb;
-    assign b_o          = hyper_b_t'{
-        last:   ctl_tf_burst_last,
-        error:  1'b0    // TODO
-    };
+    assign trx_tx_rwds  =  ~tx_i.strb;
 
     always_comb begin : proc_comb_tx
         trx_tx_data_oe  = 1'b0;
@@ -166,8 +168,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         end else if (state_q == Write) begin
             trx_tx_data_oe  = 1'b1;
             trx_tx_rwds_oe  = 1'b1;
-            tx_ready_o      = 1'b1;
-            ctl_write_ena   = tx_valid_i & tx_ready_o;
+            tx_ready_o      = 1'b1;     // Memory always ready within HyperBus burst
+            ctl_write_ena   = tx_valid_i;
         end
     end
 
@@ -185,8 +187,19 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         if (state_q == Read) begin
             trx_rx_ready    = rx_ready_i;
             rx_valid_o      = trx_rx_valid;
-            ctl_read_ena    = rx_valid_o & rx_ready_i;
+            ctl_read_ena    = rx_ready_i;   // TODO: handle resume better
         end
+    end
+
+    // Write response dataflow
+    assign b_valid_o        = b_pending_q;
+    assign b_error_o        = 1'b0;            // TODO
+    assign b_pending_clear  = b_valid_o & b_ready_i;
+
+    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_b_pending
+        if (~rst_ni)                b_pending_q <= 1'b0;
+        else if (b_pending_set)     b_pending_q <= 1'b1;
+        else if (b_pending_clear)   b_pending_q <= 1'b0;
     end
 
     // =============
@@ -201,16 +214,17 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign ctl_tf_burst_done    = (tf_q.burst == 0);
 
     assign ctl_timer_rwr_done   = (timer_q <= 3);
+    assign ctl_timer_two         = (timer_q == 2);
     assign ctl_timer_one        = (timer_q == 1);
     assign ctl_timer_zero       = (timer_q == 0);
 
-    assign ctl_burst_last       = ctl_timer_one | ctl_tf_burst_last;
+    assign ctl_tx_burst_last       = ctl_timer_one | ctl_tf_burst_last;
 
     // FSM logic
     always_comb begin : proc_comb_phy_fsm
         // Default outputs
         trans_ready_o       = 1'b0;
-        b_valid_o           = 1'b0;
+        b_pending_set       = 1'b0;
         trx_cs_ena          = 1'b1;
         trx_clk_ena         = 1'b0;
         trx_rx_clk_ena      = 1'b0;
@@ -225,18 +239,15 @@ module hyperbus_phy import hyperbus_pkg::*; #(
             Idle: begin
                 trx_cs_ena  = 1'b0;
                 timer_d     = timer_q;
-                // Signal ready for, pop next transfer
+                // Signal ready for, pop next transfer if Write response sent
                  trans_ready_o   = 1'b1;
-                if (trans_valid_i) begin
+                if (trans_valid_i & ~b_pending_q) begin
                     tf_d    = trans_i;
                     cs_d    = trans_cs_i;
-                    state_d = WaitCSS;
+                    // Send 3 CA words (t_CSS respected through clock delay)
+                    timer_d = 2;
+                    state_d = SendCA;
                 end
-            end
-            WaitCSS: begin
-                // Wait for one cycle (t_CSS), then send 3 CA words
-                timer_d = 2;
-                state_d = SendCA;
             end
             SendCA: begin
                 // Dataflow handled outside FSM
@@ -254,7 +265,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
             end
             WaitLatAccess: begin
                 trx_clk_ena = 1'b1;
-                if (ctl_timer_one) begin
+                // Substract cycle for last CA and another for state delay
+                if (ctl_timer_two) begin
                     timer_d = cfg_i.t_cs_max;
                     state_d = tf_q.write ? Write : Read;
                 end
@@ -265,9 +277,9 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 trx_rx_clk_ena = 1'b1;
                 if (ctl_read_ena) begin
                     trx_clk_ena = 1'b1;
-                    if (ctl_burst_last) begin
-                        timer_d = cfg_i.t_read_write_recovery;
-                        state_d = WaitRWR;
+                    tf_d.burst  = tf_q.burst - 1;
+                    if (ctl_tx_burst_last) begin
+                        state_d = WaitXfer;
                     end
                 end
             end
@@ -275,24 +287,23 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 // Dataflow handled outside FSM
                 if (ctl_write_ena) begin
                     trx_clk_ena = 1'b1;
-                    if (ctl_burst_last) begin
-                        timer_d = cfg_i.t_read_write_recovery;
-                        state_d = SendB;
+                    tf_d.burst  = tf_q.burst - 1;
+                    if (ctl_tx_burst_last) begin
+                        b_pending_set   = 1'b1;
+                        state_d         = WaitXfer;
                     end
                 end
             end
-            SendB: begin
-                trx_cs_ena = 1'b0;
-                // Saturate timer to prevent overflow
-                if (ctl_timer_rwr_done) timer_d = timer_q;
-                // Move on to RWR once B response sent
-                b_valid_o = 1'b1;
-                if (b_ready_i) state_d = WaitRWR;
+            WaitXfer: begin
+                // Wait for FFed Clock and output to stop
+                // May have to be prolonged for potential future devices with t_CSH > 0
+                timer_d = cfg_i.t_read_write_recovery;
+                state_d = WaitRWR;
             end
             WaitRWR: begin
                 trx_cs_ena = 1'b0;
                 if (ctl_timer_rwr_done) begin
-                    state_d = ctl_tf_burst_done ? Idle : WaitCSS;
+                    state_d = ctl_tf_burst_done ? Idle : SendCA;
                 end
             end
         endcase

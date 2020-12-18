@@ -32,8 +32,9 @@ module hyperbus_tb;
 
         // 128 bit access
         fix.write_axi('h00, 0, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
-        /*fix.read_axi('h00, 0, 4);
+        fix.read_axi('h00, 0, 4);
 
+        /*
         // 64 bit access (aligned)
         fix.write_axi('h00, 0, 3, 'h5555_5555_5555_5555_4444_3333_2222_1111, 'h00ff);
         fix.write_axi('h08, 0, 3, 'h9999_8888_7777_6666_5555_5555_5555_5555, 'hff00);

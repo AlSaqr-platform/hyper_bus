@@ -65,7 +65,7 @@ module hyperbus #(
     hyperbus_pkg::hyper_tx_t    axi_tx;
     logic                       axi_tx_valid;
     logic                       axi_tx_ready;
-    hyperbus_pkg::hyper_b_t     axi_b;
+    logic                       axi_b_error;
     logic                       axi_b_valid;
     logic                       axi_b_ready;
     tf_cdc_t                    axi_tf_cdc;
@@ -79,7 +79,7 @@ module hyperbus #(
     hyperbus_pkg::hyper_tx_t    phy_tx;
     logic                       phy_tx_valid;
     logic                       phy_tx_ready;
-    hyperbus_pkg::hyper_b_t     phy_b;
+    logic                       phy_b_error;
     logic                       phy_b_valid;
     logic                       phy_b_ready;
     tf_cdc_t                    phy_tf_cdc;
@@ -155,7 +155,7 @@ module hyperbus #(
         .tx_o           ( axi_tx            ),
         .tx_valid_o     ( axi_tx_valid      ),
         .tx_ready_i     ( axi_tx_ready      ),
-        .b_i            ( axi_b             ),
+        .b_error_i      ( axi_b_error       ),
         .b_valid_i      ( axi_b_valid       ),
         .b_ready_o      ( axi_b_ready       ),
         .trans_o        ( axi_tf_cdc.trans  ),
@@ -184,7 +184,7 @@ module hyperbus #(
         .tx_i           ( phy_tx            ),
         .tx_valid_i     ( phy_tx_valid      ),
         .tx_ready_o     ( phy_tx_ready      ),
-        .b_o            ( phy_b             ),
+        .b_error_o      ( phy_b_error       ),
         .b_valid_o      ( phy_b_valid       ),
         .b_ready_i      ( phy_b_ready       ),
         .trans_i        ( phy_tf_cdc.trans  ),
@@ -221,11 +221,11 @@ module hyperbus #(
     );
 
     cdc_2phase #(
-        .T  ( hyperbus_pkg::hyper_b_t   )
+        .T  ( logic )
     ) i_cdc_2phase_b (
         .src_rst_ni     ( rst_phy_n     ),
         .src_clk_i      ( clk0          ),
-        .src_data_i     ( phy_b         ),
+        .src_data_i     ( phy_b_error   ),
         .src_valid_i    ( phy_b_valid   ),
         .src_ready_o    ( phy_b_ready   ),
 

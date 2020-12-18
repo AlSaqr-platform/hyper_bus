@@ -13,13 +13,14 @@ package hyperbus_pkg;
 
     typedef struct packed {
         logic [15:0]    data;
+        logic           last;
         logic [1:0]     strb;   // mask data
     } hyper_tx_t;
 
     typedef struct packed {
+        logic [15:0]    data;
         logic           last;
         logic           error;
-        logic [15:0]    data;
     } hyper_rx_t;
 
     typedef struct packed {
@@ -37,24 +38,21 @@ package hyperbus_pkg;
 
     typedef enum logic[3:0] {
         Idle,
-        WaitCSS,
         SendCA,
         WaitLatAccess,
         Read,
         Write,
-        SendB,
+        WaitXfer,
         WaitRWR
     } hyper_phy_state_t;
-
 
     typedef struct packed {
         logic           write;
         logic           addr_space;
         logic           burst_type;
         logic [28:0]    addr_upper;
-        logic           reserved;
+        logic [12:0]    reserved;
         logic [2:0]     addr_lower;
     } hyper_phy_ca_t;
-
 
 endpackage

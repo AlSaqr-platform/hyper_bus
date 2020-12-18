@@ -55,6 +55,9 @@ module hyperbus_trx #(
     output logic                   hyper_reset_no
 );
 
+    // Delayed clock enable synchronous with data
+    logic clk_ena;
+
     // Intermediate RX signals for RWDS domain
     logic           rx_rwds_clk_ena;
     logic           rx_rwds_clk_orig;
@@ -74,7 +77,7 @@ module hyperbus_trx #(
     // 90deg-shifted differential output clock, sampling output bytes centrally
     hyperbus_clock_diff_out i_clock_diff_out (
         .in_i   ( clk_90_i      ),
-        .en_i   ( clk_ena_i     ),
+        .en_i   ( clk_ena       ),
         .out_o  ( hyper_ck_o    ),
         .out_no ( hyper_ck_no   )
     );
@@ -109,16 +112,20 @@ module hyperbus_trx #(
         .q_o    ( hyper_rwds_o  )
     );
 
-    // Delay output enables to be synchronous with DDR-converted data
+    // Delay output, clock enables to be synchronous with DDR-converted data
+    // The delayed clock also ensures t_CSS is respected at the start, end of CS
     always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_tx_delay
         if(~rst_ni) begin
             hyper_rwds_oe_o <= 1'b0;
             hyper_dq_oe_o   <= 1'b0;
+            clk_ena         <= 1'b0;
         end else begin
             hyper_rwds_oe_o <= tx_rwds_oe_i;
             hyper_dq_oe_o   <= tx_data_oe_i;
+            clk_ena         <= clk_ena_i;
         end
     end
+
 
     // Sample RWDS on demand for extra latency determination
     always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_rwds_sample
@@ -131,6 +138,7 @@ module hyperbus_trx #(
     // ========
 
     // Synchronize RX clock enable into RWDS domain
+    // TODO: Why was this clocked without phase shift??
     always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_rx_delay
         if (~rst_ni)    rx_rwds_clk_ena <= '0;
         else            rx_rwds_clk_ena <= rx_clk_ena_i;

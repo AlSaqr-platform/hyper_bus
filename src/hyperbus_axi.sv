@@ -31,7 +31,7 @@ module hyperbus_axi #(
     output logic                    tx_valid_o,
     input  logic                    tx_ready_i,
 
-    input hyperbus_pkg::hyper_b_t   b_i,
+    input  logic                    b_error_i,
     input  logic                    b_valid_i,
     output logic                    b_ready_o,
 
@@ -157,8 +157,8 @@ module hyperbus_axi #(
     logic    id_used;
     axi_id_t id_head;
     fifo_v3 #(
-        .FALL_THROUGH ( 1'b0      ), 
-        .DEPTH        ( 2         ), 
+        .FALL_THROUGH ( 1'b0      ),
+        .DEPTH        ( 2         ),
         .dtype        ( axi_id_t  )
     ) i_fifo_v3_id_fifo (
         .clk_i        ( clk_i                         ),
@@ -173,7 +173,7 @@ module hyperbus_axi #(
         .data_o       ( id_head                       ),
         .pop_i        ( id_used                       )
     );
-    assign id_used = rx_ready_o & rx_valid_i & rx_i.last | b_ready_o & b_valid_i & b_i.last;
+    assign id_used = rx_ready_o & rx_valid_i & rx_i.last | b_ready_o & b_valid_i;
 
 
     // assign arbitrated output to phy
@@ -185,6 +185,7 @@ module hyperbus_axi #(
     // connect the w channel
     assign tx_o.data          = narrow_req.w.data;
     assign tx_o.strb          = narrow_req.w.strb;
+    assign tx_o.last          = narrow_req.w.last;
     assign tx_valid_o         = narrow_req.w_valid;
     assign narrow_rsp.w_ready = tx_ready_i;
 
@@ -199,9 +200,9 @@ module hyperbus_axi #(
 
     // connect the b channel
     assign narrow_rsp.b.id    = id_head;
-    assign narrow_rsp.b.resp  = b_i.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
+    assign narrow_rsp.b.resp  = b_error_i ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign narrow_rsp.b.user  = 1'b0;
-    assign narrow_rsp.b_valid = b_valid_i & b_i.last;
+    assign narrow_rsp.b_valid = b_valid_i;
     assign b_ready_o          = narrow_req.b_ready;
 
     // handle address mapping to chip select -> one hot
