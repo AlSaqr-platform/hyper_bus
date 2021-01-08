@@ -16,7 +16,6 @@ sources:
   files:
     # Level 0
     - src/hyperbus_pkg.sv
-    - src/hyperbus_ddr_in.sv
     - src/hyperbus_clock_diff_out.sv
     - src/hyperbus_ddr_out.sv
     # TODO

@@ -69,6 +69,11 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     logic b_pending_set;
     logic b_pending_clear;
 
+    // Whether R burst is pending
+    logic r_pending_d, r_pending_q;
+    logic r_pending_set;
+    logic r_pending_clear;
+
     // Auxiliar control signals
     logic ctl_write_zero_lat;
     logic ctl_add_latency;
@@ -79,8 +84,9 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     logic ctl_timer_one;
     logic ctl_timer_zero;
     logic ctl_timer_rwr_done;
-    logic ctl_read_ena;
-    logic ctl_write_ena;
+    logic ctl_rclk_ena;
+    logic ctl_rcnt_ena;
+    logic ctl_wclk_ena;
 
     // Command-address
     hyper_phy_ca_t  ca;
@@ -162,32 +168,14 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         trx_tx_data_oe  = 1'b0;
         trx_tx_rwds_oe  = 1'b0;
         tx_ready_o      = 1'b0;
-        ctl_write_ena   = 1'b0;
+        ctl_wclk_ena    = 1'b0;
         if (state_q == SendCA) begin
             trx_tx_data_oe  = 1'b1;
         end else if (state_q == Write) begin
             trx_tx_data_oe  = 1'b1;
             trx_tx_rwds_oe  = 1'b1;
             tx_ready_o      = 1'b1;     // Memory always ready within HyperBus burst
-            ctl_write_ena   = tx_valid_i;
-        end
-    end
-
-    // Read dataflow
-    assign rx_o = hyper_rx_t'{
-        data:   trx_rx_data,
-        last:   ctl_tf_burst_last,
-        error:  1'b0    // TODO
-    };
-
-    always_comb begin : proc_comb_rx
-        rx_valid_o      = 1'b0;
-        trx_rx_ready    = 1'b0;
-        ctl_read_ena    = 1'b0;
-        if (state_q == Read) begin
-            trx_rx_ready    = rx_ready_i;
-            rx_valid_o      = trx_rx_valid;
-            ctl_read_ena    = rx_ready_i;   // TODO: handle resume better
+            ctl_wclk_ena   = tx_valid_i;
         end
     end
 
@@ -197,9 +185,27 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign b_pending_clear  = b_valid_o & b_ready_i;
 
     always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_b_pending
-        if (~rst_ni)                b_pending_q <= 1'b0;
+        if      (~rst_ni)           b_pending_q <= 1'b0;
         else if (b_pending_set)     b_pending_q <= 1'b1;
         else if (b_pending_clear)   b_pending_q <= 1'b0;
+    end
+
+    // Read response dataflow
+    assign rx_o = hyper_rx_t'{
+        data:   trx_rx_data,
+        last:   ctl_tf_burst_last,
+        error:  1'b0    // TODO
+    };
+    assign trx_rx_ready = rx_ready_i;
+    assign rx_valid_o   = trx_rx_valid & r_pending_q;
+    // Suspend clock one cycle for every stall caused by upstream.
+    // This ensures that a sufficiently large RX FIFO will not overflow.
+    assign ctl_rclk_ena = ~(rx_valid_o & ~rx_ready_i);
+
+    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_r_pending
+        if      (~rst_ni)           r_pending_q <= 1'b0;
+        else if (r_pending_set)     r_pending_q <= 1'b1;
+        else if (r_pending_clear)   r_pending_q <= 1'b0;
     end
 
     // =============
@@ -214,16 +220,17 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign ctl_tf_burst_done    = (tf_q.burst == 0);
 
     assign ctl_timer_rwr_done   = (timer_q <= 3);
-    assign ctl_timer_two         = (timer_q == 2);
+    assign ctl_timer_two        = (timer_q == 2);
     assign ctl_timer_one        = (timer_q == 1);
     assign ctl_timer_zero       = (timer_q == 0);
 
-    assign ctl_tx_burst_last       = ctl_timer_one | ctl_tf_burst_last;
+    assign ctl_tx_burst_last    = ctl_timer_one | ctl_tf_burst_last;
 
     // FSM logic
     always_comb begin : proc_comb_phy_fsm
         // Default outputs
         trans_ready_o       = 1'b0;
+        r_pending_set       = 1'b0;
         b_pending_set       = 1'b0;
         trx_cs_ena          = 1'b1;
         trx_clk_ena         = 1'b0;
@@ -267,15 +274,16 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 trx_clk_ena = 1'b1;
                 // Substract cycle for last CA and another for state delay
                 if (ctl_timer_two) begin
-                    timer_d = cfg_i.t_cs_max;
-                    state_d = tf_q.write ? Write : Read;
+                    timer_d         = cfg_i.t_cs_max;
+                    state_d         = tf_q.write ? Write : Read;
+                    r_pending_set   = 1'b1;
                 end
             end
             Read: begin
                 // TODO: ensure FIFO sufficiently vacant after resuming after stall
                 // Dataflow handled outside FSM
                 trx_rx_clk_ena = 1'b1;
-                if (ctl_read_ena) begin
+                if (ctl_rclk_ena) begin
                     trx_clk_ena = 1'b1;
                     tf_d.burst  = tf_q.burst - 1;
                     if (ctl_tx_burst_last) begin
@@ -285,7 +293,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
             end
             Write: begin
                 // Dataflow handled outside FSM
-                if (ctl_write_ena) begin
+                if (ctl_wclk_ena) begin
                     trx_clk_ena = 1'b1;
                     tf_d.burst  = tf_q.burst - 1;
                     if (ctl_tx_burst_last) begin

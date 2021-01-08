@@ -66,8 +66,8 @@ module hyperbus_trx #(
     logic           rx_rwds_clk_orig;
     logic           rx_rwds_clk;
     logic           rx_rwds_soft_rst;
-    logic [15:0]    rx_rwds_data;
-    logic           rx_rwds_data_valid;
+    logic [15:0]    rx_rwds_fifo_in;
+    logic           rx_rwds_fifo_valid;
     logic           rx_rwds_fifo_ready;
 
     // Feed through async reset
@@ -161,8 +161,8 @@ module hyperbus_trx #(
 
     // RX data is valid one cycle after each RX soft reset
     always_ff @(posedge rx_rwds_clk or posedge rx_rwds_soft_rst) begin : proc_read_in_valid
-        if (rx_rwds_soft_rst)   rx_rwds_data_valid <= 1'b0;
-        else                    rx_rwds_data_valid <= 1'b1;
+        if (rx_rwds_soft_rst)   rx_rwds_fifo_valid <= 1'b0;
+        else                    rx_rwds_fifo_valid <= 1'b1;
     end
 
     // If testing, replace gated RWDS clock with test clock
@@ -173,27 +173,23 @@ module hyperbus_trx #(
         .clk_o     ( rx_rwds_clk        )
     );
 
-    // Data input DDR converters
-    for (genvar i = 0; i <= 7; i++) begin: gen_ddr_rx_data
-        hyperbus_ddr_in i_ddr_rx_data (
-            .clk_i  ( rx_rwds_clk                           ),
-            .rst_ni ( rst_ni                                ),
-            .data_i ( hyper_dq_i[i]                         ),
-            .enable ( 1'b1                                  ),
-            .data_o ( {rx_rwds_data[i+8], rx_rwds_data[i]}  )
-        );
+    // Data input DDR conversion
+    assign rx_rwds_fifo_in[7:0] = hyper_dq_i;
+    always @(posedge rx_rwds_clk or posedge rx_rwds_soft_rst) begin : proc_ff_ddr_in
+        if(rx_rwds_soft_rst)    rx_rwds_fifo_in[15:8] <= '0;
+        else                    rx_rwds_fifo_in[15:8] <= hyper_dq_i;
     end
 
     // Cross input data from RWDS domain into system domain
     cdc_fifo_gray  #(
-        .T(logic[15:0]),
-        .LOG_DEPTH(3)
+        .T          ( logic [15:0]  ),
+        .LOG_DEPTH  ( 3             )
     ) i_rx_rwds_cdc_fifo (
         // RWDS domain
         .src_clk_i   ( ~rx_rwds_clk       ),
         .src_rst_ni  ( rst_ni             ),
-        .src_data_i  ( rx_rwds_data       ),
-        .src_valid_i ( rx_rwds_data_valid ),
+        .src_data_i  ( rx_rwds_fifo_in    ),
+        .src_valid_i ( rx_rwds_fifo_valid ),
         .src_ready_o ( rx_rwds_fifo_ready ),
         // System domain
         .dst_clk_i   ( clk_0_i      ),
