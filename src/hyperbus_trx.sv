@@ -55,6 +55,9 @@ module hyperbus_trx #(
     output logic                   hyper_reset_no
 );
 
+    // RWDS input from delay line
+    logic rx_rwds_in_delayed;
+
     // Delayed clock enable synchronous with data
     logic clk_ena;
 
@@ -144,8 +147,14 @@ module hyperbus_trx #(
         else            rx_rwds_clk_ena <= rx_clk_ena_i;
     end
 
-    // Gate RWDS clock with RX clock enable
-    assign rx_rwds_clk_orig = hyper_rwds_i & rx_rwds_clk_ena;
+    // Delay RWDS clock
+    hyperbus_rwds_delay i_rwds_in_delay (
+        .in_i   ( hyper_rwds_i          ),
+        .out_o  ( rx_rwds_in_delayed    )
+    );
+
+    // Gate delayed RWDS clock with RX clock enable
+    assign rx_rwds_clk_orig = rx_rwds_in_delayed & rx_rwds_clk_ena;
 
      // Reset RX state on async reset or on gated clock (whenever inactive)
     assign rx_rwds_soft_rst = ~rst_ni | (~rx_rwds_clk_ena & ~test_mode_i);
@@ -181,7 +190,7 @@ module hyperbus_trx #(
         .LOG_DEPTH(3)
     ) i_rx_rwds_cdc_fifo (
         // RWDS domain
-        .src_clk_i   ( rx_rwds_clk        ),
+        .src_clk_i   ( ~rx_rwds_clk       ),
         .src_rst_ni  ( rst_ni             ),
         .src_data_i  ( rx_rwds_data       ),
         .src_valid_i ( rx_rwds_data_valid ),

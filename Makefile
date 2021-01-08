@@ -15,7 +15,7 @@ all: scripts/compile.tcl
 scripts:
 	mkdir -p scripts
 
-scripts/compile.tcl: | scripts
+scripts/compile.tcl: Bender.yml | scripts
 	$(call generate_vsim, $@, -t rtl -t test,..)
 
 clean:
