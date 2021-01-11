@@ -21,8 +21,6 @@ add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/i_trx/rx_rwds_clk_ena
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/i_trx/rx_rwds_clk_orig
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/i_trx/rx_rwds_clk
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/i_trx/rx_rwds_soft_rst
-add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/i_trx/rx_rwds_data
-add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/i_trx/rx_rwds_data_valid
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/i_trx/rx_rwds_fifo_ready
 add wave -noupdate -divider {TRX IO}
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/i_trx/rx_data_o
@@ -63,7 +61,7 @@ add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/state_q
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/timer_d
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/timer_q
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/tf_d
-add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/tf_q
+add wave -noupdate -expand /hyperbus_tb/fix/i_dut/i_phy/tf_q
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/cs_d
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/cs_q
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/b_pending_d
@@ -93,8 +91,14 @@ add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/trx_rx_clk_ena
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/trx_rx_data
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/trx_rx_valid
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/trx_rx_ready
+add wave -noupdate -divider {AXI WIDE}
+add wave -noupdate -expand -subitemconfig {/hyperbus_tb/fix/i_dut/axi_rsp_o.b -expand} /hyperbus_tb/fix/i_dut/axi_rsp_o
+add wave -noupdate -expand -subitemconfig {/hyperbus_tb/fix/i_dut/axi_req_i.aw -expand} /hyperbus_tb/fix/i_dut/axi_req_i
+add wave -noupdate -divider {AXI NARROW}
+add wave -noupdate -expand -subitemconfig {/hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_req_o.aw -expand} /hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_req_o
+add wave -noupdate -expand /hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_resp_i
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {150667549 ps} 0}
+WaveRestoreCursors {{Cursor 1} {150275673 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100
@@ -110,4 +114,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ps
 update
-WaveRestoreZoom {150588794 ps} {150789193 ps}
+WaveRestoreZoom {150122691 ps} {150429789 ps}

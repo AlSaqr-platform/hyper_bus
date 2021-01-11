@@ -19,7 +19,7 @@
 
 module hyperbus_phy import hyperbus_pkg::*; #(
     parameter int unsigned NumChips     = 2,
-    parameter int unsigned TimerWidth   = 4
+    parameter int unsigned TimerWidth   = 16
 )(
     input  logic                clk_0_i,
     input  logic                clk_90_i,
@@ -44,7 +44,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // B response
     output logic                b_valid_o,
     input  logic                b_ready_i,
-    output hyper_b_t            b_error_o,
+    output logic                b_error_o,
     // Physical interface
     output logic [NumChips-1:0] hyper_cs_no,
     output logic                hyper_ck_o,

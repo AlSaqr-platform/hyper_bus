@@ -24,11 +24,6 @@ package hyperbus_pkg;
     } hyper_rx_t;
 
     typedef struct packed {
-        logic           last;
-        logic           error;
-    } hyper_b_t;
-
-    typedef struct packed {
         logic           write;     // transaction is a write
         axi_pkg::len_t  burst;
         logic           burst_type;

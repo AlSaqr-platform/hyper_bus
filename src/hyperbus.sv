@@ -231,7 +231,7 @@ module hyperbus #(
 
         .dst_rst_ni     ( rst_sys_n     ),
         .dst_clk_i      ( clk_sys_i     ),
-        .dst_data_o     ( axi_b         ),
+        .dst_data_o     ( axi_b_error   ),
         .dst_valid_o    ( axi_b_valid   ),
         .dst_ready_i    ( axi_b_ready   )
     );
