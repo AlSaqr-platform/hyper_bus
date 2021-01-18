@@ -197,7 +197,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign rx_o = hyper_rx_t'{
         data:   trx_rx_data,
         // Nonzero roundtrip: Last outstanding word always handled outside Read state
-        last:   (state_q != Read) & (r_outstand_q == 1),
+        last:   (state_q != Read) & ctl_tf_burst_done & (r_outstand_q == 1),
         error:  1'b0    // TODO
     };
     assign trx_rx_ready     = rx_ready_i;
