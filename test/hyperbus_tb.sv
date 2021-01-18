@@ -17,29 +17,32 @@ module hyperbus_tb;
         #150us;
         fix.i_rmaster.send_write('h4, 'h1, '1, error);
         #200ns;
-        fix.write_axi('h01, 8, 1, 'h0000_0000_0000_0000_acbf_3214_00aa_ca00, 'hffff_ffff);
-        fix.write_axi('h01, 0, 0, 'h0000_0000_0000_0000_acbf_3214_00aa_dd00, 'h0000_0002);
-        fix.write_axi('h01, 0, 0, 'h0000_0000_0000_0000_acbf_3214_00aa_11bb, 'h0000_0001);
-        // Reads block!
-        fix.read_axi('h05, 0, 0);
-        fix.read_axi('h04, 0, 0);
-        fix.read_axi('h04, 0, 1);
+        fix.write_axi('h800, 0, 4, 'hcaca_ffff_ffff_ffff_ffff_3214_00aa_ca00, 'hc03f);
+        fix.write_axi('h808, 0, 1, 'hffff_ffff_ffff_dd11_ffff_ffff_ffff_ffff, 'h0300);
+        fix.write_axi('h80c, 0, 1, 'hffff_22dd_ffff_ffff_ffff_ffff_ffff_ffff, 'h3000);
+        fix.write_axi('h800, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffe1, 'h0001);
+        fix.read_axi('h800, 0, 4);
+        fix.write_axi('h806, 0, 1, 'hffff_ffff_ffff_ffff_f1f0_ffff_ffff_ffff, 'h00c0);
+        fix.write_axi('h80a, 0, 1, 'hffff_ffff_b0b0_ffff_ffff_ffff_ffff_ffff, 'h0c00);
+        fix.write_axi('h80e, 0, 1, 'h1001_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
+        fix.read_axi('h800, 0, 4);
+
+
         //fix.start_rand_master(0, 5);
         //fix.start_rand_master(20, 0);
 
         // 128 bit access (burst)
-        fix.write_axi('h00, 127, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
-        fix.read_axi('h00, 127, 4);
+        fix.write_axi('ha00, 127, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+        fix.read_axi('ha00, 127, 4);
 
         // 128 bit access
-        fix.write_axi('h00, 0, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
-        fix.read_axi('h00, 0, 4);
+        fix.write_axi('h100, 0, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h100, 0, 4);
 
         // 64 bit access (aligned)
         fix.write_axi('h00, 0, 3, 'h5555_5555_5555_5555_4444_3333_2222_1111, 'h00ff);
         fix.write_axi('h08, 0, 3, 'h9999_8888_7777_6666_5555_5555_5555_5555, 'hff00);
 
-        // Reads block!
         fix.read_axi('h00, 0, 4);
         fix.read_axi('h00, 0, 3);
         fix.read_axi('h08, 0, 3);
@@ -76,7 +79,7 @@ module hyperbus_tb;
         fix.read_axi('h2c, 0, 1);
         fix.read_axi('h2e, 0, 1);
 
-        // 16 bit (aligned)
+        // 8 bit (aligned)
         fix.write_axi('h30, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ff11, 'h0001);
         fix.write_axi('h31, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_1eff, 'h0002);
         fix.write_axi('h32, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ff1d_ffff, 'h0004);
