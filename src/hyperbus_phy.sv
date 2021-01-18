@@ -18,8 +18,9 @@
 // TODO: rename, change t_cs_max to t_burst_max
 
 module hyperbus_phy import hyperbus_pkg::*; #(
-    parameter int unsigned NumChips     = 2,
-    parameter int unsigned TimerWidth   = 16
+    parameter int unsigned NumChips         = 2,
+    parameter int unsigned TimerWidth       = 16,
+    parameter int unsigned RxFifoLogDepth   = 3
 )(
     input  logic                clk_0_i,
     input  logic                clk_90_i,
@@ -69,15 +70,15 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     logic b_pending_set;
     logic b_pending_clear;
 
-    // Whether R burst is pending
-    logic r_pending_d, r_pending_q;
-    logic r_pending_set;
-    logic r_pending_clear;
+    // How many R response words are outstanding if any
+    logic [RxFifoLogDepth:0]    r_outstand_q;
+    logic                       r_outstand_inc;
+    logic                       r_outstand_dec;
 
     // Auxiliar control signals
     logic ctl_write_zero_lat;
     logic ctl_add_latency;
-    logic ctl_tx_burst_last;
+    logic ctl_tf_last;
     logic ctl_tf_burst_last;
     logic ctl_tf_burst_done;
     logic ctl_timer_two;
@@ -111,7 +112,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // =================
 
     hyperbus_trx #(
-        .NumChips       ( NumChips )
+        .NumChips       ( NumChips          ),
+        .RxFifoLogDepth ( RxFifoLogDepth    )
     ) i_trx (
         .clk_0_i,
         .clk_90_i,
@@ -184,6 +186,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign b_error_o        = 1'b0;            // TODO
     assign b_pending_clear  = b_valid_o & b_ready_i;
 
+    // FF indicating whether B response pending
     always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_b_pending
         if      (~rst_ni)           b_pending_q <= 1'b0;
         else if (b_pending_set)     b_pending_q <= 1'b1;
@@ -193,19 +196,22 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // Read response dataflow
     assign rx_o = hyper_rx_t'{
         data:   trx_rx_data,
-        last:   ctl_tf_burst_last,
+        // Nonzero roundtrip: Last outstanding word always handled outside Read state
+        last:   (state_q != Read) & (r_outstand_q == 1),
         error:  1'b0    // TODO
     };
-    assign trx_rx_ready = rx_ready_i;
-    assign rx_valid_o   = trx_rx_valid & r_pending_q;
+    assign trx_rx_ready     = rx_ready_i;
+    assign rx_valid_o       = trx_rx_valid & (r_outstand_q != '0);
     // Suspend clock one cycle for every stall caused by upstream.
     // This ensures that a sufficiently large RX FIFO will not overflow.
-    assign ctl_rclk_ena = ~(rx_valid_o & ~rx_ready_i);
+    assign ctl_rclk_ena     = ~(rx_valid_o & ~rx_ready_i);
 
-    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_r_pending
-        if      (~rst_ni)           r_pending_q <= 1'b0;
-        else if (r_pending_set)     r_pending_q <= 1'b1;
-        else if (r_pending_clear)   r_pending_q <= 1'b0;
+    // Counter for outstanding R responses
+    assign r_outstand_dec   = rx_valid_o & rx_ready_i;
+    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_r_outstand
+        if      (~rst_ni)                           r_outstand_q <= '0;
+        else if (r_outstand_inc & ~r_outstand_dec)  r_outstand_q <= r_outstand_q + 1;
+        else if (r_outstand_dec & ~r_outstand_inc)  r_outstand_q <= r_outstand_q - 1;
     end
 
     // =============
@@ -224,13 +230,13 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign ctl_timer_one        = (timer_q == 1);
     assign ctl_timer_zero       = (timer_q == 0);
 
-    assign ctl_tx_burst_last    = ctl_timer_one | ctl_tf_burst_last;
+    assign ctl_tf_last          = ctl_timer_one | ctl_tf_burst_last;
 
     // FSM logic
     always_comb begin : proc_comb_phy_fsm
         // Default outputs
         trans_ready_o       = 1'b0;
-        r_pending_set       = 1'b0;
+        r_outstand_inc      = 1'b0;
         b_pending_set       = 1'b0;
         trx_cs_ena          = 1'b1;
         trx_clk_ena         = 1'b0;
@@ -248,7 +254,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 timer_d     = timer_q;
                 // Signal ready for, pop next transfer if Write response sent
                  trans_ready_o   = 1'b1;
-                if (trans_valid_i & ~b_pending_q) begin
+                if (trans_valid_i & ~b_pending_q & r_outstand_q == '0) begin
                     tf_d    = trans_i;
                     cs_d    = trans_cs_i;
                     // Send 3 CA words (t_CSS respected through clock delay)
@@ -274,9 +280,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 trx_clk_ena = 1'b1;
                 // Substract cycle for last CA and another for state delay
                 if (ctl_timer_two) begin
-                    timer_d         = cfg_i.t_cs_max;
-                    state_d         = tf_q.write ? Write : Read;
-                    r_pending_set   = 1'b1;
+                    timer_d = cfg_i.t_cs_max;
+                    state_d = tf_q.write ? Write : Read;
                 end
             end
             Read: begin
@@ -284,9 +289,10 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 // Dataflow handled outside FSM
                 trx_rx_clk_ena = 1'b1;
                 if (ctl_rclk_ena) begin
-                    trx_clk_ena = 1'b1;
-                    tf_d.burst  = tf_q.burst - 1;
-                    if (ctl_tx_burst_last) begin
+                    trx_clk_ena     = 1'b1;
+                    r_outstand_inc  = 1'b1;
+                    tf_d.burst      = tf_q.burst - 1;
+                    if (ctl_tf_last) begin
                         state_d = WaitXfer;
                     end
                 end
@@ -296,7 +302,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 if (ctl_wclk_ena) begin
                     trx_clk_ena = 1'b1;
                     tf_d.burst  = tf_q.burst - 1;
-                    if (ctl_tx_burst_last) begin
+                    if (ctl_tf_last) begin
                         b_pending_set   = 1'b1;
                         state_d         = WaitXfer;
                     end

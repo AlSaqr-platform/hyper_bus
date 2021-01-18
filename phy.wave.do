@@ -56,9 +56,10 @@ add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/hyper_dq_o
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/hyper_dq_oe_o
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/hyper_reset_no
 add wave -noupdate -divider {PHY Internal}
+add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/clk_0_i
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/state_d
-add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/state_q
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/timer_d
+add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/state_q
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/timer_q
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/tf_d
 add wave -noupdate -expand /hyperbus_tb/fix/i_dut/i_phy/tf_q
@@ -70,7 +71,6 @@ add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/b_pending_set
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/b_pending_clear
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/ctl_write_zero_lat
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/ctl_add_latency
-add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/ctl_tx_burst_last
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/ctl_tf_burst_last
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/ctl_tf_burst_done
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/ctl_timer_two
@@ -91,14 +91,21 @@ add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/trx_rx_clk_ena
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/trx_rx_data
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/trx_rx_valid
 add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/trx_rx_ready
+add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/r_outstand_dec
+add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/r_outstand_inc
+add wave -noupdate /hyperbus_tb/fix/i_dut/i_phy/r_outstand_q
 add wave -noupdate -divider {AXI WIDE}
 add wave -noupdate -expand -subitemconfig {/hyperbus_tb/fix/i_dut/axi_rsp_o.b -expand} /hyperbus_tb/fix/i_dut/axi_rsp_o
 add wave -noupdate -expand -subitemconfig {/hyperbus_tb/fix/i_dut/axi_req_i.aw -expand} /hyperbus_tb/fix/i_dut/axi_req_i
 add wave -noupdate -divider {AXI NARROW}
+add wave -noupdate -label r_ready /hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_req_o.r_ready
+add wave -noupdate /hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_resp_i.r_valid
 add wave -noupdate -expand -subitemconfig {/hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_req_o.aw -expand} /hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_req_o
-add wave -noupdate -expand /hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_resp_i
+add wave -noupdate /hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_req_o.r_ready
+add wave -noupdate -label r_valid /hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_resp_i.r_valid
+add wave -noupdate -expand -subitemconfig {/hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_resp_i.r -expand} /hyperbus_tb/fix/i_dut/i_axi_slave/i_axi_dw_converter/mst_resp_i
 TreeUpdate [SetDefaultTree]
-WaveRestoreCursors {{Cursor 1} {150275673 ps} 0}
+WaveRestoreCursors {{Cursor 1} {151803784 ps} 0}
 quietly wave cursor active 1
 configure wave -namecolwidth 150
 configure wave -valuecolwidth 100
@@ -114,4 +121,4 @@ configure wave -griddelta 40
 configure wave -timeline 0
 configure wave -timelineunits ps
 update
-WaveRestoreZoom {150122691 ps} {150429789 ps}
+WaveRestoreZoom {147670603 ps} {169469304 ps}

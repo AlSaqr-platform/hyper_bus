@@ -21,9 +21,9 @@ module hyperbus_tb;
         fix.write_axi('h01, 0, 0, 'h0000_0000_0000_0000_acbf_3214_00aa_dd00, 'h0000_0002);
         fix.write_axi('h01, 0, 0, 'h0000_0000_0000_0000_acbf_3214_00aa_11bb, 'h0000_0001);
         // Reads block!
-        //fix.read_axi('h05, 0, 0);
-        //fix.read_axi('h04, 0, 0);
-        //fix.read_axi('h04, 0, 1);
+        fix.read_axi('h05, 0, 0);
+        fix.read_axi('h04, 0, 0);
+        fix.read_axi('h04, 0, 1);
         //fix.start_rand_master(0, 5);
         //fix.start_rand_master(20, 0);
 
@@ -40,9 +40,9 @@ module hyperbus_tb;
         fix.write_axi('h08, 0, 3, 'h9999_8888_7777_6666_5555_5555_5555_5555, 'hff00);
 
         // Reads block!
-        //fix.read_axi('h00, 0, 4);
-        //fix.read_axi('h00, 0, 3);
-        //fix.read_axi('h08, 0, 3);
+        fix.read_axi('h00, 0, 4);
+        fix.read_axi('h00, 0, 3);
+        fix.read_axi('h08, 0, 3);
 
         // 32 bit (aligned)
         fix.write_axi('h10, 0, 2, 'hffff_ffff_ffff_ffff_ffff_ffff_cafe_beef, 'h000f);
@@ -50,13 +50,11 @@ module hyperbus_tb;
         fix.write_axi('h18, 0, 2, 'hffff_ffff_cafe_beef_ffff_ffff_ffff_ffff, 'h0f00);
         fix.write_axi('h1c, 0, 2, 'hcafe_beef_ffff_ffff_ffff_ffff_ffff_ffff, 'hf000);
 
-        /*
         fix.read_axi('h10, 0, 4);
         fix.read_axi('h10, 0, 2);
         fix.read_axi('h14, 0, 2);
         fix.read_axi('h18, 0, 2);
         fix.read_axi('h1c, 0, 2);
-        */
 
         // 16 bit (aligned)
         fix.write_axi('h20, 0, 1, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_beef, 'h0003);
@@ -68,7 +66,6 @@ module hyperbus_tb;
         fix.write_axi('h2c, 0, 1, 'hffff_beef_ffff_ffff_ffff_ffff_ffff_ffff, 'h3000);
         fix.write_axi('h2e, 0, 1, 'hbeef_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
 
-        /*
         fix.read_axi('h20, 0, 4);
         fix.read_axi('h20, 0, 1);
         fix.read_axi('h22, 0, 1);
@@ -78,7 +75,6 @@ module hyperbus_tb;
         fix.read_axi('h2a, 0, 1);
         fix.read_axi('h2c, 0, 1);
         fix.read_axi('h2e, 0, 1);
-        */
 
         // 16 bit (aligned)
         fix.write_axi('h30, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ff11, 'h0001);
@@ -98,7 +94,7 @@ module hyperbus_tb;
         fix.write_axi('h3e, 0, 0, 'hff11_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'h4000);
         fix.write_axi('h3f, 0, 0, 'h10ff_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'h8000);
 
-        /*
+
         fix.read_axi('h30, 0, 4);
         fix.read_axi('h30, 0, 0);
         fix.read_axi('h31, 0, 0);
@@ -115,7 +111,7 @@ module hyperbus_tb;
         fix.read_axi('h3c, 0, 0);
         fix.read_axi('h3d, 0, 0);
         fix.read_axi('h3e, 0, 0);
-        fix.read_axi('h3f, 0, 0);*/
+        fix.read_axi('h3f, 0, 0);
 
         #5us;
         $stop();

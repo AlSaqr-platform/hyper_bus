@@ -18,7 +18,8 @@
 // TODO: delay lines!
 
 module hyperbus_trx #(
-    parameter int unsigned NumChips = 2
+    parameter int unsigned NumChips         = 2,
+    parameter int unsigned RxFifoLogDepth   = 3
 )(
     // Global signals
     input  logic            clk_0_i,
@@ -182,8 +183,8 @@ module hyperbus_trx #(
 
     // Cross input data from RWDS domain into system domain
     cdc_fifo_gray  #(
-        .T          ( logic [15:0]  ),
-        .LOG_DEPTH  ( 3             )
+        .T          ( logic [15:0]      ),
+        .LOG_DEPTH  ( RxFifoLogDepth    )
     ) i_rx_rwds_cdc_fifo (
         // RWDS domain
         .src_clk_i   ( ~rx_rwds_clk       ),
