@@ -32,6 +32,7 @@ package hyperbus_pkg;
     } hyper_tf_t;
 
     typedef enum logic[3:0] {
+        Startup,
         Idle,
         SendCA,
         WaitLatAccess,

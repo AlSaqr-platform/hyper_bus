@@ -20,7 +20,8 @@
 module hyperbus_phy import hyperbus_pkg::*; #(
     parameter int unsigned NumChips         = 2,
     parameter int unsigned TimerWidth       = 16,
-    parameter int unsigned RxFifoLogDepth   = 3
+    parameter int unsigned RxFifoLogDepth   = 3,
+    parameter int unsigned StartupCycles    = 150 /*us*/ * 100 /*MHz*/ // Conservative minmum frequency estimate
 )(
     input  logic                clk_0_i,
     input  logic                clk_90_i,
@@ -66,7 +67,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     logic [NumChips-1:0]    cs_d,       cs_q;
 
     // Whether B response is pending
-    logic b_pending_d, b_pending_q;
+    logic b_pending_q;
     logic b_pending_set;
     logic b_pending_clear;
 
@@ -196,7 +197,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // Read response dataflow
     assign rx_o = hyper_rx_t'{
         data:   trx_rx_data,
-        // Nonzero roundtrip: Last outstanding word always handled outside Read state
+        // Nonzero roundtrip --> last outstanding word always handled outside Read state
         last:   (state_q != Read) & ctl_tf_burst_done & (r_outstand_q == 1),
         error:  1'b0    // TODO
     };
@@ -249,6 +250,13 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         cs_d    = cs_q;
         // State-dependent logic
         case (state_q)
+            Startup: begin
+                trx_cs_ena  = 1'b0;
+                // Timer resets to parameterized startup delay
+                if (ctl_timer_one) begin
+                    state_d = Idle;
+                end
+            end
             Idle: begin
                 trx_cs_ena  = 1'b0;
                 timer_d     = timer_q;
@@ -326,8 +334,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // PHY state registers, including timer and transfer
     always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_phy
         if (~rst_ni) begin
-            state_q <= Idle;
-            timer_q <= '0;
+            state_q <= Startup;
+            timer_q <= StartupCycles;
             tf_q    <= hyper_tf_t'{burst_type: 1'b1, default:'0};
             cs_q    <= '0;
         end else begin

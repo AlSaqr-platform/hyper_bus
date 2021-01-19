@@ -14,7 +14,6 @@ module hyperbus_tb;
 
     initial begin
         fix.reset_end();
-        #150us;
         fix.i_rmaster.send_write('h4, 'h1, '1, error);
         #200ns;
         fix.write_axi('h800, 0, 4, 'hcaca_ffff_ffff_ffff_ffff_3214_00aa_ca00, 'hc03f);
