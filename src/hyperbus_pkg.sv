@@ -1,5 +1,9 @@
 package hyperbus_pkg;
 
+    // Maximal burst size: 2^8 1024-bit words as 16-bit words
+    localparam unsigned HyperBurstWidth = 8 * $clog2(1024/16);
+    typedef logic [HyperBurstWidth-1:0] hyper_blen_t;
+
     // configuration type
     typedef struct packed {
         logic [3:0]     t_latency_access;
@@ -9,7 +13,6 @@ package hyperbus_pkg;
         logic [7:0]     t_rwds_delay_line;
         logic [1:0]     t_variable_latency_check;
     } hyper_cfg_t;
-
 
     typedef struct packed {
         logic [15:0]    data;
@@ -25,7 +28,7 @@ package hyperbus_pkg;
 
     typedef struct packed {
         logic           write;     // transaction is a write
-        axi_pkg::len_t  burst;
+        hyper_blen_t    burst;
         logic           burst_type;
         logic           address_space;
         logic [31:0]    address;

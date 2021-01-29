@@ -163,7 +163,8 @@ module hyperbus #(
         .trans_valid_o  ( axi_trans_valid   ),
         .trans_ready_i  ( axi_trans_ready   ),
 
-        .chip_rules_i   ( chip_rules        )
+        .chip_rules_i   ( chip_rules        ),
+        .addr_space_i   ( '0                )   // TODO: implement in regfile!
     );
 
     hyperbus_phy #(
