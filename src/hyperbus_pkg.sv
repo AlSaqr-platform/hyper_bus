@@ -4,10 +4,12 @@ package hyperbus_pkg;
     typedef struct packed {
         logic [3:0]     t_latency_access;
         logic           en_latency_additional;
-        logic [15:0]    t_cs_max;
+        logic [15:0]    t_burst_max;
         logic [3:0]     t_read_write_recovery;
-        logic [7:0]     t_rwds_delay_line;
         logic [1:0]     t_variable_latency_check;
+        logic [3:0]     t_rx_clk_delay;
+        logic [3:0]     t_tx_clk_delay;
+        logic           address_space;
     } hyper_cfg_t;
 
 

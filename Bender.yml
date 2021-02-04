@@ -14,12 +14,12 @@ dependencies:
 
 sources:
   files:
+    # Flattened dependencies
+    - src/generic_delay.behav.sv
     # Level 0
     - src/hyperbus_pkg.sv
     - src/hyperbus_clock_diff_out.sv
     - src/hyperbus_ddr_out.sv
-    # TODO
-    - src/hyperbus_rwds_delay.sv
     - src/hyperbus_delay.sv
     # Level 1
     - src/hyperbus_trx.sv

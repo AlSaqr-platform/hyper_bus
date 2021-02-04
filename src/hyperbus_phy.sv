@@ -15,7 +15,7 @@
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
 // TODO: hyperflash!!!!
-// TODO: rename, change t_cs_max to t_burst_max
+// TODO: rename, change t_burst_max to t_burst_max
 
 module hyperbus_phy import hyperbus_pkg::*; #(
     parameter int unsigned NumChips         = 2,
@@ -23,10 +23,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     parameter int unsigned RxFifoLogDepth   = 3,
     parameter int unsigned StartupCycles    = 150 /*us*/ * 100 /*MHz*/ // Conservative minmum frequency estimate
 )(
-    input  logic                clk_0_i,
-    input  logic                clk_90_i,
+    input  logic                clk_i,
     input  logic                rst_ni,
-    input  logic                clk_test_i,
     input  logic                test_mode_i,
     // Config registers
     input  hyper_cfg_t          cfg_i,
@@ -116,20 +114,20 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         .NumChips       ( NumChips          ),
         .RxFifoLogDepth ( RxFifoLogDepth    )
     ) i_trx (
-        .clk_0_i,
-        .clk_90_i,
-        .clk_test_i,
+        .clk_i,
         .rst_ni,
         .test_mode_i,
-        .clk_ena_i          ( trx_clk_ena           ),
         .cs_i               ( cs_q                  ),
         .cs_ena_i           ( trx_cs_ena            ),
         .rwds_sample_o      ( trx_rwds_sample       ),
         .rwds_sample_ena_i  ( trx_rwds_sample_ena   ),
+        .tx_clk_delay_i     ( cfg_i.t_tx_clk_delay  ),
+        .tx_clk_ena_i       ( trx_clk_ena           ),
         .tx_data_i          ( trx_tx_data           ),
         .tx_data_oe_i       ( trx_tx_data_oe        ),
         .tx_rwds_i          ( trx_tx_rwds           ),
         .tx_rwds_oe_i       ( trx_tx_rwds_oe        ),
+        .rx_clk_delay_i     ( cfg_i.t_rx_clk_delay  ),
         .rx_clk_ena_i       ( trx_rx_clk_ena        ),
         .rx_data_o          ( trx_rx_data           ),
         .rx_valid_o         ( trx_rx_valid          ),
@@ -188,7 +186,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign b_pending_clear  = b_valid_o & b_ready_i;
 
     // FF indicating whether B response pending
-    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_b_pending
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_b_pending
         if      (~rst_ni)           b_pending_q <= 1'b0;
         else if (b_pending_set)     b_pending_q <= 1'b1;
         else if (b_pending_clear)   b_pending_q <= 1'b0;
@@ -209,7 +207,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
 
     // Counter for outstanding R responses
     assign r_outstand_dec   = rx_valid_o & rx_ready_i;
-    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_r_outstand
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_r_outstand
         if      (~rst_ni)                           r_outstand_q <= '0;
         else if (r_outstand_inc & ~r_outstand_dec)  r_outstand_q <= r_outstand_q + 1;
         else if (r_outstand_dec & ~r_outstand_inc)  r_outstand_q <= r_outstand_q - 1;
@@ -276,7 +274,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 trx_rwds_sample_ena = ~ctl_write_zero_lat;
                 if (ctl_timer_zero) begin
                     if (ctl_write_zero_lat) begin
-                        timer_d = cfg_i.t_cs_max;
+                        timer_d = cfg_i.t_burst_max;
                         state_d = Write;
                     end else begin
                         timer_d = TimerWidth'(cfg_i.t_latency_access) << ctl_add_latency;
@@ -288,7 +286,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 trx_clk_ena = 1'b1;
                 // Substract cycle for last CA and another for state delay
                 if (ctl_timer_two) begin
-                    timer_d = cfg_i.t_cs_max;
+                    timer_d = cfg_i.t_burst_max;
                     state_d = tf_q.write ? Write : Read;
                 end
             end
@@ -332,7 +330,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     end
 
     // PHY state registers, including timer and transfer
-    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_phy
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_phy
         if (~rst_ni) begin
             state_q <= Startup;
             timer_q <= StartupCycles;

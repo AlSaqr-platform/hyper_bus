@@ -44,10 +44,12 @@ module hyperbus_cfg_regs #(
         if (sel_reg_mapped) begin
             rfield = {
                 crange_q,
+                32'(cfg_q.address_space),
                 32'(cfg_q.t_variable_latency_check),
-                32'(cfg_q.t_rwds_delay_line),
+                32'(cfg_q.t_tx_clk_delay),
+                32'(cfg_q.t_rx_clk_delay),
                 32'(cfg_q.t_read_write_recovery),
-                32'(cfg_q.t_cs_max),
+                32'(cfg_q.t_burst_max),
                 32'(cfg_q.en_latency_additional),
                 32'(cfg_q.t_latency_access)
             };
@@ -68,12 +70,14 @@ module hyperbus_cfg_regs #(
             case (sel_reg)
                 'h0: cfg_d.t_latency_access         = (~wm & cfg_q.t_latency_access        ) | (wm & reg_req_i.wdata);
                 'h1: cfg_d.en_latency_additional    = (~wm & cfg_q.en_latency_additional   ) | (wm & reg_req_i.wdata);
-                'h2: cfg_d.t_cs_max                 = (~wm & cfg_q.t_cs_max                ) | (wm & reg_req_i.wdata);
+                'h2: cfg_d.t_burst_max              = (~wm & cfg_q.t_burst_max             ) | (wm & reg_req_i.wdata);
                 'h3: cfg_d.t_read_write_recovery    = (~wm & cfg_q.t_read_write_recovery   ) | (wm & reg_req_i.wdata);
-                'h4: cfg_d.t_rwds_delay_line        = (~wm & cfg_q.t_rwds_delay_line       ) | (wm & reg_req_i.wdata);
-                'h5: cfg_d.t_variable_latency_check = (~wm & cfg_q.t_variable_latency_check) | (wm & reg_req_i.wdata);
+                'h4: cfg_d.t_rx_clk_delay           = (~wm & cfg_q.t_rx_clk_delay          ) | (wm & reg_req_i.wdata);
+                'h5: cfg_d.t_tx_clk_delay           = (~wm & cfg_q.t_tx_clk_delay          ) | (wm & reg_req_i.wdata);
+                'h6: cfg_d.t_variable_latency_check = (~wm & cfg_q.t_variable_latency_check) | (wm & reg_req_i.wdata);
+                'h7: cfg_d.address_space            = (~wm & cfg_q.address_space           ) | (wm & reg_req_i.wdata);
                 default: begin
-                    {sel_chip, chip_reg} = sel_reg - 'h6;     // Bad regfile layouts have consequences...
+                    {sel_chip, chip_reg} = sel_reg - 'h8;     // Bad regfile layouts have consequences...
                     crange_d[sel_chip][chip_reg] = (~wm & crange_q[sel_chip][chip_reg]) |  (wm & reg_req_i.wdata);
                 end
             endcase // sel_reg
@@ -84,10 +88,12 @@ module hyperbus_cfg_regs #(
     assign cfg_rstval = hyperbus_pkg::hyper_cfg_t'{
         t_latency_access:           'h6,
         en_latency_additional:      'b1,
-        t_cs_max:                   'd665,
+        t_burst_max:                'd665,
         t_read_write_recovery:      'h6,
-        t_rwds_delay_line:          'h2,
-        t_variable_latency_check:   'h3
+        t_rx_clk_delay:             'h8,
+        t_tx_clk_delay:             'h8,
+        t_variable_latency_check:   'h3,
+        address_space:              'b0
     };
 
     for (genvar i = 0; unsigned'(i) < NumChips; i++) begin : gen_crange_rstval
