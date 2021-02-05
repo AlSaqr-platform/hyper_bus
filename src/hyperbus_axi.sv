@@ -71,7 +71,6 @@ module hyperbus_axi #(
     axi_ax_t    ser_out_req_ar;
 
     axi_data_t  r_data_d, r_data_q;
-    logic       b_error_d, b_error_q;
     logic       r_error_d, r_error_q;
 
     word_cnt_t  upconv_lane_cnt_d, upconv_lane_cnt_q;
@@ -124,18 +123,12 @@ module hyperbus_axi #(
     assign tx_valid_o           = ser_out_req.w_valid;      // Uses lock-in; beat stays valid until handshaked
     assign ser_out_rsp.w_ready  = tx_ready_i & downconv_lane_cnt_endbeat;
 
-    // B channel: size upconversion
-    assign ser_out_rsp.b.resp   = (b_error_q | b_error_i) ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
+    // B channel: 1-to-1-connection
+    assign ser_out_rsp.b.resp   = b_error_i ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign ser_out_rsp.b.user   = '0;
     assign ser_out_rsp.b.id     = '0;
-    assign ser_out_rsp.b_valid  = b_valid_i & upconv_lane_cnt_endbeat;
-    assign b_ready_o            = ~upconv_lane_cnt_last | ser_out_req.b_ready;
-
-    always_comb begin : proc_comb_b_error
-        b_error_d = b_error_q;
-        if      (upconv_lane_cnt_endbeat)   b_error_d = 1'b0;
-        else if (b_valid_i & b_ready_o)     b_error_d = b_error_q | b_error_i;
-    end
+    assign ser_out_rsp.b_valid  = b_valid_i;
+    assign b_ready_o            = ser_out_req.b_ready;
 
     // R channel: size upconversion
     assign ser_out_rsp.r.last   = rx_i.last;
@@ -204,34 +197,39 @@ module hyperbus_axi #(
             downconv_lane_cnt_d = downconv_lane_cnt_q + 1;
     end
 
-    // Signal down-conversion beat endings
+
+    // Signal up-conversion beat endings
     always_comb begin : proc_comb_downconv_endbeat
-        downconv_lane_cnt_endbeat = 1'b0;
-        if (curr_ax_size_q == 1)
-            downconv_lane_cnt_endbeat = 1'b1;
-        else for (int i=0; i<curr_ax_size_q-1; ++i) begin
-            downconv_lane_cnt_endbeat |= downconv_lane_cnt_q[i];
+        downconv_lane_cnt_endbeat = 1'b1;
+        if (curr_ax_size_q != 1) begin
+            for (int unsigned i=0; i<curr_ax_size_q-1; ++i)
+                downconv_lane_cnt_endbeat &= downconv_lane_cnt_q[i];
         end
     end
 
-    // Up-conversion lane counter (R or B channel)
+    // Signal final lane of wide AXI
+    assign downconv_lane_cnt_last = (AxiDataWidth == 1) ? 1'b1 : &downconv_lane_cnt_q;
+
+    // Up-conversion lane counter (R channel)
     always_comb begin : proc_comb_upconv_lane_cnt
         upconv_lane_cnt_d = upconv_lane_cnt_q;
         if (trans_valid_o & trans_ready_i)
             upconv_lane_cnt_d = rr_out_req_ax.addr[WordsPerBeat-1:1];
-        else if (rx_valid_i & rx_ready_o | (b_valid_i & b_ready_o))
+        else if (rx_valid_i & rx_ready_o)
             upconv_lane_cnt_d = upconv_lane_cnt_q + 1;
     end
 
     // Signal up-conversion beat endings
     always_comb begin : proc_comb_upconv_endbeat
-        upconv_lane_cnt_endbeat = 1'b0;
-        if (curr_ax_size_q == 1)
-            upconv_lane_cnt_endbeat = 1'b1;
-        else for (int i=0; i<curr_ax_size_q-1; ++i) begin
-            upconv_lane_cnt_endbeat |= upconv_lane_cnt_q[i];
+        upconv_lane_cnt_endbeat = 1'b1;
+        if (curr_ax_size_q != 1) begin
+            for (int unsigned i=0; i<curr_ax_size_q-1; ++i)
+                upconv_lane_cnt_endbeat &= upconv_lane_cnt_q[i];
         end
     end
+
+    // Signal final lane of wide AXI
+    assign upconv_lane_cnt_last = (AxiDataWidth == 1) ? 1'b1 : &upconv_lane_cnt_q;
 
     // Handle address mapping to chip select
     logic [ChipSelWidth-1:0] chip_sel_idx;
@@ -258,7 +256,8 @@ module hyperbus_axi #(
 
     // AX channel: forward
     assign trans_o.write            = rr_out_req_write;
-    assign trans_o.burst            = rr_out_req_ax.len << (rr_out_req_ax.size-1);
+     // TODO: ADAPT DO DECREMENTED AXI STYLE? PHY ASSUMES BURST COUNT NOT DECREMENTED!!!!
+    assign trans_o.burst            = (((hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1)) << (rr_out_req_ax.size-1));
     assign trans_o.burst_type       = rr_out_req_ax.burst[0];   // TODO: Implement wrapping bursts or tie to 0
     assign trans_o.address_space    = addr_space_i;
     assign trans_o.address          = rr_out_req_ax.addr;       // TODO: Handle overlaps with chip rules?
@@ -266,14 +265,12 @@ module hyperbus_axi #(
     // Registers
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_r
         if(~rst_ni) begin
-            b_error_q           <= 1'b0;
             r_error_q           <= 1'b0;
             r_data_q            <= '0;
             upconv_lane_cnt_q   <= '0;
             downconv_lane_cnt_q <= '0;
-            curr_ax_size_q      <= '0;
+            curr_ax_size_q      <= 'h1;
         end else begin
-            b_error_q           <= b_error_d;
             r_error_q           <= r_error_d;
             r_data_q            <= r_data_d;
             upconv_lane_cnt_q   <= upconv_lane_cnt_d;
@@ -297,10 +294,9 @@ module hyperbus_axi #(
         else $fatal (1, "Non-incremental burst passed; this is currently not supported.");
 
     xfer_size : assert property(
-      @(posedge clk_i) trans_valid_o & trans_ready_i |-> rr_out_req_ax.size != '0)
+      @(posedge clk_i) trans_valid_o & trans_ready_i |-> rr_out_req_ax.size != '0 || curr_ax_size_q == '0)
         else $fatal (1, "Byte-size transfer (size 0) requested; this is currently not supported.");
     `endif
     // pragma translate_on
 
 endmodule
-

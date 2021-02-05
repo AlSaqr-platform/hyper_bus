@@ -14,13 +14,14 @@ module hyperbus_tb;
 
     initial begin
         fix.reset_end();
+        #200us;
         fix.i_rmaster.send_write('h4, 'h1, '1, error);
         #200ns;
         fix.write_axi('h800, 0, 4, 'hcaca_ffff_ffff_ffff_ffff_3214_00aa_ca00, 'hc03f);
         fix.write_axi('h808, 0, 1, 'hffff_ffff_ffff_dd11_ffff_ffff_ffff_ffff, 'h0300);
         fix.write_axi('h80c, 0, 1, 'hffff_22dd_ffff_ffff_ffff_ffff_ffff_ffff, 'h3000);
-        fix.write_axi('h800, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffe1, 'h0001);
-        fix.read_axi('h800, 0, 4);
+        fix.write_axi('h800, 0, 1, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffe1, 'h0001);
+        fix.read_axi('h800, 1, 4);
         fix.write_axi('h806, 0, 1, 'hffff_ffff_ffff_ffff_f1f0_ffff_ffff_ffff, 'h00c0);
         fix.write_axi('h80a, 0, 1, 'hffff_ffff_b0b0_ffff_ffff_ffff_ffff_ffff, 'h0c00);
         fix.write_axi('h80e, 0, 1, 'h1001_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
