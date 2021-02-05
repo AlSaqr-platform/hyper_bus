@@ -49,10 +49,7 @@ module hyperbus #(
     // Clock and reset generation
     logic rst_phy_n;
     logic rst_sys_n;
-    logic clk0;     // Clock for PHY and FIFOs
-    logic clk90;
-    logic clk0_gen;
-    logic clk90_gen;
+    logic clk_phy;      // Clock for PHY and FIFOs
 
     // Register file
     hyperbus_pkg::hyper_cfg_t   cfg;
@@ -86,39 +83,34 @@ module hyperbus #(
     logic                       phy_trans_valid;
     logic                       phy_trans_ready;
 
-    // Shifted clock generator
-    hyperbus_clk_gen i_ddr_clk (
-        .clk_i      ( clk_phy_i ),
-        .rst_ni     ( rst_phy_n ),
-        .clk0_o     ( clk0_gen_old  ),
-        .clk90_o    ( clk90_gen_old ),
-        .clk180_o   (  ),
-        .clk270_o   (  )
+
+    // Create synchronized resets for PHY
+    rstgen i_rstgen_phy (
+        .clk_i       ( clk_phy_i    ),
+        .rst_ni      ( rst_ni       ),
+        .test_mode_i ( test_mode_i  ),
+        .rst_no      ( rst_phy_n    ),
+        .init_no     (  )
     );
 
-    // shift clock
-    hyperbus_delay clock_delay (
-        .in_i  ( clk_phy_i    ),
-        .out_o ( clk90_gen    )
+    // Create synchronised reset for system interfaces
+    rstgen i_rstgen_sys (
+        .clk_i       ( clk_sys_i    ),
+        .rst_ni      ( rst_ni       ),
+        .test_mode_i ( test_mode_i  ),
+        .rst_no      ( rst_sys_n    ),
+        .init_no     (  )
     );
-    assign clk0_gen = clk_phy_i;
 
-    // Test mode muxes. TODO: substitute for pulp_clock_mux2
-    tc_clk_mux2 i_test_mux_clk0 (
-        .clk_o      ( clk0          ),
-        .clk0_i     ( clk0_gen      ),
+    // Use system clock for PHY in test mode
+    tc_clk_mux2 i_test_mux_clk_phy (
+        .clk0_i     ( clk_phy_i     ),
         .clk1_i     ( clk_sys_i     ),
-        .clk_sel_i  ( test_mode_i   )
+        .clk_sel_i  ( test_mode_i   ),
+        .clk_o      ( clk_phy       )
     );
 
-    tc_clk_mux2 i_test_mux_clk90 (
-        .clk_o      ( clk90         ),
-        .clk0_i     ( clk90_gen     ),
-        .clk1_i     ( clk_sys_i     ),
-        .clk_sel_i  ( test_mode_i   )
-    );
-
-    // Register File
+    // Config register File
     hyperbus_cfg_regs #(
         .NumChips       ( NumChips      ),
         .reg_req_t      ( reg_req_t     ),
@@ -133,7 +125,7 @@ module hyperbus #(
         .chip_rules_o   ( chip_rules    )
     );
 
-    // AXI slave
+    // AXI slave interfacing PHY
     hyperbus_axi #(
         .AxiDataWidth   ( AxiDataWidth      ),
         .AxiAddrWidth   ( AxiAddrWidth      ),
@@ -170,11 +162,8 @@ module hyperbus #(
     hyperbus_phy #(
         .NumChips       ( NumChips          )
     ) i_phy (
-        .clk_0_i        ( clk0              ),
-        .clk_90_i       ( clk90             ),
+        .clk_i          ( clk_phy           ),
         .rst_ni         ( rst_phy_n         ),
-
-        .clk_test_i     ( clk_sys_i         ),
         .test_mode_i    ( test_mode_i       ),
 
         .cfg_i          ( cfg               ),
@@ -193,16 +182,16 @@ module hyperbus #(
         .trans_valid_i  ( phy_trans_valid   ),
         .trans_ready_o  ( phy_trans_ready   ),
 
-        .hyper_cs_no        ( hyper_cs_no       ),
-        .hyper_ck_o         ( hyper_ck_o        ),
-        .hyper_ck_no        ( hyper_ck_no       ),
-        .hyper_rwds_o       ( hyper_rwds_o      ),
-        .hyper_rwds_i       ( hyper_rwds_i      ),
-        .hyper_rwds_oe_o    ( hyper_rwds_oe_o   ),
-        .hyper_dq_i         ( hyper_dq_i        ),
-        .hyper_dq_o         ( hyper_dq_o        ),
-        .hyper_dq_oe_o      ( hyper_dq_oe_o     ),
-        .hyper_reset_no     ( hyper_reset_no    )
+        .hyper_cs_no,
+        .hyper_ck_o,
+        .hyper_ck_no,
+        .hyper_rwds_o,
+        .hyper_rwds_i,
+        .hyper_rwds_oe_o,
+        .hyper_dq_i,
+        .hyper_dq_o,
+        .hyper_dq_oe_o,
+        .hyper_reset_no
     );
 
     cdc_2phase #(
@@ -215,7 +204,7 @@ module hyperbus #(
         .src_ready_o    ( axi_trans_ready   ),
 
         .dst_rst_ni     ( rst_phy_n         ),
-        .dst_clk_i      ( clk0              ),
+        .dst_clk_i      ( clk_phy           ),
         .dst_data_o     ( phy_tf_cdc        ),
         .dst_valid_o    ( phy_trans_valid   ),
         .dst_ready_i    ( phy_trans_ready   )
@@ -225,7 +214,7 @@ module hyperbus #(
         .T  ( logic )
     ) i_cdc_2phase_b (
         .src_rst_ni     ( rst_phy_n     ),
-        .src_clk_i      ( clk0          ),
+        .src_clk_i      ( clk_phy       ),
         .src_data_i     ( phy_b_error   ),
         .src_valid_i    ( phy_b_valid   ),
         .src_ready_o    ( phy_b_ready   ),
@@ -237,7 +226,7 @@ module hyperbus #(
         .dst_ready_i    ( axi_b_ready   )
     );
 
-    //Write data, TX CDC FIFO
+    // Write data, TX CDC FIFO
     cdc_fifo_gray  #(
         .T          ( hyperbus_pkg::hyper_tx_t  ),
         .LOG_DEPTH  ( 2                         )
@@ -249,19 +238,19 @@ module hyperbus #(
         .src_ready_o    ( axi_tx_ready  ),
 
         .dst_rst_ni     ( rst_phy_n     ),
-        .dst_clk_i      ( clk0          ),
+        .dst_clk_i      ( clk_phy       ),
         .dst_data_o     ( phy_tx        ),
         .dst_valid_o    ( phy_tx_valid  ),
         .dst_ready_i    ( phy_tx_ready  )
     );
 
-    //Read data, RX CDC FIFO
+    // Read data, RX CDC FIFO
     cdc_fifo_gray  #(
         .T          ( hyperbus_pkg::hyper_rx_t  ),
         .LOG_DEPTH  ( 2                         )
     ) i_cdc_fifo_rx (
         .src_rst_ni     ( rst_phy_n     ),
-        .src_clk_i      ( clk0          ),
+        .src_clk_i      ( clk_phy       ),
         .src_data_i     ( phy_rx        ),
         .src_valid_i    ( phy_rx_valid  ),
         .src_ready_o    ( phy_rx_ready  ),
@@ -271,23 +260,6 @@ module hyperbus #(
         .dst_data_o     ( axi_rx        ),
         .dst_valid_o    ( axi_rx_valid  ),
         .dst_ready_i    ( axi_rx_ready  )
-    );
-
-    // PHY-side reset synchronizer
-    rstgen i_rstgen_phy (
-        .clk_i       ( clk_phy_i    ),
-        .rst_ni      ( rst_ni       ),
-        .test_mode_i ( test_mode_i  ),
-        .rst_no      ( rst_phy_n    ),
-        .init_no     (  )
-    );
-
-    rstgen i_rstgen_sys (
-        .clk_i       ( clk_sys_i    ),
-        .rst_ni      ( rst_ni       ),
-        .test_mode_i ( test_mode_i  ),
-        .rst_no      ( rst_sys_n    ),
-        .init_no     (  )
     );
 
 endmodule : hyperbus

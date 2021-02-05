@@ -15,30 +15,28 @@
 // Author: Stephan Keck <kecks@ethz.ch>
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
-// TODO: delay lines!
-
 module hyperbus_trx #(
     parameter int unsigned NumChips         = 2,
     parameter int unsigned RxFifoLogDepth   = 3
 )(
     // Global signals
-    input  logic            clk_0_i,
-    input  logic            clk_90_i,
-    input  logic            clk_test_i,
+    input  logic            clk_i,
     input  logic            rst_ni,
     input  logic            test_mode_i,
     // Transciever control: facing controller
-    input  logic                   clk_ena_i,
     input  logic [NumChips-1:0]    cs_i,
     input  logic                   cs_ena_i,
     output logic                   rwds_sample_o,
     input  logic                   rwds_sample_ena_i,
 
+    input  logic [3:0]             tx_clk_delay_i,
+    input  logic                   tx_clk_ena_i,
     input  logic [15:0]            tx_data_i,
     input  logic                   tx_data_oe_i,
     input  logic [1:0]             tx_rwds_i,
     input  logic                   tx_rwds_oe_i,
 
+    input  logic [3:0]             rx_clk_delay_i,
     input  logic                   rx_clk_ena_i,
     output logic [15:0]            rx_data_o,
     output logic                   rx_valid_o,
@@ -56,11 +54,12 @@ module hyperbus_trx #(
     output logic                   hyper_reset_no
 );
 
-    // RWDS input from delay line
-    logic rx_rwds_in_delayed;
+    // 90-degree-shifted clocks generated with delay line
+    logic tx_clk_ena_q;
+    logic tx_clk_90;
+    logic rx_rwds_90;
 
     // Delayed clock enable synchronous with data
-    logic clk_ena;
 
     // Intermediate RX signals for RWDS domain
     logic           rx_rwds_clk_ena;
@@ -78,16 +77,23 @@ module hyperbus_trx #(
     //    TX + control
     // =================
 
+    // Shift clock by 90 degrees
+    hyperbus_delay i_delay_tx_clk_90 (
+        .in_i       ( clk_i          ),
+        .delay_i    ( tx_clk_delay_i ),
+        .out_o      ( tx_clk_90      )
+    );
+
     // 90deg-shifted differential output clock, sampling output bytes centrally
     hyperbus_clock_diff_out i_clock_diff_out (
-        .in_i   ( clk_90_i      ),
-        .en_i   ( clk_ena       ),
+        .in_i   ( tx_clk_90     ),
+        .en_i   ( tx_clk_ena_q  ),
         .out_o  ( hyper_ck_o    ),
         .out_no ( hyper_ck_no   )
     );
 
     // Synchronize output chip select to shifted differential output clock
-    always_ff @(posedge clk_90_i or negedge rst_ni) begin : proc_ff_tx_shift90
+    always_ff @(posedge tx_clk_90 or negedge rst_ni) begin : proc_ff_tx_shift90
         if (~rst_ni)    hyper_cs_no <= '1;
         else            hyper_cs_no <= cs_ena_i ? ~cs_i : '1;
     end
@@ -97,7 +103,7 @@ module hyperbus_trx #(
         hyperbus_ddr_out #(
             .Init   ( 1'b0 )
         ) i_ddr_tx_data (
-            .clk_i  ( clk_0_i           ),
+            .clk_i  ( clk_i             ),
             .rst_ni ( rst_ni            ),
             .d0_i   ( tx_data_i  [i+8]  ),
             .d1_i   ( tx_data_i  [i]    ),
@@ -109,7 +115,7 @@ module hyperbus_trx #(
     hyperbus_ddr_out #(
         .Init   ( 1'b0 )
     ) i_ddr_tx_rwds (
-        .clk_i  ( clk_0_i       ),
+        .clk_i  ( clk_i         ),
         .rst_ni ( rst_ni        ),
         .d0_i   ( tx_rwds_i [1] ),
         .d1_i   ( tx_rwds_i [0] ),
@@ -118,21 +124,20 @@ module hyperbus_trx #(
 
     // Delay output, clock enables to be synchronous with DDR-converted data
     // The delayed clock also ensures t_CSS is respected at the start, end of CS
-    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_tx_delay
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_tx_delay
         if(~rst_ni) begin
             hyper_rwds_oe_o <= 1'b0;
             hyper_dq_oe_o   <= 1'b0;
-            clk_ena         <= 1'b0;
+            tx_clk_ena_q    <= 1'b0;
         end else begin
             hyper_rwds_oe_o <= tx_rwds_oe_i;
             hyper_dq_oe_o   <= tx_data_oe_i;
-            clk_ena         <= clk_ena_i;
+            tx_clk_ena_q    <= tx_clk_ena_i;
         end
     end
 
-
     // Sample RWDS on demand for extra latency determination
-    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_rwds_sample
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_rwds_sample
         if (~rst_ni)                rwds_sample_o <= '0;
         else if (rwds_sample_ena_i) rwds_sample_o <= hyper_rwds_i;
     end
@@ -143,19 +148,20 @@ module hyperbus_trx #(
 
     // Synchronize RX clock enable into RWDS domain
     // TODO: Why was this clocked without phase shift??
-    always_ff @(posedge clk_0_i or negedge rst_ni) begin : proc_ff_rx_delay
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_rx_delay
         if (~rst_ni)    rx_rwds_clk_ena <= '0;
         else            rx_rwds_clk_ena <= rx_clk_ena_i;
     end
 
-    // Delay RWDS clock
-    hyperbus_rwds_delay i_rwds_in_delay (
-        .in_i   ( hyper_rwds_i          ),
-        .out_o  ( rx_rwds_in_delayed    )
+    // Shift RWDS clock by 90 degrees
+    hyperbus_delay i_delay_rx_rwds_90 (
+        .in_i       ( hyper_rwds_i   ),
+        .delay_i    ( rx_clk_delay_i ),
+        .out_o      ( rx_rwds_90     )
     );
 
     // Gate delayed RWDS clock with RX clock enable
-    assign rx_rwds_clk_orig = rx_rwds_in_delayed & rx_rwds_clk_ena;
+    assign rx_rwds_clk_orig = rx_rwds_90 & rx_rwds_clk_ena;
 
      // Reset RX state on async reset or on gated clock (whenever inactive)
     assign rx_rwds_soft_rst = ~rst_ni | (~rx_rwds_clk_ena & ~test_mode_i);
@@ -166,10 +172,11 @@ module hyperbus_trx #(
         else                    rx_rwds_fifo_valid <= 1'b1;
     end
 
-    // If testing, replace gated RWDS clock with test clock
+    // If testing, replace gated RWDS clock with primary (PHY) clock;
+    // PHY clock itself is replaced with system clock in hyperbus top level
     tc_clk_mux2 i_rx_rwds_clk_mux (
         .clk0_i    ( rx_rwds_clk_orig   ),
-        .clk1_i    ( clk_test_i         ),
+        .clk1_i    ( clk_i              ),
         .clk_sel_i ( test_mode_i        ),
         .clk_o     ( rx_rwds_clk        )
     );
@@ -193,7 +200,7 @@ module hyperbus_trx #(
         .src_valid_i ( rx_rwds_fifo_valid ),
         .src_ready_o ( rx_rwds_fifo_ready ),
         // System domain
-        .dst_clk_i   ( clk_0_i      ),
+        .dst_clk_i   ( clk_i        ),
         .dst_rst_ni  ( rst_ni       ),
         .dst_data_o  ( rx_data_o    ),
         .dst_valid_o ( rx_valid_o   ),
