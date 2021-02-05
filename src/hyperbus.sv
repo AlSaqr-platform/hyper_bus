@@ -156,7 +156,7 @@ module hyperbus #(
         .trans_ready_i  ( axi_trans_ready   ),
 
         .chip_rules_i   ( chip_rules        ),
-        .addr_space_i   ( '0                )   // TODO: implement in regfile!
+        .addr_space_i   ( cfg.address_space )
     );
 
     hyperbus_phy #(
