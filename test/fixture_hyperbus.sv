@@ -12,11 +12,11 @@ module fixture_hyperbus #(
     parameter int unsigned NumChips = 2
 );
 
-    localparam time SYS_TCK  = 5ns;
+    localparam time SYS_TCK  = 2.78ns;
     localparam time SYS_TA   = 1ns;
     localparam time SYS_TT   = SYS_TCK - 1ns;
 
-    localparam time PHY_TCK  = 12ns;
+    localparam time PHY_TCK  = 10ns;
 
     logic sys_clk      = 0;
     logic phy_clk      = 0;
@@ -351,7 +351,7 @@ module fixture_hyperbus #(
         axi_master_drv.send_aw(aw_beat);
 
         for(int unsigned i = 0; i < burst_len + 1; i++) begin
-            if (i == 0) begin
+            if (i == burst_len) begin
                 w_beat.w_last = 1'b1;
             end
             axi_master_drv.send_w(w_beat);
