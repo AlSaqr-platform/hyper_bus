@@ -162,18 +162,20 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign ca_tx_data = ca[(8'(timer_q) << 4) +: 16];
 
     // Write dataflow
-    assign trx_tx_data  = (state_q == SendCA) ? ca_tx_data : tx_i.data;
-    assign trx_tx_rwds  =  ~tx_i.strb;
-
     always_comb begin : proc_comb_tx
+        trx_tx_data     = '0;
         trx_tx_data_oe  = 1'b0;
+        trx_tx_rwds     = '0;
         trx_tx_rwds_oe  = 1'b0;
         tx_ready_o      = 1'b0;
         ctl_wclk_ena    = 1'b0;
         if (state_q == SendCA) begin
+            trx_tx_data     = ca_tx_data;
             trx_tx_data_oe  = 1'b1;
         end else if (state_q == Write) begin
+            trx_tx_data     = tx_i.data;
             trx_tx_data_oe  = 1'b1;
+            trx_tx_rwds     = ~tx_i.strb;
             trx_tx_rwds_oe  = 1'b1;
             tx_ready_o      = 1'b1;     // Memory always ready within HyperBus burst
             ctl_wclk_ena   = tx_valid_i;
