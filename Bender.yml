@@ -24,7 +24,6 @@ sources:
     # Level 1
     - src/hyperbus_trx.sv
     # Level 2
-    - src/hyperbus_clk_gen.sv
     - src/hyperbus_cfg_regs.sv
     - src/hyperbus_phy.sv
     - src/hyperbus_axi.sv
