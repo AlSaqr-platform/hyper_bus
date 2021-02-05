@@ -90,7 +90,6 @@ module hyperbus_phy import hyperbus_pkg::*; #(
 
     // Command-address
     hyper_phy_ca_t  ca;
-    logic [15:0]    ca_tx_data;
 
     // Transciever IO
     logic           trx_clk_ena;
@@ -158,9 +157,6 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         addr_lower: tf_q.address[2:0]
     };
 
-    // Data to send in CA phase: use timer to select word
-    assign ca_tx_data = ca[(8'(timer_q) << 4) +: 16];
-
     // Write dataflow
     always_comb begin : proc_comb_tx
         trx_tx_data     = '0;
@@ -170,7 +166,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         tx_ready_o      = 1'b0;
         ctl_wclk_ena    = 1'b0;
         if (state_q == SendCA) begin
-            trx_tx_data     = ca_tx_data;
+            // In CA phase: use timer to select word
+            trx_tx_data     = ca[(8'(timer_q) << 4) +: 16];;
             trx_tx_data_oe  = 1'b1;
         end else if (state_q == Write) begin
             trx_tx_data     = tx_i.data;
