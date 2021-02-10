@@ -37,7 +37,8 @@ module hyperbus_trx #(
     input  logic                   tx_rwds_oe_i,
 
     input  logic [3:0]             rx_clk_delay_i,
-    input  logic                   rx_clk_ena_i,
+    input  logic                   rx_clk_set_i,
+    input  logic                   rx_clk_reset_i,
     output logic [15:0]            rx_data_o,
     output logic                   rx_valid_o,
     input  logic                   rx_ready_i,
@@ -147,10 +148,10 @@ module hyperbus_trx #(
     // ========
 
     // Synchronize RX clock enable into RWDS domain
-    // TODO: Why was this clocked without phase shift??
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_rx_delay
-        if (~rst_ni)    rx_rwds_clk_ena <= '0;
-        else            rx_rwds_clk_ena <= rx_clk_ena_i;
+        if (~rst_ni)                rx_rwds_clk_ena <= 1'b0;
+        else if (rx_clk_set_i)      rx_rwds_clk_ena <= 1'b1;
+        else if (rx_clk_reset_i)    rx_rwds_clk_ena <= 1'b0;
     end
 
     // Shift RWDS clock by 90 degrees

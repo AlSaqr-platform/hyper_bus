@@ -27,7 +27,6 @@ module hyperbus_tb;
         fix.write_axi('h80a, 0, 1, 'hffff_ffff_b0b0_ffff_ffff_ffff_ffff_ffff, 'h0c00);
         fix.write_axi('h80e, 0, 1, 'habcd_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
         fix.read_axi('h800, 0, 4);
-        fix.read_axi('h800, 0, 4);
 
         //fix.start_rand_master(0, 5);
         //fix.start_rand_master(20, 0);

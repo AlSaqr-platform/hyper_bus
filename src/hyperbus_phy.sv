@@ -99,7 +99,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     logic           trx_tx_data_oe;
     logic [1:0]     trx_tx_rwds;
     logic           trx_tx_rwds_oe;
-    logic           trx_rx_clk_ena;
+    logic           trx_rx_clk_set;
+    logic           trx_rx_clk_reset;
     logic [15:0]    trx_rx_data;
     logic           trx_rx_valid;
     logic           trx_rx_ready;
@@ -126,7 +127,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         .tx_rwds_i          ( trx_tx_rwds           ),
         .tx_rwds_oe_i       ( trx_tx_rwds_oe        ),
         .rx_clk_delay_i     ( cfg_i.t_rx_clk_delay  ),
-        .rx_clk_ena_i       ( trx_rx_clk_ena        ),
+        .rx_clk_set_i       ( trx_rx_clk_set        ),
+        .rx_clk_reset_i     ( trx_rx_clk_reset      ),
         .rx_data_o          ( trx_rx_data           ),
         .rx_valid_o         ( trx_rx_valid          ),
         .rx_ready_i         ( trx_rx_ready          ),
@@ -202,6 +204,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // Suspend clock one cycle for every stall caused by upstream.
     // This ensures that a sufficiently large RX FIFO will not overflow.
     assign ctl_rclk_ena     = ~(rx_valid_o & ~rx_ready_i);
+    // Disable incoming RWDS clock enable once all words received
+    assign trx_rx_clk_reset = b_pending_clear;
 
     // Counter for outstanding R responses
     assign r_outstand_dec   = rx_valid_o & rx_ready_i;
@@ -235,7 +239,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         b_pending_set       = 1'b0;
         trx_cs_ena          = 1'b1;
         trx_clk_ena         = 1'b0;
-        trx_rx_clk_ena      = 1'b0;
+        trx_rx_clk_set      = 1'b0;
         trx_rwds_sample_ena = 1'b0;
         // Default next state
         state_d = state_q;
@@ -288,7 +292,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
             end
             Read: begin
                 // Dataflow handled outside FSM
-                trx_rx_clk_ena = 1'b1;
+                trx_rx_clk_set = 1'b1;
                 if (ctl_rclk_ena) begin
                     trx_clk_ena     = 1'b1;
                     r_outstand_inc  = 1'b1;
