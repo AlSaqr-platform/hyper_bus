@@ -77,7 +77,6 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // Auxiliar control signals
     logic ctl_write_zero_lat;
     logic ctl_add_latency;
-    logic ctl_tf_last;
     logic ctl_tf_burst_last;
     logic ctl_tf_burst_done;
     logic ctl_timer_two;
@@ -228,8 +227,6 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign ctl_timer_one        = (timer_q == 1);
     assign ctl_timer_zero       = (timer_q == 0);
 
-    assign ctl_tf_last          = ctl_timer_one | ctl_tf_burst_last;
-
     // FSM logic
     always_comb begin : proc_comb_phy_fsm
         // Default outputs
@@ -290,27 +287,37 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 end
             end
             Read: begin
-                // TODO: ensure FIFO sufficiently vacant after resuming after stall
                 // Dataflow handled outside FSM
                 trx_rx_clk_ena = 1'b1;
                 if (ctl_rclk_ena) begin
                     trx_clk_ena     = 1'b1;
                     r_outstand_inc  = 1'b1;
                     tf_d.burst      = tf_q.burst - 1;
-                    if (ctl_tf_last) begin
+                    tf_d.address    = tf_q.address + 1; // TODO: should be increment of 2, but shift yet upstream
+                    if (ctl_tf_burst_last) begin
                         state_d = WaitXfer;
                     end
                 end
+                // Force-terminate access on burst time limit
+                if (ctl_timer_one) begin
+                    state_d = WaitXfer;
+                end
+
             end
             Write: begin
                 // Dataflow handled outside FSM
                 if (ctl_wclk_ena) begin
                     trx_clk_ena = 1'b1;
                     tf_d.burst  = tf_q.burst - 1;
-                    if (ctl_tf_last) begin
+                    tf_d.address    = tf_q.address + 1;
+                    if (ctl_tf_burst_last) begin
                         b_pending_set   = 1'b1;
                         state_d         = WaitXfer;
                     end
+                end
+                // Force-terminate access on burst time limit
+                if (ctl_timer_one) begin
+                    state_d = WaitXfer;
                 end
             end
             WaitXfer: begin

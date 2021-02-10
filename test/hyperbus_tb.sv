@@ -14,8 +14,9 @@ module hyperbus_tb;
 
     initial begin
         fix.reset_end();
-        #200us;
+        #500us;
         fix.i_rmaster.send_write('h4, 'h1, '1, error);
+
         #200ns;
         fix.write_axi('h800, 0, 4, 'hcaca_ffff_ffff_ffff_ffff_3214_00aa_ca00, 'hc03f);
         fix.write_axi('h808, 0, 1, 'hffff_ffff_ffff_dd11_ffff_ffff_ffff_ffff, 'h0300);
@@ -24,22 +25,22 @@ module hyperbus_tb;
         fix.read_axi('h800, 0, 4);
         fix.write_axi('h806, 0, 1, 'hffff_ffff_ffff_ffff_f1f0_ffff_ffff_ffff, 'h00c0);
         fix.write_axi('h80a, 0, 1, 'hffff_ffff_b0b0_ffff_ffff_ffff_ffff_ffff, 'h0c00);
-        fix.write_axi('h80e, 0, 1, 'h1001_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
+        fix.write_axi('h80e, 0, 1, 'habcd_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
+        fix.read_axi('h800, 0, 4);
         fix.read_axi('h800, 0, 4);
 
         //fix.start_rand_master(0, 5);
         //fix.start_rand_master(20, 0);
 
         // TODO: Bursts stuck at end --> investigate why!
-        /*
+
         // 128 bit access (burst)
-        fix.write_axi('ha00, 127, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
-        fix.read_axi('ha00, 127, 4);
+        //fix.write_axi('ha00, 127, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+       // fix.read_axi('ha00, 127, 4);
 
         // 128 bit access (burst, extrawide --> will be split)
-        fix.write_axi('ha00, 4090, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
-        fix.read_axi('ha00, 4090, 4);
-        */
+        //fix.write_axi('ha00, 4090, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+        //fix.read_axi('ha00, 4090, 4);
 
         // 128 bit access
         fix.write_axi('h100, 0, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
