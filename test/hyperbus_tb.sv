@@ -21,7 +21,7 @@ module hyperbus_tb;
         fix.write_axi('h800, 0, 4, 'hcaca_ffff_ffff_ffff_ffff_3214_00aa_ca00, 'hc03f);
         fix.write_axi('h808, 0, 1, 'hffff_ffff_ffff_dd11_ffff_ffff_ffff_ffff, 'h0300);
         fix.write_axi('h80c, 0, 1, 'hffff_22dd_ffff_ffff_ffff_ffff_ffff_ffff, 'h3000);
-        fix.write_axi('h800, 0, 1, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffe1, 'h0001);  // TODO: Used to be BYTE access (size 0)
+        fix.write_axi('h800, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffe1, 'h0001);
         fix.read_axi('h800, 0, 4);
         fix.write_axi('h806, 0, 1, 'hffff_ffff_ffff_ffff_f1f0_ffff_ffff_ffff, 'h00c0);
         fix.write_axi('h80a, 0, 1, 'hffff_ffff_b0b0_ffff_ffff_ffff_ffff_ffff, 'h0c00);
@@ -31,11 +31,9 @@ module hyperbus_tb;
         //fix.start_rand_master(0, 5);
         //fix.start_rand_master(20, 0);
 
-        // TODO: Bursts stuck at end --> investigate why!
-
         // 128 bit access (burst)
         //fix.write_axi('ha00, 127, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
-       // fix.read_axi('ha00, 127, 4);
+        //fix.read_axi('ha00, 127, 4);
 
         // 128 bit access (burst, extrawide --> will be split)
         //fix.write_axi('ha00, 4090, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
@@ -85,10 +83,10 @@ module hyperbus_tb;
         fix.read_axi('h2c, 0, 1);
         fix.read_axi('h2e, 0, 1);
 
-        // TODO: Used to be ENABLED (byte accesses not supported yet)
-        /*
+        // TODOL 8 bit burst
+
         // 8 bit (aligned)
-        fix.write_axi('h30, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ff11, 'h0001);
+        fix.write_axi('h30, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ff20, 'h0001);
         fix.write_axi('h31, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_1eff, 'h0002);
         fix.write_axi('h32, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ff1d_ffff, 'h0004);
         fix.write_axi('h33, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_1cff_ffff, 'h0008);
@@ -123,7 +121,7 @@ module hyperbus_tb;
         fix.read_axi('h3d, 0, 0);
         fix.read_axi('h3e, 0, 0);
         fix.read_axi('h3f, 0, 0);
-        */
+
 
         #5us;
         $stop();

@@ -74,13 +74,19 @@ module hyperbus_axi #(
     logic       r_error_d, r_error_q;
 
     word_cnt_t  lane_cnt_d, lane_cnt_q;
-    logic       lane_cnt_last;
     logic       lane_cnt_endbeat;
+
+    logic [7:0] w_byte_d, w_byte_q;
+    logic       w_strb_d, w_strb_q;
+
+    logic       lane_boffs_d, lane_boffs_q;
+    logic       boffs_cnt_last;
 
     axi_ax_t    rr_out_req_ax;
     logic       rr_out_req_write;
 
     axi_pkg::size_t curr_ax_size_d, curr_ax_size_q;
+    logic           curr_ax_size_byte;
 
     // Block unsupported atomics
     axi_atop_filter #(
@@ -114,11 +120,29 @@ module hyperbus_axi #(
     );
 
     // W channel: size downconversion
-    assign tx_o.data            = ser_out_req.w.data[16*lane_cnt_q+:16];
-    assign tx_o.strb            = ser_out_req.w.strb[ 2*lane_cnt_q+: 2];
-    assign tx_o.last            = ser_out_req.w.last & lane_cnt_last;
-    assign tx_valid_o           = ser_out_req.w_valid;          // Uses lock-in; beat stays valid until handshaked
-    assign ser_out_rsp.w_ready  = tx_ready_i & lane_cnt_endbeat;
+    assign tx_o.last            = ser_out_req.w.last & (lane_cnt_endbeat | boffs_cnt_last);
+    assign tx_valid_o           = (ser_out_req.w.last | boffs_cnt_last) & ser_out_req.w_valid;  // Use lock-in: data valid until handshaked
+    assign ser_out_rsp.w_ready  = lane_cnt_endbeat & (~boffs_cnt_last | tx_ready_i);            // Ready if coalescing buffer is or upstream
+
+    always_comb begin : proc_comb_w_coalesce
+        tx_o.data = ser_out_req.w.data[16*lane_cnt_q+:16];
+        tx_o.strb = ser_out_req.w.strb[ 2*lane_cnt_q+: 2];
+        if (curr_ax_size_byte & boffs_cnt_last) begin
+            tx_o.data[7:0]  = w_byte_q;       // Overlay previous byte if in byte transfer
+            tx_o.strb[0]    = w_strb_q;
+        end
+    end
+
+    always_comb begin : proc_comb_w_buffer
+        w_byte_d = w_byte_q;
+        w_strb_d = w_strb_q;
+        if (ser_out_req.w_valid & ser_out_rsp.w_ready & curr_ax_size_byte & ~boffs_cnt_last) begin
+            w_byte_d = ser_out_req.w.data[7:0];             // Buffer lower byte for size 0 xfer if necessary
+            w_strb_d = ser_out_req.w.strb[0];               // Also buffer corresponding strobe
+        end else if (trans_valid_o & trans_ready_i) begin
+            w_strb_d = 1'b0;                                // Reset buffered strobe when new transfer begins
+        end
+    end
 
     // B channel: 1-to-1-connection
     assign ser_out_rsp.b.resp   = b_error_i ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
@@ -132,8 +156,8 @@ module hyperbus_axi #(
     assign ser_out_rsp.r.resp   = (r_error_q | rx_i.error) ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign ser_out_rsp.r.id     = '0;
     assign ser_out_rsp.r.user   = '0;
-    assign ser_out_rsp.r_valid  = rx_valid_i & lane_cnt_endbeat;
-    assign rx_ready_o           = ~lane_cnt_last | ser_out_req.r_ready;
+    assign ser_out_rsp.r_valid  = lane_cnt_endbeat & rx_valid_i;            // Use lock-in: data valid until handshaked
+    assign rx_ready_o           = ~lane_cnt_endbeat | ser_out_req.r_ready;  // Ready if coalescing buffer is or upstream
 
     always_comb begin : proc_comb_r_error
         r_error_d = r_error_q;
@@ -183,28 +207,35 @@ module hyperbus_axi #(
     );
 
     // Buffer size of transfer (rest is buffered in PHY)
-    assign curr_ax_size_d = (trans_valid_o & trans_ready_i) ? rr_out_req_ax.size : curr_ax_size_q;
+    assign curr_ax_size_d       = (trans_valid_o & trans_ready_i) ? rr_out_req_ax.size : curr_ax_size_q;
+    assign curr_ax_size_byte    = (curr_ax_size_q == '0);
 
-    // Down-conversion lane counter (W channel)
+    // Conversion lane and byte counter
     always_comb begin : proc_comb_lane_cnt
         lane_cnt_d = lane_cnt_q;
+        lane_boffs_d = lane_boffs_q;
         if (trans_valid_o & trans_ready_i)
-            lane_cnt_d = rr_out_req_ax.addr[WordsPerBeat-1:1];
-        else if ((tx_valid_o & tx_ready_i) | (rx_valid_i & rx_ready_o))
-            lane_cnt_d = lane_cnt_q + 1;
+            {lane_cnt_d, lane_boffs_d} = rr_out_req_ax.addr[WordCntWidth:0];
+        else begin
+            if ((tx_valid_o & tx_ready_i) | (rx_valid_i & rx_ready_o))
+                lane_cnt_d = lane_cnt_q + 1;
+            if (curr_ax_size_byte & ((ser_out_req.w_valid & ser_out_rsp.w_ready) | (ser_out_rsp.r_valid & ser_out_req.r_ready))) begin
+                lane_boffs_d = lane_boffs_q + 1;
+            end
+        end
     end
 
-    // Signal up-conversion beat endings
+    // Conversion beat endings
     always_comb begin : proc_comb_endbeat
         lane_cnt_endbeat = 1'b1;
-        if (curr_ax_size_q != 1) begin
+        if (~curr_ax_size_byte & (curr_ax_size_q != 1)) begin
             for (int unsigned i=0; i<curr_ax_size_q-1; ++i)
                 lane_cnt_endbeat &= lane_cnt_q[i];
         end
     end
 
-    // Signal final lane of wide AXI
-    assign lane_cnt_last = (AxiDataWidth == 1) ? 1'b1 : &lane_cnt_q;
+    // Conversion word endings: only split words for byte transfers
+    assign boffs_cnt_last = curr_ax_size_byte ? lane_boffs_q : 1'b1;
 
     // Handle address mapping to chip select
     logic [ChipSelWidth-1:0] chip_sel_idx;
@@ -232,7 +263,7 @@ module hyperbus_axi #(
     // AX channel: forward
     assign trans_o.write            = rr_out_req_write;
      // TODO: ADAPT DO DECREMENTED AXI STYLE? PHY ASSUMES BURST COUNT NOT DECREMENTED!!!!
-    assign trans_o.burst            = (((hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1)) << (rr_out_req_ax.size-1));
+    assign trans_o.burst            = (((hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1)) << ( (rr_out_req_ax.size == '0) ? '0 :  rr_out_req_ax.size-1));
     assign trans_o.burst_type       = rr_out_req_ax.burst[0];   // TODO: Implement wrapping bursts or tie to 0
     assign trans_o.address_space    = addr_space_i;
     assign trans_o.address          = rr_out_req_ax.addr >> 1;       // TODO: Handle overlaps with chip rules? TODO: MOVE SHIFT TO PHY
@@ -243,14 +274,18 @@ module hyperbus_axi #(
             r_error_q       <= 1'b0;
             r_data_q        <= '0;
             lane_cnt_q      <= '0;
-            lane_cnt_q      <= '0;
             curr_ax_size_q  <= 'h1;
+            w_byte_q        <= '0;
+            w_strb_q        <= 1'b0;
+            lane_boffs_q    <= 1'b0;
         end else begin
             r_error_q       <= r_error_d;
             r_data_q        <= r_data_d;
             lane_cnt_q      <= lane_cnt_d;
-            lane_cnt_q      <= lane_cnt_d;
             curr_ax_size_q  <= curr_ax_size_d;
+            w_byte_q        <= w_byte_d;
+            w_strb_q        <= w_strb_d;
+            lane_boffs_q    <= lane_boffs_q;
         end
     end
 
@@ -267,10 +302,6 @@ module hyperbus_axi #(
     burst_type : assert property(
       @(posedge clk_i) trans_valid_o & trans_ready_i |-> rr_out_req_ax.burst == axi_pkg::BURST_INCR)
         else $fatal (1, "Non-incremental burst passed; this is currently not supported.");
-
-    xfer_size : assert property(
-      @(posedge clk_i) trans_valid_o & trans_ready_i |-> rr_out_req_ax.size != '0 || curr_ax_size_q == '0)
-        else $fatal (1, "Byte-size transfer (size 0) requested; this is currently not supported.");
     `endif
     // pragma translate_on
 
