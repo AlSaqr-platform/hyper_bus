@@ -51,7 +51,7 @@ module hyperbus_axi #(
 
     typedef logic [AxiAddrWidth-1:0] axi_addr_t;
     typedef logic [WordCntWidth-1:0] word_cnt_t;
-    typedef logic [AxiDataWidth-2:0] axi_data_t;
+    typedef logic [AxiDataWidth-1:0] axi_data_t;
 
     // No need to track ID: serializer buffers it for us
     typedef struct packed {
@@ -120,7 +120,7 @@ module hyperbus_axi #(
     );
 
     // W channel: size downconversion
-    assign tx_o.last            = ser_out_req.w.last & (lane_cnt_endbeat | boffs_cnt_last);
+    assign tx_o.last            = ser_out_req.w.last & (lane_cnt_endbeat & boffs_cnt_last);
     assign tx_valid_o           = (ser_out_req.w.last | boffs_cnt_last) & ser_out_req.w_valid;  // Use lock-in: data valid until handshaked
     assign ser_out_rsp.w_ready  = lane_cnt_endbeat & (~boffs_cnt_last | tx_ready_i);            // Ready if coalescing buffer is or upstream
 
@@ -262,8 +262,20 @@ module hyperbus_axi #(
 
     // AX channel: forward
     assign trans_o.write            = rr_out_req_write;
+
+
      // TODO: ADAPT DO DECREMENTED AXI STYLE? PHY ASSUMES BURST COUNT NOT DECREMENTED!!!!
-    assign trans_o.burst            = (((hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1)) << ( (rr_out_req_ax.size == '0) ? '0 :  rr_out_req_ax.size-1));
+    // TODO: UGLY AF
+    always_comb begin
+        if (rr_out_req_ax.size != '0) begin
+            trans_o.burst = (hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1) << rr_out_req_ax.size-1;
+        end else begin
+            trans_o.burst = (hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1) >> 1;
+        end
+    end
+
+
+
     assign trans_o.burst_type       = rr_out_req_ax.burst[0];   // TODO: Implement wrapping bursts or tie to 0
     assign trans_o.address_space    = addr_space_i;
     assign trans_o.address          = rr_out_req_ax.addr >> 1;       // TODO: Handle overlaps with chip rules? TODO: MOVE SHIFT TO PHY
@@ -285,7 +297,7 @@ module hyperbus_axi #(
             curr_ax_size_q  <= curr_ax_size_d;
             w_byte_q        <= w_byte_d;
             w_strb_q        <= w_strb_d;
-            lane_boffs_q    <= lane_boffs_q;
+            lane_boffs_q    <= lane_boffs_d;
         end
     end
 

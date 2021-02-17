@@ -18,32 +18,84 @@ module hyperbus_tb;
         fix.i_rmaster.send_write('h4, 'h1, '1, error);
 
         #200ns;
-        fix.write_axi('h800, 0, 4, 'hcaca_ffff_ffff_ffff_ffff_3214_00aa_ca00, 'hc03f);
-        fix.write_axi('h808, 0, 1, 'hffff_ffff_ffff_dd11_ffff_ffff_ffff_ffff, 'h0300);
-        fix.write_axi('h80c, 0, 1, 'hffff_22dd_ffff_ffff_ffff_ffff_ffff_ffff, 'h3000);
-        fix.write_axi('h800, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffe1, 'h0001);
-        fix.read_axi('h800, 0, 4);
-        fix.write_axi('h806, 0, 1, 'hffff_ffff_ffff_ffff_f1f0_ffff_ffff_ffff, 'h00c0);
-        fix.write_axi('h80a, 0, 1, 'hffff_ffff_b0b0_ffff_ffff_ffff_ffff_ffff, 'h0c00);
-        fix.write_axi('h80e, 0, 1, 'habcd_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
-        fix.read_axi('h800, 0, 4);
 
-        //fix.start_rand_master(0, 5);
-        //fix.start_rand_master(20, 0);
-
-        // 128 bit access (burst)
-        //fix.write_axi('ha00, 127, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
-        //fix.read_axi('ha00, 127, 4);
+        $display("=================");
+        $display("128 BIT MEGABURST");
+        $display("=================");
 
         // 128 bit access (burst, extrawide --> will be split)
-        //fix.write_axi('ha00, 4090, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
-        //fix.read_axi('ha00, 4090, 4);
+        fix.write_axi('ha00, 4090, 4, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+        fix.read_axi('ha00, 4090, 4);
+
+        $display("=================");
+        $display("128 BIT BURSTS");
+        $display("=================");
+
+        // 128 bit access (burst)
+        fix.write_axi('h110, 3, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h100, 5, 4);
+
+        $display("=================");
+        $display("64 BIT BURSTS");
+        $display("=================");
+
+        // TODO (unaligned xfers not yet supported): narrow 64 bit burst
+        fix.write_axi('h218, 0, 3, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+        fix.read_axi('h208, 3, 3);
+
+        // wide 64 bit burst
+        fix.write_axi('h228, 3, 3, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h218, 7, 3);
+
+        $display("=================");
+        $display("32 BIT BURSTS");
+        $display("=================");
+
+        // narrow 32 bit burst
+        fix.write_axi('h304, 1, 2, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+        fix.read_axi('h300, 3, 2);
+
+        // wide 32 bit burst
+        fix.write_axi('h314, 5, 2, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h310, 7, 2);
+
+        $display("=================");
+        $display("16 BIT BURSTS");
+        $display("=================");
+
+        // narrow 16 bit burst
+        fix.write_axi('h402, 5, 1, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+        fix.read_axi('h400, 7, 1);
+
+        // wide 16 bit burst
+        fix.write_axi('h412, 18, 1, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h410, 22, 1);
+
+        $display("=================");
+        $display("8 BIT BURSTS: TODO: Broken");
+        $display("=================");
+
+        // narrow 8 bit burst
+        fix.write_axi('h500, 5, 0, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+        fix.read_axi('h500, 5, 0);
+
+        // wide 8 bit burst
+        fix.write_axi('h510, 29, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h510, 29, 4);
+
+
+        $display("=================");
+        $display("128 BIT ALIGNED ACCESSES");
+        $display("=================");
 
         // 128 bit access
         fix.write_axi('h100, 0, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
         fix.read_axi('h100, 0, 4);
 
-        // 64 bit access (aligned)
+        $display("=================");
+        $display("64 BIT ALIGNED ACCESSES");
+        $display("=================");
+
         fix.write_axi('h00, 0, 3, 'h5555_5555_5555_5555_4444_3333_2222_1111, 'h00ff);
         fix.write_axi('h08, 0, 3, 'h9999_8888_7777_6666_5555_5555_5555_5555, 'hff00);
 
@@ -51,7 +103,10 @@ module hyperbus_tb;
         fix.read_axi('h00, 0, 3);
         fix.read_axi('h08, 0, 3);
 
-        // 32 bit (aligned)
+        $display("=================");
+        $display("32 BIT ALIGNED ACCESSES");
+        $display("=================");
+
         fix.write_axi('h10, 0, 2, 'hffff_ffff_ffff_ffff_ffff_ffff_cafe_beef, 'h000f);
         fix.write_axi('h14, 0, 2, 'hffff_ffff_ffff_ffff_cafe_beef_ffff_ffff, 'h00f0);
         fix.write_axi('h18, 0, 2, 'hffff_ffff_cafe_beef_ffff_ffff_ffff_ffff, 'h0f00);
@@ -63,7 +118,10 @@ module hyperbus_tb;
         fix.read_axi('h18, 0, 2);
         fix.read_axi('h1c, 0, 2);
 
-        // 16 bit (aligned)
+        $display("=================");
+        $display("16 BIT ALIGNED ACCESSES");
+        $display("=================");
+
         fix.write_axi('h20, 0, 1, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_beef, 'h0003);
         fix.write_axi('h22, 0, 1, 'hffff_ffff_ffff_ffff_ffff_ffff_beef_ffff, 'h000c);
         fix.write_axi('h24, 0, 1, 'hffff_ffff_ffff_ffff_ffff_beef_ffff_ffff, 'h0030);
@@ -83,9 +141,10 @@ module hyperbus_tb;
         fix.read_axi('h2c, 0, 1);
         fix.read_axi('h2e, 0, 1);
 
-        // TODOL 8 bit burst
+        $display("=================");
+        $display("8 BIT ALIGNED ACCESSES");
+        $display("=================");
 
-        // 8 bit (aligned)
         fix.write_axi('h30, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ff20, 'h0001);
         fix.write_axi('h31, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_1eff, 'h0002);
         fix.write_axi('h32, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ff1d_ffff, 'h0004);
@@ -102,7 +161,6 @@ module hyperbus_tb;
         fix.write_axi('h3d, 0, 0, 'hffff_12ff_ffff_ffff_ffff_ffff_ffff_ffff, 'h2000);
         fix.write_axi('h3e, 0, 0, 'hff11_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'h4000);
         fix.write_axi('h3f, 0, 0, 'h10ff_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'h8000);
-
 
         fix.read_axi('h30, 0, 4);
         fix.read_axi('h30, 0, 0);
@@ -122,6 +180,29 @@ module hyperbus_tb;
         fix.read_axi('h3e, 0, 0);
         fix.read_axi('h3f, 0, 0);
 
+        $display("=================");
+        $display("COMBINED");
+        $display("=================");
+
+        fix.write_axi('h800, 0, 4, 'hcaca_ffff_ffff_ffff_ffff_3214_00aa_ca00, 'hc03f);
+        fix.write_axi('h808, 0, 1, 'hffff_ffff_ffff_dd11_ffff_ffff_ffff_ffff, 'h0300);
+        fix.write_axi('h80c, 0, 1, 'hffff_22dd_ffff_ffff_ffff_ffff_ffff_ffff, 'h3000);
+        fix.write_axi('h800, 0, 0, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffe1, 'h0001);
+        fix.read_axi('h800, 0, 4);
+        fix.write_axi('h806, 0, 1, 'hffff_ffff_ffff_ffff_f1f0_ffff_ffff_ffff, 'h00c0);
+        fix.write_axi('h80a, 0, 1, 'hffff_ffff_b0b0_ffff_ffff_ffff_ffff_ffff, 'h0c00);
+        fix.write_axi('h80e, 0, 1, 'habcd_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
+        fix.read_axi('h800, 0, 4);
+
+        $display("=================");
+        $display("UNALIGNED: TODO");
+        $display("=================");
+
+        // TODO: some unaligned transfers
+
+        $display("=================");
+        $display("DONE");
+        $display("=================");
 
         #5us;
         $stop();
