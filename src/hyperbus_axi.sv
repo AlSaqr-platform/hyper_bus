@@ -96,7 +96,7 @@ module hyperbus_axi #(
     // R/W shared byte lane counter
     byte_cnt_t      byte_cnt_d, byte_cnt_q;
     byte_cnt_t      byte_offs_d, byte_offs_q;
-    logic           endword_d, endword_q;
+    logic           byte_odd_d, byte_odd_q;
     byte_cnt_t      byte_in_beat;
     logic           endbeat;
     logic           byte_cnt_ones;
@@ -104,11 +104,13 @@ module hyperbus_axi #(
     // R channel
     axi_r_t         r_buf_d, r_buf_q;
     logic           r_buf_ready;
+    logic           endword_r;
 
     // W channel
     axi_wbyte_t     w_buf_d, w_buf_q;
     logic [15:0]    w_sel_data;
     logic [1:0]     w_sel_strb;
+    logic           endword_w;
 
     // ============================
     //    Serialize requests
@@ -223,7 +225,7 @@ module hyperbus_axi #(
         if (rr_out_req_ax.size != '0) begin
             trans_o.burst = (hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1) << rr_out_req_ax.size-1;
         end else begin
-            trans_o.burst = (hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1) >> 1;
+            trans_o.burst = (hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) >> 1) + 1;
         end
     end
 
@@ -249,14 +251,14 @@ module hyperbus_axi #(
         end
     end
 
-    // Counts two bytes in each word in byte-level transfers: hi if ready for downstream HS
+    // Counts two bytes in each word for byte-level transfers: hi at odd byte index
     always_comb begin : proc_comb_endword
-        endword_d   = 1'b1;
+        byte_odd_d = byte_odd_q;
         if (trans_valid_o & trans_ready_i) begin
-            endword_d   = (rr_out_req_ax.size == '0) ? 1'b0 : 1'b1;
+            byte_odd_d  = 1'b0;
         end else if (ax_size_byte & ((ser_out_req.w_valid & ser_out_rsp.w_ready)
                 | (ser_out_rsp.r_valid & ser_out_req.r_ready))) begin
-            endword_d  = ~endword_q;
+            byte_odd_d  = ~byte_odd_q;
         end
     end
 
@@ -279,7 +281,11 @@ module hyperbus_axi #(
     assign ser_out_rsp.r.user   = '0;
     assign ser_out_rsp.r_valid  = r_buf_q.valid;
 
-    assign r_buf_ready  = endword_q & ser_out_req.r_ready;
+    // TODO: uneven read byte bursts?? do not send extra response... need to remember if odd burst...
+    // Complete RX word if not byte-size transfer OR at every second byte
+    assign endword_r = ~ax_size_byte |  byte_odd_q;
+
+    assign r_buf_ready  = endword_r & ser_out_req.r_ready;
     assign rx_ready_o   = ~r_buf_q.valid | r_buf_ready;
 
     // Read-coalescing beat buffer: is marked valid once a beat is pushed on completion
@@ -308,15 +314,18 @@ module hyperbus_axi #(
     //    W channel: serialize
     // ============================
 
-    assign tx_o.last    = ser_out_req.w.last & endbeat;
+    assign tx_o.last = ser_out_req.w.last & endbeat;
 
-    assign tx_valid_o           = ser_out_req.w_valid & endword_q;      // Uses lock-in on upstream W channel
-    assign ser_out_rsp.w_ready  = endbeat & (tx_ready_i | ~endword_q);  // Downstream TX channel must be ready unless bufferable byte-size transfer
+    // Complete TX word if not byte-size transfer OR at every second byte OR at final byte
+    assign endword_w = ~ax_size_byte | byte_odd_q | ser_out_req.w.last;
+
+    assign tx_valid_o           = ser_out_req.w_valid & endword_w;      // Uses lock-in on upstream W channel
+    assign ser_out_rsp.w_ready  = endbeat & (tx_ready_i | ~endword_w);  // Downstream TX channel must be ready unless bufferable byte-size transfer
 
     // Select word window as byte-wrapping for unaligned accesses
     always_comb begin : proc_comb_w_sel
         logic [AxiDataWidth+8-1:0] w_data_wrap;
-        logic [ByteCntWidth+1-1:0] w_strb_wrap;
+        logic [AxiDataBytes+1-1:0] w_strb_wrap;
         w_data_wrap = {ser_out_req.w.data[7:0], ser_out_req.w.data};
         w_strb_wrap = {ser_out_req.w.strb[0],   ser_out_req.w.strb};
         w_sel_data = w_data_wrap[8*byte_cnt_q +:16];
@@ -327,16 +336,16 @@ module hyperbus_axi #(
     always_comb begin : proc_comb_w_coalesce
         tx_o.data = w_sel_data;
         tx_o.strb = w_sel_strb;
-        if (ax_size_byte & endword_q) begin
-            tx_o.data[7:0]  = w_buf_d.data;
-            tx_o.strb[0]    = w_buf_d.strb;
+        if (ax_size_byte & byte_odd_q) begin
+            tx_o.data[7:0]  = w_buf_q.data;
+            tx_o.strb[0]    = w_buf_q.strb;
         end
     end
 
     // Buffer lower byte and its strobe for byte-size transfer when necessary
     always_comb begin : proc_comb_w_buffer
         w_buf_d = w_buf_q;
-        if (ser_out_req.w_valid & ser_out_rsp.w_ready & ax_size_byte & ~endword_q) begin
+        if (ser_out_req.w_valid & ser_out_rsp.w_ready & ax_size_byte & ~byte_odd_q) begin
             w_buf_d.data = w_sel_data[7:0];
             w_buf_d.strb = w_sel_strb[0];
         end else if (trans_valid_o & trans_ready_i) begin
@@ -360,17 +369,17 @@ module hyperbus_axi #(
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_r
         if(~rst_ni) begin
+            ax_size_q   <= '0;
             byte_cnt_q  <= '0;
             byte_offs_q <= '0;
-            ax_size_q   <= '0;
-            endword_q   <= '0;
+            byte_odd_q  <= '0;
             r_buf_q     <= '0;
             w_buf_q     <= '0;
         end else begin
+            ax_size_q   <= ax_size_d;
             byte_cnt_q  <= byte_cnt_d;
             byte_offs_q <= byte_offs_d;
-            ax_size_q   <= ax_size_d;
-            endword_q   <= endword_d;
+            byte_odd_q  <= byte_odd_d;
             r_buf_q     <= r_buf_d;
             w_buf_q     <= w_buf_d;
         end

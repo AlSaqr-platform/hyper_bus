@@ -19,6 +19,7 @@ module hyperbus_tb;
 
         #200ns;
 
+/*
         $display("=================");
         $display("128 BIT MEGABURST");
         $display("=================");
@@ -82,7 +83,6 @@ module hyperbus_tb;
         // wide 8 bit burst
         fix.write_axi('h510, 29, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
         fix.read_axi('h510, 29, 4);
-
 
         $display("=================");
         $display("128 BIT ALIGNED ACCESSES");
@@ -180,10 +180,13 @@ module hyperbus_tb;
         fix.read_axi('h3e, 0, 0);
         fix.read_axi('h3f, 0, 0);
 
+*/
+
         $display("=================");
         $display("COMBINED");
         $display("=================");
 
+        /*
         fix.write_axi('h800, 0, 4, 'hcaca_ffff_ffff_ffff_ffff_3214_00aa_ca00, 'hc03f);
         fix.write_axi('h808, 0, 1, 'hffff_ffff_ffff_dd11_ffff_ffff_ffff_ffff, 'h0300);
         fix.write_axi('h80c, 0, 1, 'hffff_22dd_ffff_ffff_ffff_ffff_ffff_ffff, 'h3000);
@@ -192,6 +195,10 @@ module hyperbus_tb;
         fix.write_axi('h806, 0, 1, 'hffff_ffff_ffff_ffff_f1f0_ffff_ffff_ffff, 'h00c0);
         fix.write_axi('h80a, 0, 1, 'hffff_ffff_b0b0_ffff_ffff_ffff_ffff_ffff, 'h0c00);
         fix.write_axi('h80e, 0, 1, 'habcd_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
+        fix.read_axi('h800, 0, 4);
+        */
+
+        fix.write_axi('h801, 4, 0, 'hffff_ffff_ffff_ffff_ffff_5544_3322_11ff, 'b101010);
         fix.read_axi('h800, 0, 4);
 
         $display("=================");
