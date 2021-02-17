@@ -45,13 +45,14 @@ module hyperbus_axi #(
     input  logic                    addr_space_i
 );
 
-    localparam WordsPerBeat = AxiDataWidth/16;
+    localparam AxiDataBytes = AxiDataWidth/8;
     localparam ChipSelWidth = cf_math_pkg::idx_width(NumChips);
-    localparam WordCntWidth = cf_math_pkg::idx_width(WordsPerBeat);
+    localparam ByteCntWidth = cf_math_pkg::idx_width(AxiDataBytes);
 
     typedef logic [AxiAddrWidth-1:0] axi_addr_t;
-    typedef logic [WordCntWidth-1:0] word_cnt_t;
+    typedef logic [ByteCntWidth-1:0] byte_cnt_t;
     typedef logic [AxiDataWidth-1:0] axi_data_t;
+    typedef logic [ChipSelWidth-1:0] chip_sel_idx_t;
 
     // No need to track ID: serializer buffers it for us
     typedef struct packed {
@@ -61,32 +62,57 @@ module hyperbus_axi #(
         axi_pkg::size_t     size;
     } axi_ax_t;
 
-    axi_req_t   atop_out_req;
-    axi_rsp_t   atop_out_rsp;
+    typedef struct packed {
+        logic               valid;
+        axi_data_t          data;
+        logic               error;
+        logic               last;
+    } axi_r_t;
 
-    axi_req_t   ser_out_req;
-    axi_rsp_t   ser_out_rsp;
+    typedef struct packed {
+        logic [7:0]         data;
+        logic               strb;
+    } axi_wbyte_t;
 
-    axi_ax_t    ser_out_req_aw;
-    axi_ax_t    ser_out_req_ar;
+    // Atomics Filter downstream
+    axi_req_t       atop_out_req;
+    axi_rsp_t       atop_out_rsp;
 
-    axi_data_t  r_data_d, r_data_q;
-    logic       r_error_d, r_error_q;
+    // ID serializer downstream
+    axi_req_t       ser_out_req;
+    axi_rsp_t       ser_out_rsp;
+    axi_ax_t        ser_out_req_aw;
+    axi_ax_t        ser_out_req_ar;
 
-    word_cnt_t  lane_cnt_d, lane_cnt_q;
-    logic       lane_cnt_endbeat;
+    // AX arbiter downstream
+    axi_ax_t        rr_out_req_ax;
+    logic           rr_out_req_write;
 
-    logic [7:0] w_byte_d, w_byte_q;
-    logic       w_strb_d, w_strb_q;
+    // AX handling
+    chip_sel_idx_t  ax_chip_sel_idx;
+    axi_pkg::size_t ax_size_d, ax_size_q;
+    logic           ax_size_byte;
 
-    logic       lane_boffs_d, lane_boffs_q;
-    logic       boffs_cnt_last;
+    // R/W shared byte lane counter
+    byte_cnt_t      byte_cnt_d, byte_cnt_q;
+    byte_cnt_t      byte_offs_d, byte_offs_q;
+    logic           endword_d, endword_q;
+    byte_cnt_t      byte_in_beat;
+    logic           endbeat;
+    logic           byte_cnt_ones;
 
-    axi_ax_t    rr_out_req_ax;
-    logic       rr_out_req_write;
+    // R channel
+    axi_r_t         r_buf_d, r_buf_q;
+    logic           r_buf_ready;
 
-    axi_pkg::size_t curr_ax_size_d, curr_ax_size_q;
-    logic           curr_ax_size_byte;
+    // W channel
+    axi_wbyte_t     w_buf_d, w_buf_q;
+    logic [15:0]    w_sel_data;
+    logic [1:0]     w_sel_strb;
+
+    // ============================
+    //    Serialize requests
+    // ============================
 
     // Block unsupported atomics
     axi_atop_filter #(
@@ -119,63 +145,6 @@ module hyperbus_axi #(
         .mst_resp_i ( ser_out_rsp   )
     );
 
-    // W channel: size downconversion
-    assign tx_o.last            = ser_out_req.w.last & (lane_cnt_endbeat & boffs_cnt_last);
-    assign tx_valid_o           = (ser_out_req.w.last | boffs_cnt_last) & ser_out_req.w_valid;  // Use lock-in: data valid until handshaked
-    assign ser_out_rsp.w_ready  = lane_cnt_endbeat & (~boffs_cnt_last | tx_ready_i);            // Ready if coalescing buffer is or upstream
-
-    always_comb begin : proc_comb_w_coalesce
-        tx_o.data = ser_out_req.w.data[16*lane_cnt_q+:16];
-        tx_o.strb = ser_out_req.w.strb[ 2*lane_cnt_q+: 2];
-        if (curr_ax_size_byte & boffs_cnt_last) begin
-            tx_o.data[7:0]  = w_byte_q;       // Overlay previous byte if in byte transfer
-            tx_o.strb[0]    = w_strb_q;
-        end
-    end
-
-    always_comb begin : proc_comb_w_buffer
-        w_byte_d = w_byte_q;
-        w_strb_d = w_strb_q;
-        if (ser_out_req.w_valid & ser_out_rsp.w_ready & curr_ax_size_byte & ~boffs_cnt_last) begin
-            w_byte_d = ser_out_req.w.data[7:0];             // Buffer lower byte for size 0 xfer if necessary
-            w_strb_d = ser_out_req.w.strb[0];               // Also buffer corresponding strobe
-        end else if (trans_valid_o & trans_ready_i) begin
-            w_strb_d = 1'b0;                                // Reset buffered strobe when new transfer begins
-        end
-    end
-
-    // B channel: 1-to-1-connection
-    assign ser_out_rsp.b.resp   = b_error_i ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
-    assign ser_out_rsp.b.user   = '0;
-    assign ser_out_rsp.b.id     = '0;
-    assign ser_out_rsp.b_valid  = b_valid_i;
-    assign b_ready_o            = ser_out_req.b_ready;
-
-    // R channel: size upconversion
-    assign ser_out_rsp.r.last   = rx_i.last;
-    assign ser_out_rsp.r.resp   = (r_error_q | rx_i.error) ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
-    assign ser_out_rsp.r.id     = '0;
-    assign ser_out_rsp.r.user   = '0;
-    assign ser_out_rsp.r_valid  = lane_cnt_endbeat & rx_valid_i;            // Use lock-in: data valid until handshaked
-    assign rx_ready_o           = ~lane_cnt_endbeat | ser_out_req.r_ready;  // Ready if coalescing buffer is or upstream
-
-    always_comb begin : proc_comb_r_error
-        r_error_d = r_error_q;
-        if      (lane_cnt_endbeat)          r_error_d = 1'b0;
-        else if (rx_valid_i & rx_ready_o)   r_error_d = r_error_q | rx_i.error;
-    end
-
-    always_comb begin : proc_comb_r_coalesce
-        ser_out_rsp.r.data = r_data_q;
-        ser_out_rsp.r.data[16*lane_cnt_q+:16] = rx_i.data;   // Forward last word in beat directly to master
-    end
-
-    always_comb begin : proc_comb_r_buffer
-        r_data_d = r_data_q;
-        if (rx_valid_i & rx_ready_o & ~lane_cnt_endbeat)
-            r_data_d[16*lane_cnt_q+:16] = rx_i.data;         // Buffer words as they come in, except if forwarded
-    end
-
     // Round-robin-arbitrate between AR and AW channels (HyperBus is simplex)
     assign ser_out_req_ar.addr  = ser_out_req.ar.addr;
     assign ser_out_req_ar.len   = ser_out_req.ar.len;
@@ -206,39 +175,11 @@ module hyperbus_axi #(
         .idx_o      ( rr_out_req_write  )
     );
 
-    // Buffer size of transfer (rest is buffered in PHY)
-    assign curr_ax_size_d       = (trans_valid_o & trans_ready_i) ? rr_out_req_ax.size : curr_ax_size_q;
-    assign curr_ax_size_byte    = (curr_ax_size_q == '0);
-
-    // Conversion lane and byte counter
-    always_comb begin : proc_comb_lane_cnt
-        lane_cnt_d = lane_cnt_q;
-        lane_boffs_d = lane_boffs_q;
-        if (trans_valid_o & trans_ready_i)
-            {lane_cnt_d, lane_boffs_d} = rr_out_req_ax.addr[WordCntWidth:0];
-        else begin
-            if ((tx_valid_o & tx_ready_i) | (rx_valid_i & rx_ready_o))
-                lane_cnt_d = lane_cnt_q + 1;
-            if (curr_ax_size_byte & ((ser_out_req.w_valid & ser_out_rsp.w_ready) | (ser_out_rsp.r_valid & ser_out_req.r_ready))) begin
-                lane_boffs_d = lane_boffs_q + 1;
-            end
-        end
-    end
-
-    // Conversion beat endings
-    always_comb begin : proc_comb_endbeat
-        lane_cnt_endbeat = 1'b1;
-        if (~curr_ax_size_byte & (curr_ax_size_q != 1)) begin
-            for (int unsigned i=0; i<curr_ax_size_q-1; ++i)
-                lane_cnt_endbeat &= lane_cnt_q[i];
-        end
-    end
-
-    // Conversion word endings: only split words for byte transfers
-    assign boffs_cnt_last = curr_ax_size_byte ? lane_boffs_q : 1'b1;
+    // ============================
+    //    AX channel: handle
+    // ============================
 
     // Handle address mapping to chip select
-    logic [ChipSelWidth-1:0] chip_sel_idx;
     addr_decode #(
         .NoIndices  ( NumChips      ),
         .NoRules    ( NumChips      ),
@@ -247,22 +188,34 @@ module hyperbus_axi #(
     ) i_addr_decode_chip_sel (
         .addr_i             ( rr_out_req_ax.addr    ),
         .addr_map_i         ( chip_rules_i          ),
-        .idx_o              ( chip_sel_idx          ),
+        .idx_o              ( ax_chip_sel_idx       ),
         .dec_valid_o        (  ),
         .dec_error_o        (  ),
         .en_default_idx_i   ( 1'b1                  ),
         .default_idx_i      ( '0                    )
     );
 
-    // chip sel binary to one hot decoding
+    // Chip select binary to one hot decoding
     always_comb begin : proc_comb_trans_cs
-        trans_cs_o               = '0;
-        trans_cs_o[chip_sel_idx] = 1'b1;
+        trans_cs_o = '0;
+        trans_cs_o[ax_chip_sel_idx] = 1'b1;
+    end
+
+    // Whether this is a byte-size transfer
+    assign ax_size_byte = (ax_size_q == '0);
+
+    // Counts base byte offset for current 16-bit window in data lanes
+    always_comb begin : proc_comb_ax
+        ax_size_d = ax_size_q;
+        if (trans_valid_o & trans_ready_i)
+            ax_size_d  = rr_out_req_ax.size;
     end
 
     // AX channel: forward
     assign trans_o.write            = rr_out_req_write;
-
+    assign trans_o.burst_type       = rr_out_req_ax.burst[0];   // TODO: Implement wrapping bursts or tie to 0
+    assign trans_o.address_space    = addr_space_i;
+    assign trans_o.address          = rr_out_req_ax.addr >> 1;  // TODO: Handle overlaps with chip rules? TODO: MOVE SHIFT TO PHY
 
      // TODO: ADAPT DO DECREMENTED AXI STYLE? PHY ASSUMES BURST COUNT NOT DECREMENTED!!!!
     // TODO: UGLY AF
@@ -274,32 +227,158 @@ module hyperbus_axi #(
         end
     end
 
+    // ============================
+    //    R/W byte counting
+    // ============================
 
+    // Byte offset in current beat, relative to (possibly unaligned) address offset
+    assign byte_in_beat = byte_cnt_q - byte_offs_q;
 
-    assign trans_o.burst_type       = rr_out_req_ax.burst[0];   // TODO: Implement wrapping bursts or tie to 0
-    assign trans_o.address_space    = addr_space_i;
-    assign trans_o.address          = rr_out_req_ax.addr >> 1;       // TODO: Handle overlaps with chip rules? TODO: MOVE SHIFT TO PHY
+    // Whether current byte pointer is on final byte of data bus, i.e. word is split by boundary
+    assign byte_cnt_ones = (byte_cnt_q == '1);
 
-    // Registers
-    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_r
-        if(~rst_ni) begin
-            r_error_q       <= 1'b0;
-            r_data_q        <= '0;
-            lane_cnt_q      <= '0;
-            curr_ax_size_q  <= 'h1;
-            w_byte_q        <= '0;
-            w_strb_q        <= 1'b0;
-            lane_boffs_q    <= 1'b0;
-        end else begin
-            r_error_q       <= r_error_d;
-            r_data_q        <= r_data_d;
-            lane_cnt_q      <= lane_cnt_d;
-            curr_ax_size_q  <= curr_ax_size_d;
-            w_byte_q        <= w_byte_d;
-            w_strb_q        <= w_strb_d;
-            lane_boffs_q    <= lane_boffs_d;
+    // Counts base byte offset for curren 16-bit window in data lanes
+    always_comb begin : proc_comb_byte_cnt
+        byte_cnt_d  = byte_cnt_q;
+        byte_offs_d = byte_offs_q;
+        if (trans_valid_o & trans_ready_i) begin
+            byte_cnt_d  = rr_out_req_ax.addr[ByteCntWidth-1:0];
+            byte_offs_d = rr_out_req_ax.addr[ByteCntWidth-1:0];
+        end else if ((tx_valid_o & tx_ready_i) | (rx_valid_i & rx_ready_o)) begin
+            byte_cnt_d  = byte_cnt_q + 2;
         end
     end
+
+    // Counts two bytes in each word in byte-level transfers: hi if ready for downstream HS
+    always_comb begin : proc_comb_endword
+        endword_d   = 1'b1;
+        if (trans_valid_o & trans_ready_i) begin
+            endword_d   = (rr_out_req_ax.size == '0) ? 1'b0 : 1'b1;
+        end else if (ax_size_byte & ((ser_out_req.w_valid & ser_out_rsp.w_ready)
+                | (ser_out_rsp.r_valid & ser_out_req.r_ready))) begin
+            endword_d  = ~endword_q;
+        end
+    end
+
+    always_comb begin : proc_comb_endbeat
+        // Size 0 (8b) and 1 (16b) transfers complete upstream beats in every handshaked cycle
+        endbeat = 1'b1;
+        for (int unsigned i=1; i < ax_size_q; ++i)
+            endbeat &= byte_in_beat[i];
+    end
+
+    // ============================
+    //    R channel: coalesce
+    // ============================
+
+    // R channel pops beat from coalescing buffer as soon as it is valid
+    assign ser_out_rsp.r.data   = r_buf_q.data;
+    assign ser_out_rsp.r.last   = r_buf_q.last;
+    assign ser_out_rsp.r.resp   = r_buf_q.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
+    assign ser_out_rsp.r.id     = '0;
+    assign ser_out_rsp.r.user   = '0;
+    assign ser_out_rsp.r_valid  = r_buf_q.valid;
+
+    assign r_buf_ready  = endword_q & ser_out_req.r_ready;
+    assign rx_ready_o   = ~r_buf_q.valid | r_buf_ready;
+
+    // Read-coalescing beat buffer: is marked valid once a beat is pushed on completion
+    always_comb begin : proc_comb_r_buf
+        r_buf_d = r_buf_q;
+        // Pop: clear old beat
+        if (r_buf_q.valid & r_buf_ready) begin
+            r_buf_d = '0;
+        end
+        // Push: load new beat, onto cleared data if concurrent with pop
+        if (~r_buf_d.valid & rx_valid_i) begin  // Uses lock-in on downstream RX channel
+            r_buf_d.valid   = endbeat  | rx_i.last;
+            r_buf_d.error   = r_buf_q.error | rx_i.error;
+            r_buf_d.last    = rx_i.last;
+            // Wrap around final byte in unaligned reads
+            if (~byte_cnt_ones) begin
+                r_buf_d.data[8*byte_cnt_q +:16] = rx_i.data;
+            end else begin
+                r_buf_d.data[8*byte_cnt_q +:8]  = rx_i.data[7:0];
+                r_buf_d.data[7:0]               = rx_i.data[15:8];
+            end
+        end
+    end
+
+    // ============================
+    //    W channel: serialize
+    // ============================
+
+    assign tx_o.last    = ser_out_req.w.last & endbeat;
+
+    assign tx_valid_o           = ser_out_req.w_valid & endword_q;      // Uses lock-in on upstream W channel
+    assign ser_out_rsp.w_ready  = endbeat & (tx_ready_i | ~endword_q);  // Downstream TX channel must be ready unless bufferable byte-size transfer
+
+    // Select word window as byte-wrapping for unaligned accesses
+    always_comb begin : proc_comb_w_sel
+        logic [AxiDataWidth+8-1:0] w_data_wrap;
+        logic [ByteCntWidth+1-1:0] w_strb_wrap;
+        w_data_wrap = {ser_out_req.w.data[7:0], ser_out_req.w.data};
+        w_strb_wrap = {ser_out_req.w.strb[0],   ser_out_req.w.strb};
+        w_sel_data = w_data_wrap[8*byte_cnt_q +:16];
+        w_sel_strb = w_strb_wrap[  byte_cnt_q +: 2];
+    end
+
+    // Assign downstream word to window, overlaying previous byte if in byte-size transfer
+    always_comb begin : proc_comb_w_coalesce
+        tx_o.data = w_sel_data;
+        tx_o.strb = w_sel_strb;
+        if (ax_size_byte & endword_q) begin
+            tx_o.data[7:0]  = w_buf_d.data;
+            tx_o.strb[0]    = w_buf_d.strb;
+        end
+    end
+
+    // Buffer lower byte and its strobe for byte-size transfer when necessary
+    always_comb begin : proc_comb_w_buffer
+        w_buf_d = w_buf_q;
+        if (ser_out_req.w_valid & ser_out_rsp.w_ready & ax_size_byte & ~endword_q) begin
+            w_buf_d.data = w_sel_data[7:0];
+            w_buf_d.strb = w_sel_strb[0];
+        end else if (trans_valid_o & trans_ready_i) begin
+            w_buf_d = '0;       // Reset buffer new transfer begins
+        end
+    end
+
+    // ============================
+    //    B channel: passthrough
+    // ============================
+
+    assign ser_out_rsp.b.resp   = b_error_i ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
+    assign ser_out_rsp.b.user   = '0;
+    assign ser_out_rsp.b.id     = '0;
+    assign ser_out_rsp.b_valid  = b_valid_i;
+    assign b_ready_o            = ser_out_req.b_ready;
+
+    // =========================
+    //    Registers
+    // =========================
+
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_r
+        if(~rst_ni) begin
+            byte_cnt_q  <= '0;
+            byte_offs_q <= '0;
+            ax_size_q   <= '0;
+            endword_q   <= '0;
+            r_buf_q     <= '0;
+            w_buf_q     <= '0;
+        end else begin
+            byte_cnt_q  <= byte_cnt_d;
+            byte_offs_q <= byte_offs_d;
+            ax_size_q   <= ax_size_d;
+            endword_q   <= endword_d;
+            r_buf_q     <= r_buf_d;
+            w_buf_q     <= w_buf_d;
+        end
+    end
+
+    // =========================
+    //    Assertions
+    // =========================
 
     // pragma translate_off
     `ifndef VERILATOR
@@ -307,7 +386,7 @@ module hyperbus_axi #(
             else $error("AxiDatawidth must be a power of two within [16, 1024].");
 
     read_size_align : assert property(
-      @(posedge clk_i) rx_valid_i & rx_ready_o & rx_i.last |-> lane_cnt_endbeat)
+      @(posedge clk_i) rx_valid_i & rx_ready_o & rx_i.last |-> endbeat)
         else $fatal (1, "Last word of read should be aligned with transfer size.");
 
     // TODO: Below assertions are due to WIP implementation and may be removed later
