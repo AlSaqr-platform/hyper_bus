@@ -7,7 +7,6 @@
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
 // TODO: Cut path somewhere?
-// TODO: Are unaligned narrow transfers / burst starts _really_ internally unaligned? if so, they will not work :S
 
 module hyperbus_axi #(
     parameter int unsigned AxiDataWidth  = -1,
@@ -94,6 +93,8 @@ module hyperbus_axi #(
     logic           byte_last_even_d, byte_last_even_q;
     chip_sel_idx_t  ax_chip_sel_idx;
     logic           ax_size_byte;
+    hyperbus_pkg::hyper_blen_t ax_blen_postinc;
+    logic           ax_blen_inc;
 
     // R/W shared byte lane counter
     byte_cnt_t      byte_cnt_d, byte_cnt_q;
@@ -220,19 +221,22 @@ module hyperbus_axi #(
 
     // AX channel: forward
     assign trans_o.write            = rr_out_req_write;
-    assign trans_o.burst_type       = rr_out_req_ax.burst[0];   // TODO: Implement wrapping bursts or tie to 0
+    assign trans_o.burst_type       = 1'b1;                     // Wrapping bursts not (yet) supported
     assign trans_o.address_space    = addr_space_i;
     assign trans_o.address          = rr_out_req_ax.addr >> 1;  // TODO: Handle overlaps with chip rules? TODO: MOVE SHIFT TO PHY
 
-    // TODO: ADAPT DO DECREMENTED AXI STYLE? PHY ASSUMES BURST COUNT NOT DECREMENTED!!!!
-    // TODO: UGLY AF
+    // Convert burst length from decremented, unaligned beats to non-decremented, aligned 16-bit words
     always_comb begin
         if (rr_out_req_ax.size != '0) begin
-            trans_o.burst = (hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1) << rr_out_req_ax.size-1;
+            ax_blen_inc   = 1'b1;
+            trans_o.burst = ax_blen_postinc << (rr_out_req_ax.size - 1);
         end else begin
-            trans_o.burst = ((hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + rr_out_req_ax.addr[0]) >> 1) + 1;
+            ax_blen_inc = rr_out_req_ax.addr[0];
+            trans_o.burst = (ax_blen_postinc >> 1) + 1;
         end
     end
+
+    assign ax_blen_postinc = rr_out_req_ax.len + hyperbus_pkg::hyper_blen_t'(ax_blen_inc);
 
     // ============================
     //    R/W byte counting
@@ -314,7 +318,6 @@ module hyperbus_axi #(
     assign endword_w = ax_size_byte ? (byte_cnt_odd | ser_out_req.w.last) : 1'b1;
 
     assign tx_valid_o           = ser_out_req.w_valid & endword_w;      // Uses lock-in on upstream W channel
-    // TODO: is extra condition necessary?
     assign ser_out_rsp.w_ready  = endbeat & (tx_ready_i | ~endword_w);  // Downstream TX channel must be ready unless bufferable byte-size transfer
 
     // Select word window as byte-wrapping for unaligned accesses
@@ -344,6 +347,7 @@ module hyperbus_axi #(
             w_buf_d.data = w_sel_data[7:0];
             w_buf_d.strb = w_sel_strb[0];
         end else if (trans_valid_o & trans_ready_i) begin
+            // TODO POWER @paulsc: unnecessary clear of data; strb suffices (but easier for debug)
             w_buf_d = '0;       // Reset buffer new transfer begins (in case of odd upbeat)
         end
     end
@@ -397,7 +401,6 @@ module hyperbus_axi #(
       @(posedge clk_i) trans_valid_o & trans_ready_i & (rr_out_req_ax.size != '0) |-> (rr_out_req_ax.addr[0] == 1'b0))
         else $fatal (1, "The address of a non-byte-size access must be 2-byte aligned.");
 
-    // TODO: Below assertions are due to WIP implementation and may be removed later
     burst_type : assert property(
       @(posedge clk_i) trans_valid_o & trans_ready_i |-> rr_out_req_ax.burst == axi_pkg::BURST_INCR)
         else $fatal (1, "Non-incremental burst passed; this is currently not supported.");

@@ -1,7 +1,7 @@
 package hyperbus_pkg;
 
-    // Maximal burst size: 2^8 1024-bit words as 16-bit words
-    localparam unsigned HyperBurstWidth = 8 + $clog2(1024/16);
+    // Maximal burst size: 2^8 1024-bit words as 16-bit words (plus one as not decremented)
+    localparam unsigned HyperBurstWidth = 8 + $clog2(1024/16) + 1;
     typedef logic [HyperBurstWidth-1:0] hyper_blen_t;
 
     // configuration type
