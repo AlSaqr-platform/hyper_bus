@@ -19,7 +19,6 @@ module hyperbus_tb;
 
         #200ns;
 
-/*
         $display("=================");
         $display("128 BIT MEGABURST");
         $display("=================");
@@ -73,16 +72,19 @@ module hyperbus_tb;
         fix.read_axi('h410, 22, 1);
 
         $display("=================");
-        $display("8 BIT BURSTS: TODO: Broken");
+        $display("8 BIT BURSTS");
         $display("=================");
 
         // narrow 8 bit burst
         fix.write_axi('h500, 5, 0, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
-        fix.read_axi('h500, 5, 0);
+        fix.read_axi('h501, 5, 0);
+        fix.read_axi('h501, 4, 0);
+        fix.read_axi('h502, 5, 0);
+        fix.read_axi('h502, 4, 0);
 
         // wide 8 bit burst
-        fix.write_axi('h510, 29, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
-        fix.read_axi('h510, 29, 4);
+        fix.write_axi('h513, 25, 0, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h511, 27, 0);
 
         $display("=================");
         $display("128 BIT ALIGNED ACCESSES");
@@ -180,13 +182,10 @@ module hyperbus_tb;
         fix.read_axi('h3e, 0, 0);
         fix.read_axi('h3f, 0, 0);
 
-*/
-
         $display("=================");
         $display("COMBINED");
         $display("=================");
 
-        /*
         fix.write_axi('h800, 0, 4, 'hcaca_ffff_ffff_ffff_ffff_3214_00aa_ca00, 'hc03f);
         fix.write_axi('h808, 0, 1, 'hffff_ffff_ffff_dd11_ffff_ffff_ffff_ffff, 'h0300);
         fix.write_axi('h80c, 0, 1, 'hffff_22dd_ffff_ffff_ffff_ffff_ffff_ffff, 'h3000);
@@ -196,20 +195,51 @@ module hyperbus_tb;
         fix.write_axi('h80a, 0, 1, 'hffff_ffff_b0b0_ffff_ffff_ffff_ffff_ffff, 'h0c00);
         fix.write_axi('h80e, 0, 1, 'habcd_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hc000);
         fix.read_axi('h800, 0, 4);
-        */
-
-        fix.write_axi('h801, 4, 0, 'hffff_ffff_ffff_ffff_ffff_5544_3322_11ff, 'b101010);
-        fix.read_axi('h800, 0, 4);
 
         $display("=================");
-        $display("UNALIGNED: TODO");
+        $display("UNALIGNED");
         $display("=================");
 
-        // TODO: some unaligned transfers
+        // 32b inner 3-burst on 16b boundary
+        fix.write_axi('h902, 2, 2, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hF0FF);
+        fix.read_axi('h902, 2, 2);
+
+        // 32b outer 10-burst on 16b boundary
+        fix.write_axi('h902, 9, 2, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hF0FF);
+        fix.read_axi('h902, 9, 2);
+
+        // 64b inner single on 16b boundary
+        fix.write_axi('h912, 0, 3, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFF0F);
+        fix.read_axi('h912, 0, 3);
+
+        // 64b inner 5-burst on 16b boundary
+        fix.write_axi('h992, 4, 3, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFF0F);
+        fix.read_axi('h992, 4, 3);
+
+        // 64b inner single on 32b boundary
+        fix.write_axi('h924, 0, 3, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hF0FF);
+        fix.read_axi('h924, 0, 3);
+
+        // 128 outer single on 16b boundary (read back in aligned fasion)
+        fix.write_axi('h932, 0, 4, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFFFF);
+        fix.read_axi('h930, 1, 4);
+
+        // 128 outer single on 32b boundary (read back in aligned fasion)
+        fix.write_axi('h954, 0, 4, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFFFF);
+        fix.read_axi('h950, 1, 4);
+
+        // 128 outer single on 64b boundary (read back in aligned fasion)
+        fix.write_axi('h978, 0, 4, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFFFF);
+        fix.read_axi('h970, 1, 4);
+
+        // 128 5-burst single on 16b boundary (read back in aligned fasion)
+        fix.write_axi('h1c02, 4, 4, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFFFF);
+        fix.read_axi('h1c00, 5, 4);
 
         $display("=================");
         $display("DONE");
         $display("=================");
+
 
         #5us;
         $stop();

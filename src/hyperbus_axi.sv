@@ -51,6 +51,7 @@ module hyperbus_axi #(
 
     typedef logic [AxiAddrWidth-1:0] axi_addr_t;
     typedef logic [ByteCntWidth-1:0] byte_cnt_t;
+    typedef logic [ByteCntWidth-2:0] word_cnt_t;
     typedef logic [AxiDataWidth-1:0] axi_data_t;
     typedef logic [ChipSelWidth-1:0] chip_sel_idx_t;
 
@@ -89,17 +90,18 @@ module hyperbus_axi #(
     logic           rr_out_req_write;
 
     // AX handling
-    chip_sel_idx_t  ax_chip_sel_idx;
     axi_pkg::size_t ax_size_d, ax_size_q;
+    logic           byte_last_even_d, byte_last_even_q;
+    chip_sel_idx_t  ax_chip_sel_idx;
     logic           ax_size_byte;
 
     // R/W shared byte lane counter
     byte_cnt_t      byte_cnt_d, byte_cnt_q;
     byte_cnt_t      byte_offs_d, byte_offs_q;
-    logic           byte_odd_d, byte_odd_q;
     byte_cnt_t      byte_in_beat;
+    logic           byte_cnt_odd;
+    word_cnt_t      word_cnt;
     logic           endbeat;
-    logic           byte_cnt_ones;
 
     // R channel
     axi_r_t         r_buf_d, r_buf_q;
@@ -206,11 +208,14 @@ module hyperbus_axi #(
     // Whether this is a byte-size transfer
     assign ax_size_byte = (ax_size_q == '0);
 
-    // Counts base byte offset for current 16-bit window in data lanes
-    always_comb begin : proc_comb_ax
-        ax_size_d = ax_size_q;
-        if (trans_valid_o & trans_ready_i)
-            ax_size_d  = rr_out_req_ax.size;
+    // Remember properties of transfer that we will need (rest forwarded to PHY)
+    always_comb begin : proc_comb_ax_buffer
+        ax_size_d           = ax_size_q;
+        byte_last_even_d    = byte_last_even_q;
+        if (trans_valid_o & trans_ready_i) begin
+            ax_size_d           = rr_out_req_ax.size;
+            byte_last_even_d    = ~rr_out_req_ax.len[0] ^ rr_out_req_ax.addr[0];
+        end
     end
 
     // AX channel: forward
@@ -219,13 +224,13 @@ module hyperbus_axi #(
     assign trans_o.address_space    = addr_space_i;
     assign trans_o.address          = rr_out_req_ax.addr >> 1;  // TODO: Handle overlaps with chip rules? TODO: MOVE SHIFT TO PHY
 
-     // TODO: ADAPT DO DECREMENTED AXI STYLE? PHY ASSUMES BURST COUNT NOT DECREMENTED!!!!
+    // TODO: ADAPT DO DECREMENTED AXI STYLE? PHY ASSUMES BURST COUNT NOT DECREMENTED!!!!
     // TODO: UGLY AF
     always_comb begin
         if (rr_out_req_ax.size != '0) begin
             trans_o.burst = (hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + 1) << rr_out_req_ax.size-1;
         end else begin
-            trans_o.burst = (hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) >> 1) + 1;
+            trans_o.burst = ((hyperbus_pkg::hyper_blen_t'(rr_out_req_ax.len) + rr_out_req_ax.addr[0]) >> 1) + 1;
         end
     end
 
@@ -233,34 +238,26 @@ module hyperbus_axi #(
     //    R/W byte counting
     // ============================
 
-    // Byte offset in current beat, relative to (possibly unaligned) address offset
-    assign byte_in_beat = byte_cnt_q - byte_offs_q;
-
-    // Whether current byte pointer is on final byte of data bus, i.e. word is split by boundary
-    assign byte_cnt_ones = (byte_cnt_q == '1);
-
-    // Counts base byte offset for curren 16-bit window in data lanes
+    // Counts base byte offset for current 16-bit window in data lanes
     always_comb begin : proc_comb_byte_cnt
         byte_cnt_d  = byte_cnt_q;
         byte_offs_d = byte_offs_q;
         if (trans_valid_o & trans_ready_i) begin
             byte_cnt_d  = rr_out_req_ax.addr[ByteCntWidth-1:0];
             byte_offs_d = rr_out_req_ax.addr[ByteCntWidth-1:0];
-        end else if ((tx_valid_o & tx_ready_i) | (rx_valid_i & rx_ready_o)) begin
-            byte_cnt_d  = byte_cnt_q + 2;
+        end else begin
+            // 16-bit aligned: advance whenever downstream advances
+            if ((tx_valid_o & tx_ready_i) | (rx_valid_i & rx_ready_o))
+                byte_cnt_d  = byte_cnt_q + 2;
+            // Byte offset: advance only for byte-size transfers whenever upstream advances
+            if (ax_size_byte & ((ser_out_req.w_valid & ser_out_rsp.w_ready)
+                    | (ser_out_rsp.r_valid & ser_out_req.r_ready)))
+                byte_cnt_d[0]  = ~byte_cnt_q[0];
         end
     end
 
-    // Counts two bytes in each word for byte-level transfers: hi at odd byte index
-    always_comb begin : proc_comb_endword
-        byte_odd_d = byte_odd_q;
-        if (trans_valid_o & trans_ready_i) begin
-            byte_odd_d  = 1'b0;
-        end else if (ax_size_byte & ((ser_out_req.w_valid & ser_out_rsp.w_ready)
-                | (ser_out_rsp.r_valid & ser_out_req.r_ready))) begin
-            byte_odd_d  = ~byte_odd_q;
-        end
-    end
+    // Byte offset in current beat, relative to (possibly unaligned) address offset
+    assign byte_in_beat = byte_cnt_q - byte_offs_q;
 
     always_comb begin : proc_comb_endbeat
         // Size 0 (8b) and 1 (16b) transfers complete upstream beats in every handshaked cycle
@@ -269,21 +266,23 @@ module hyperbus_axi #(
             endbeat &= byte_in_beat[i];
     end
 
+    // Current word AND whether current byte pointer is on odd byte address
+    assign {word_cnt, byte_cnt_odd} = byte_cnt_q;
+
     // ============================
     //    R channel: coalesce
     // ============================
 
-    // R channel pops beat from coalescing buffer as soon as it is valid
+    // R channel pops beat (or two for bytes) from coalescing buffer as soon as it is valid
     assign ser_out_rsp.r.data   = r_buf_q.data;
-    assign ser_out_rsp.r.last   = r_buf_q.last;
+    assign ser_out_rsp.r.last   = r_buf_q.last & endword_r;
     assign ser_out_rsp.r.resp   = r_buf_q.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign ser_out_rsp.r.id     = '0;
     assign ser_out_rsp.r.user   = '0;
     assign ser_out_rsp.r_valid  = r_buf_q.valid;
 
-    // TODO: uneven read byte bursts?? do not send extra response... need to remember if odd burst...
-    // Complete RX word if not byte-size transfer OR at every second byte
-    assign endword_r = ~ax_size_byte |  byte_odd_q;
+    // Complete RX word if not byte-size transfer OR at every odd byte OR at last byte (if it has even index)
+    assign endword_r = ~ax_size_byte | byte_cnt_odd | (rx_i.last & byte_last_even_q);
 
     assign r_buf_ready  = endword_r & ser_out_req.r_ready;
     assign rx_ready_o   = ~r_buf_q.valid | r_buf_ready;
@@ -291,22 +290,17 @@ module hyperbus_axi #(
     // Read-coalescing beat buffer: is marked valid once a beat is pushed on completion
     always_comb begin : proc_comb_r_buf
         r_buf_d = r_buf_q;
-        // Pop: clear old beat
+        // Pop: vacate old beat when it is valid and upstream is ready to consume data
         if (r_buf_q.valid & r_buf_ready) begin
+            // TODO POWER @paulsc: unnecessary clear of data; valid suffices (but easier for debug)
             r_buf_d = '0;
         end
         // Push: load new beat, onto cleared data if concurrent with pop
-        if (~r_buf_d.valid & rx_valid_i) begin  // Uses lock-in on downstream RX channel
-            r_buf_d.valid   = endbeat  | rx_i.last;
+        if (rx_valid_i & rx_ready_o) begin
+            r_buf_d.valid   = endbeat | rx_i.last;
             r_buf_d.error   = r_buf_q.error | rx_i.error;
             r_buf_d.last    = rx_i.last;
-            // Wrap around final byte in unaligned reads
-            if (~byte_cnt_ones) begin
-                r_buf_d.data[8*byte_cnt_q +:16] = rx_i.data;
-            end else begin
-                r_buf_d.data[8*byte_cnt_q +:8]  = rx_i.data[7:0];
-                r_buf_d.data[7:0]               = rx_i.data[15:8];
-            end
+            r_buf_d.data[16*word_cnt +:16] = rx_i.data;
         end
     end
 
@@ -317,39 +311,40 @@ module hyperbus_axi #(
     assign tx_o.last = ser_out_req.w.last & endbeat;
 
     // Complete TX word if not byte-size transfer OR at every second byte OR at final byte
-    assign endword_w = ~ax_size_byte | byte_odd_q | ser_out_req.w.last;
+    assign endword_w = ax_size_byte ? (byte_cnt_odd | ser_out_req.w.last) : 1'b1;
 
     assign tx_valid_o           = ser_out_req.w_valid & endword_w;      // Uses lock-in on upstream W channel
+    // TODO: is extra condition necessary?
     assign ser_out_rsp.w_ready  = endbeat & (tx_ready_i | ~endword_w);  // Downstream TX channel must be ready unless bufferable byte-size transfer
 
     // Select word window as byte-wrapping for unaligned accesses
-    always_comb begin : proc_comb_w_sel
-        logic [AxiDataWidth+8-1:0] w_data_wrap;
-        logic [AxiDataBytes+1-1:0] w_strb_wrap;
-        w_data_wrap = {ser_out_req.w.data[7:0], ser_out_req.w.data};
-        w_strb_wrap = {ser_out_req.w.strb[0],   ser_out_req.w.strb};
-        w_sel_data = w_data_wrap[8*byte_cnt_q +:16];
-        w_sel_strb = w_strb_wrap[  byte_cnt_q +: 2];
-    end
+    assign w_sel_data = ser_out_req.w.data[16*word_cnt +:16];
+    assign w_sel_strb = ser_out_req.w.strb[ 2*word_cnt +: 2];
 
-    // Assign downstream word to window, overlaying previous byte if in byte-size transfer
+    // Assign downstream word to window
     always_comb begin : proc_comb_w_coalesce
         tx_o.data = w_sel_data;
         tx_o.strb = w_sel_strb;
-        if (ax_size_byte & byte_odd_q) begin
-            tx_o.data[7:0]  = w_buf_q.data;
-            tx_o.strb[0]    = w_buf_q.strb;
+        if (ax_size_byte) begin
+            if (byte_cnt_odd) begin
+                // On odd byte: overlay previous byte if in byte-size transfer
+                tx_o.data[7:0]  = w_buf_q.data;
+                tx_o.strb[0]    = w_buf_q.strb;
+            end else begin
+                // On even byte: masks out upper strobe
+                tx_o.strb[1]    = 1'b0;
+            end
         end
     end
 
     // Buffer lower byte and its strobe for byte-size transfer when necessary
     always_comb begin : proc_comb_w_buffer
         w_buf_d = w_buf_q;
-        if (ser_out_req.w_valid & ser_out_rsp.w_ready & ax_size_byte & ~byte_odd_q) begin
+        if (ser_out_req.w_valid & ser_out_rsp.w_ready & ax_size_byte & ~byte_cnt_odd) begin
             w_buf_d.data = w_sel_data[7:0];
             w_buf_d.strb = w_sel_strb[0];
         end else if (trans_valid_o & trans_ready_i) begin
-            w_buf_d = '0;       // Reset buffer new transfer begins
+            w_buf_d = '0;       // Reset buffer new transfer begins (in case of odd upbeat)
         end
     end
 
@@ -367,21 +362,21 @@ module hyperbus_axi #(
     //    Registers
     // =========================
 
-    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_r
+    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff
         if(~rst_ni) begin
-            ax_size_q   <= '0;
-            byte_cnt_q  <= '0;
-            byte_offs_q <= '0;
-            byte_odd_q  <= '0;
-            r_buf_q     <= '0;
-            w_buf_q     <= '0;
+            ax_size_q           <= '0;
+            byte_last_even_q    <= '0;
+            byte_cnt_q          <= '0;
+            byte_offs_q         <= '0;
+            r_buf_q             <= '0;
+            w_buf_q             <= '0;
         end else begin
-            ax_size_q   <= ax_size_d;
-            byte_cnt_q  <= byte_cnt_d;
-            byte_offs_q <= byte_offs_d;
-            byte_odd_q  <= byte_odd_d;
-            r_buf_q     <= r_buf_d;
-            w_buf_q     <= w_buf_d;
+            ax_size_q           <= ax_size_d;
+            byte_last_even_q    <= byte_last_even_d;
+            byte_cnt_q          <= byte_cnt_d;
+            byte_offs_q         <= byte_offs_d;
+            r_buf_q             <= r_buf_d;
+            w_buf_q             <= w_buf_d;
         end
     end
 
@@ -394,9 +389,13 @@ module hyperbus_axi #(
     initial assert (AxiDataWidth >= 16 && AxiDataWidth <= 1024)
             else $error("AxiDatawidth must be a power of two within [16, 1024].");
 
-    read_size_align : assert property(
+    read_endbeat_align : assert property(
       @(posedge clk_i) rx_valid_i & rx_ready_o & rx_i.last |-> endbeat)
         else $fatal (1, "Last word of read should be aligned with transfer size.");
+
+    access_16b_align : assert property(
+      @(posedge clk_i) trans_valid_o & trans_ready_i & (rr_out_req_ax.size != '0) |-> (rr_out_req_ax.addr[0] == 1'b0))
+        else $fatal (1, "The address of a non-byte-size access must be 2-byte aligned.");
 
     // TODO: Below assertions are due to WIP implementation and may be removed later
     burst_type : assert property(
