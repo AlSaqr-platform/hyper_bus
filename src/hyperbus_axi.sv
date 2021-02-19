@@ -41,6 +41,7 @@ module hyperbus_axi #(
     input  logic                    trans_ready_i,
 
     input  rule_t [NumChips-1:0]    chip_rules_i,
+    input  logic [4:0]              addr_mask_msb_i,
     input  logic                    addr_space_i
 );
 
@@ -219,11 +220,11 @@ module hyperbus_axi #(
         end
     end
 
-    // AX channel: forward
+    // AX channel: forward, converting unmasked byte to masked word addresses
     assign trans_o.write            = rr_out_req_write;
-    assign trans_o.burst_type       = 1'b1;                     // Wrapping bursts not (yet) supported
+    assign trans_o.burst_type       = 1'b1;             // Wrapping bursts not (yet) supported
     assign trans_o.address_space    = addr_space_i;
-    assign trans_o.address          = rr_out_req_ax.addr >> 1;  // TODO: Handle overlaps with chip rules? TODO: MOVE SHIFT TO PHY
+    assign trans_o.address          = (rr_out_req_ax.addr & ~32'(32'hFFFF_FFFF << addr_mask_msb_i)) >> 1;
 
     // Convert burst length from decremented, unaligned beats to non-decremented, aligned 16-bit words
     always_comb begin

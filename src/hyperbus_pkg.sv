@@ -10,9 +10,9 @@ package hyperbus_pkg;
         logic           en_latency_additional;
         logic [15:0]    t_burst_max;
         logic [3:0]     t_read_write_recovery;
-        logic [1:0]     t_variable_latency_check;
         logic [3:0]     t_rx_clk_delay;
         logic [3:0]     t_tx_clk_delay;
+        logic [4:0]     address_mask_msb;
         logic           address_space;
     } hyper_cfg_t;
 

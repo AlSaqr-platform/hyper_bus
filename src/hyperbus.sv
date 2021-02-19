@@ -155,8 +155,9 @@ module hyperbus #(
         .trans_valid_o  ( axi_trans_valid   ),
         .trans_ready_i  ( axi_trans_ready   ),
 
-        .chip_rules_i   ( chip_rules        ),
-        .addr_space_i   ( cfg.address_space )
+        .chip_rules_i       ( chip_rules            ),
+        .addr_mask_msb_i    ( cfg.address_mask_msb  ),
+        .addr_space_i       ( cfg.address_space     )
     );
 
     hyperbus_phy #(

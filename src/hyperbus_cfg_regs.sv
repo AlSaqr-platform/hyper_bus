@@ -45,7 +45,7 @@ module hyperbus_cfg_regs #(
             rfield = {
                 crange_q,
                 32'(cfg_q.address_space),
-                32'(cfg_q.t_variable_latency_check),
+                32'(cfg_q.address_mask_msb),
                 32'(cfg_q.t_tx_clk_delay),
                 32'(cfg_q.t_rx_clk_delay),
                 32'(cfg_q.t_read_write_recovery),
@@ -74,7 +74,7 @@ module hyperbus_cfg_regs #(
                 'h3: cfg_d.t_read_write_recovery    = (~wm & cfg_q.t_read_write_recovery   ) | (wm & reg_req_i.wdata);
                 'h4: cfg_d.t_rx_clk_delay           = (~wm & cfg_q.t_rx_clk_delay          ) | (wm & reg_req_i.wdata);
                 'h5: cfg_d.t_tx_clk_delay           = (~wm & cfg_q.t_tx_clk_delay          ) | (wm & reg_req_i.wdata);
-                'h6: cfg_d.t_variable_latency_check = (~wm & cfg_q.t_variable_latency_check) | (wm & reg_req_i.wdata);
+                'h6: cfg_d.address_mask_msb         = (~wm & cfg_q.address_mask_msb        ) | (wm & reg_req_i.wdata);
                 'h7: cfg_d.address_space            = (~wm & cfg_q.address_space           ) | (wm & reg_req_i.wdata);
                 default: begin
                     {sel_chip, chip_reg} = sel_reg - 'h8;     // Bad regfile layouts have consequences...
@@ -88,11 +88,11 @@ module hyperbus_cfg_regs #(
     assign cfg_rstval = hyperbus_pkg::hyper_cfg_t'{
         t_latency_access:           'h6,
         en_latency_additional:      'b1,
-        t_burst_max:                'd350,      // At lowest legal clock (100 MHz): 3.5ns (5ns safety margin)
+        t_burst_max:                'd350,      // At lowest legal clock (100 MHz): 3.5ns (0.5ns safety margin)
         t_read_write_recovery:      'h6,
         t_rx_clk_delay:             'h8,
         t_tx_clk_delay:             'h8,
-        t_variable_latency_check:   'h3,
+        address_mask_msb:           'd15,       // 16 bit addresses = 2^6*2^10B == 64 KiB per chip (biggest availale as of now)
         address_space:              'b0
     };
 
