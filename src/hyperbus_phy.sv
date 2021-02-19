@@ -168,7 +168,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         ctl_wclk_ena    = 1'b0;
         if (state_q == SendCA) begin
             // In CA phase: use timer to select word
-            trx_tx_data     = ca[(8'(timer_q) << 4) +: 16];;
+            trx_tx_data     = ca[(8'(timer_q) << 4) +: 16];
             trx_tx_data_oe  = 1'b1;
         end else if (state_q == Write) begin
             trx_tx_data     = tx_i.data;
@@ -297,7 +297,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                     trx_clk_ena     = 1'b1;
                     r_outstand_inc  = 1'b1;
                     tf_d.burst      = tf_q.burst - 1;
-                    tf_d.address    = tf_q.address + 1; // TODO: should be increment of 2, but shift yet upstream
+                    tf_d.address    = tf_q.address + 1;
                     if (ctl_tf_burst_last) begin
                         state_d = WaitXfer;
                     end
@@ -306,7 +306,6 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 if (ctl_timer_one) begin
                     state_d = WaitXfer;
                 end
-
             end
             Write: begin
                 // Dataflow handled outside FSM
