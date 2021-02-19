@@ -7,6 +7,7 @@
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
+`include "register_interface/typedef.svh"
 
 module fixture_hyperbus #(
     parameter int unsigned NumChips = 2
@@ -78,6 +79,13 @@ module fixture_hyperbus #(
     req_t   axi_master_req;
     resp_t  axi_master_rsp;
 
+    typedef logic [31:0]    reg_addr_t;
+    typedef logic [31:0]    reg_data_t;
+    typedef logic [3:0]     reg_strb_t;
+
+    `REG_BUS_TYPEDEF_REQ(reg_req_t, reg_addr_t, reg_data_t, reg_strb_t)
+    `REG_BUS_TYPEDEF_RSP(reg_rsp_t, reg_data_t)
+
     AXI_BUS_DV #(
         .AXI_ADDR_WIDTH(AxiAw ),
         .AXI_DATA_WIDTH(AxiDw ),
@@ -120,8 +128,8 @@ module fixture_hyperbus #(
 
     // -------------------------- Regbus driver --------------------------
 
-    reg_intf_pkg::req_a32_d32 reg_req;
-    reg_intf_pkg::rsp_d32     reg_rsp;
+    reg_req_t   reg_req;
+    reg_rsp_t   reg_rsp;
 
     REG_BUS #(
         .ADDR_WIDTH(32),
@@ -137,7 +145,7 @@ module fixture_hyperbus #(
         .TT (SYS_TT)
     ) i_rmaster = new( i_rbus );
 
-    assign reg_req = reg_intf_pkg::req_a32_d32'{
+    assign reg_req = reg_req_t'{
         addr:   i_rbus.addr,
         write:  i_rbus.write,
         wdata:  i_rbus.wdata,
@@ -192,8 +200,8 @@ module fixture_hyperbus #(
         .AxiIdWidth     ( AxiIw       ),
         .axi_req_t      ( req_t       ),
         .axi_rsp_t      ( resp_t      ),
-        .reg_req_t      ( reg_intf_pkg::req_a32_d32 ),
-        .reg_rsp_t      ( reg_intf_pkg::rsp_d32     ),
+        .reg_req_t      ( reg_req_t   ),
+        .reg_rsp_t      ( reg_rsp_t   ),
         .axi_rule_t     ( rule_t      )
     ) i_dut (
         .clk_phy_i              ( phy_clk               ),
