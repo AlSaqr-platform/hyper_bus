@@ -2,7 +2,7 @@ GIT ?= git
 BENDER ?= bender
 VSIM ?= vsim
 
-all: sim_all
+all: sim_all synth_all
 
 clean: sim_clean
 
@@ -34,6 +34,25 @@ scripts/compile.tcl: Bender.yml
 	$(call generate_vsim, $@, -t rtl -t test,..)
 
 # --------------
+# SYNTHESIS
+# --------------
+
+define generate_synopsys
+	echo 'set ROOT [file normalize [file dirname [info script]]/../../..]' > $1
+	bender script synopsys $2 | grep -v "set ROOT" >> $1
+	echo >> $1
+endef
+
+synth_all: tsmc65/synopsys/scripts/analyze.tcl
+synth_all: models/generic_delay_D4_O1_3P750_CG0_mid.db
+
+tsmc65/cockpit.log:
+	cd tsmc65 && icdesign tsmc65 -update all -nogui
+
+tsmc65/synopsys/scripts/analyze.tcl: Bender.yml | tsmc65/cockpit.log
+	$(call generate_synopsys, $@, -t rtl -t default -t synthesis -t tsmc65,..)
+
+# --------------
 # GENERIC-DELAY
 # --------------
 
@@ -50,7 +69,8 @@ export
 -include $(DELAY_REPO)/delay.mk
 
 DELAY_FILEPATHS ?= \
-	models/generic_delay_D4_O1_3P750_CG0.behav.sv
+	models/generic_delay_D4_O1_3P750_CG0.behav.sv \
+	models/generic_delay_D4_O1_3P750_CG0_mid.db
 
 .PHONY: delay_clean
 
