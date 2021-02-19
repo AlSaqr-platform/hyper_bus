@@ -14,25 +14,22 @@ dependencies:
 
 sources:
   files:
-    # Flattened dependencies
-    - src/generic_delay.behav.sv
-    # Level 0
+    - target: test
+      files:
+        - models/generic_delay_D4_O1_3P750_CG0.behav.sv
     - src/hyperbus_pkg.sv
     - src/hyperbus_clock_diff_out.sv
     - src/hyperbus_ddr_out.sv
     - src/hyperbus_delay.sv
-    # Level 1
     - src/hyperbus_trx.sv
-    # Level 2
     - src/hyperbus_cfg_regs.sv
     - src/hyperbus_phy.sv
     - src/hyperbus_axi.sv
-    # Level 3
     - src/hyperbus.sv
-    #- src/hyperbus_stub.sv
     - target: test
       files:
+        # Device models. TODO: extend
         - models/s27ks0641/s27ks0641.v
-        # Level 0
+        # Testbench
         - test/fixture_hyperbus.sv
         - test/hyperbus_tb.sv
