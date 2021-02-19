@@ -13,6 +13,8 @@ module hyperbus #(
     parameter int unsigned  AxiIdWidth      = -1,
     parameter type          axi_req_t       = logic,
     parameter type          axi_rsp_t       = logic,
+    parameter int unsigned  RegAddrWidth    = -1,
+    parameter int unsigned  RegDataWidth    = -1,
     parameter type          reg_req_t       = logic,
     parameter type          reg_rsp_t       = logic,
     parameter type          axi_rule_t      = logic
@@ -113,6 +115,8 @@ module hyperbus #(
     // Config register File
     hyperbus_cfg_regs #(
         .NumChips       ( NumChips      ),
+        .RegAddrWidth   ( RegAddrWidth  ),
+        .RegDataWidth   ( RegDataWidth  ),
         .reg_req_t      ( reg_req_t     ),
         .reg_rsp_t      ( reg_rsp_t     ),
         .rule_t         ( axi_rule_t    )

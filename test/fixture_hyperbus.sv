@@ -31,37 +31,10 @@ module fixture_hyperbus #(
     localparam AxiDw  = 128;
     localparam AxiIw  = 6;
 
+    localparam RegAw  = 32;
+    localparam RegDw  = 32;
+
     typedef axi_pkg::xbar_rule_32_t rule_t;
-
-    // typedef axi_test::rand_axi_master #(
-    //     // AXI interface parameters
-    //     .AW ( AxiAw   ),
-    //     .DW ( AxiDw   ),
-    //     .IW ( AxiIw   ),
-    //     .UW ( 1       ),
-    //     // Stimuli application and test time
-    //     .TA                   ( SYS_TA           ),
-    //     .TT                   ( SYS_TT           ),
-    //     .MAX_READ_TXNS        ( 2                ),
-    //     .MAX_WRITE_TXNS       ( 2                ),
-    //     .AX_MIN_WAIT_CYCLES   ( 0                ),
-    //     .AX_MAX_WAIT_CYCLES   ( 0                ),
-    //     .W_MIN_WAIT_CYCLES    ( 0                ),
-    //     .W_MAX_WAIT_CYCLES    ( 0                ),
-    //     .RESP_MIN_WAIT_CYCLES ( 0                ),
-    //     .RESP_MAX_WAIT_CYCLES ( 0                ),
-    //     .AXI_BURST_FIXED      ( 1'b0             ),
-    //     .AXI_BURST_INCR       ( 1'b1             ),
-    //     .AXI_BURST_WRAP       ( 1'b0             )
-    // ) rand_axi_master_t;
-
-    // typedef axi_test::axi_scoreboard #(
-    //     .IW ( AxiIw   ),
-    //     .AW ( AxiAw   ),
-    //     .DW ( AxiDw   ),
-    //     .UW ( 1       ),
-    //     .TT ( SYS_TT  )
-    // ) axi_scoreboard_t;
 
     typedef logic [AxiAw-1:0]   axi_addr_t;
     typedef logic [AxiDw-1:0]   axi_data_t;
@@ -79,26 +52,12 @@ module fixture_hyperbus #(
     req_t   axi_master_req;
     resp_t  axi_master_rsp;
 
-    typedef logic [31:0]    reg_addr_t;
-    typedef logic [31:0]    reg_data_t;
-    typedef logic [3:0]     reg_strb_t;
-
-    `REG_BUS_TYPEDEF_REQ(reg_req_t, reg_addr_t, reg_data_t, reg_strb_t)
-    `REG_BUS_TYPEDEF_RSP(reg_rsp_t, reg_data_t)
-
     AXI_BUS_DV #(
         .AXI_ADDR_WIDTH(AxiAw ),
         .AXI_DATA_WIDTH(AxiDw ),
         .AXI_ID_WIDTH  (AxiIw ),
         .AXI_USER_WIDTH(1     )
     ) axi_dv(sys_clk);
-
-    // AXI_BUS_DV #(
-    //     .AXI_ADDR_WIDTH(AxiAw ),
-    //     .AXI_DATA_WIDTH(AxiDw ),
-    //     .AXI_ID_WIDTH  (AxiIw ),
-    //     .AXI_USER_WIDTH(1     )
-    // ) axi_monitor_dv(sys_clk);
 
     AXI_BUS #(
         .AXI_ADDR_WIDTH(AxiAw ),
@@ -112,13 +71,8 @@ module fixture_hyperbus #(
     `AXI_ASSIGN_TO_REQ(axi_master_req, axi_master)
     `AXI_ASSIGN_FROM_RESP(axi_master, axi_master_rsp)
 
-    // `AXI_ASSIGN_MONITOR(axi_monitor_dv, axi_dv)
-
     typedef axi_test::axi_driver #(.AW(AxiAw ), .DW(AxiDw ), .IW(AxiIw ), .UW(1), .TA(SYS_TA), .TT(SYS_TT)) axi_drv_t;
     axi_drv_t axi_master_drv = new(axi_dv);
-
-    // static axi_scoreboard_t scoreboard = new( axi_monitor_dv );
-    // static rand_axi_master_t rand_axi_master = new ( axi_dv );
 
     axi_test::axi_ax_beat #(.AW(AxiAw ), .IW(AxiIw ), .UW(1)) ar_beat = new();
     axi_test::axi_r_beat  #(.DW(AxiDw ), .IW(AxiIw ), .UW(1)) r_beat  = new();
@@ -128,21 +82,28 @@ module fixture_hyperbus #(
 
     // -------------------------- Regbus driver --------------------------
 
+    typedef logic [RegAw-1:0]   reg_addr_t;
+    typedef logic [RegDw-1:0]   reg_data_t;
+    typedef logic [RegDw/8-1:0] reg_strb_t;
+
+    `REG_BUS_TYPEDEF_REQ(reg_req_t, reg_addr_t, reg_data_t, reg_strb_t)
+    `REG_BUS_TYPEDEF_RSP(reg_rsp_t, reg_data_t)
+
     reg_req_t   reg_req;
     reg_rsp_t   reg_rsp;
 
     REG_BUS #(
-        .ADDR_WIDTH(32),
-        .DATA_WIDTH(32)
+        .ADDR_WIDTH( RegAw ),
+        .DATA_WIDTH( RegDw )
     ) i_rbus (
         .clk_i (sys_clk)
     );
 
     reg_test::reg_driver #(
-        .AW (32    ),
-        .DW (32    ),
-        .TA (SYS_TA),
-        .TT (SYS_TT)
+        .AW ( RegAw  ),
+        .DW ( RegDw  ),
+        .TA ( SYS_TA ),
+        .TT ( SYS_TT )
     ) i_rmaster = new( i_rbus );
 
     assign reg_req = reg_req_t'{
@@ -156,8 +117,6 @@ module fixture_hyperbus #(
     assign i_rbus.rdata = reg_rsp.rdata;
     assign i_rbus.ready = reg_rsp.ready;
     assign i_rbus.error = reg_rsp.error;
-
-
 
     // -------------------------- DUT --------------------------
 
@@ -200,6 +159,8 @@ module fixture_hyperbus #(
         .AxiIdWidth     ( AxiIw       ),
         .axi_req_t      ( req_t       ),
         .axi_rsp_t      ( resp_t      ),
+        .RegAddrWidth   ( RegAw       ),
+        .RegDataWidth   ( RegDw       ),
         .reg_req_t      ( reg_req_t   ),
         .reg_rsp_t      ( reg_rsp_t   ),
         .axi_rule_t     ( rule_t      )
@@ -250,6 +211,7 @@ module fixture_hyperbus #(
     end
 
     // -------------------------- TB TASKS --------------------------
+
     // Initial reset
     initial begin
         rst_n = 0;
@@ -290,31 +252,10 @@ module fixture_hyperbus #(
         #(PHY_TCK/2);
     end
 
-    // // random axi master
-    // initial begin
-    //    rand_axi_master.add_memory_region('h0, 16*1024, axi_pkg::DEVICE_NONBUFFERABLE);
-    //    @(posedge rst_n);
-    //    rand_axi_master.reset();
-    //    // #200us;
-    //    // repeat (50) @(posedge sys_clk);
-    //    // rand_axi_master.run(2, 0);
-    //
-    //    scoreboard.reset();
-    //    scoreboard.enable_all_checks();
-    //    scoreboard.monitor();
-    // end
-
     task reset_end;
         @(posedge rst_n);
         @(posedge sys_clk);
     endtask
-
-    // task start_rand_master;
-    //     input integer unsigned reads;
-    //     input integer unsigned writes;
-    //     rand_axi_master.run(reads, writes);
-    // endtask
-
 
     // axi read task
     task read_axi;

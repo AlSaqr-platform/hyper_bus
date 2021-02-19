@@ -2,10 +2,12 @@
 // Description: Configuration for Hyperbus, v2 (For fixed 32-bit address spaces!)
 
 module hyperbus_cfg_regs #(
-    parameter int unsigned NumChips = -1,
-    parameter type         reg_req_t       = logic,
-    parameter type         reg_rsp_t       = logic,
-    parameter type         rule_t   = logic
+    parameter int unsigned  NumChips        = -1,
+    parameter int unsigned  RegAddrWidth    = -1,
+    parameter int unsigned  RegDataWidth    = -1,
+    parameter type          reg_req_t       = logic,
+    parameter type          reg_rsp_t       = logic,
+    parameter type          rule_t          = logic
 ) (
     input logic     clk_i,
     input logic     rst_ni,
@@ -18,67 +20,74 @@ module hyperbus_cfg_regs #(
 );
     `include "common_cells/registers.svh"
 
-    // Parameters
-    localparam int unsigned NumRegs     = 2*NumChips + 6;
-    localparam int unsigned RegsBits    = $clog2(NumRegs);
-    localparam int unsigned AddrWidth   = RegsBits + 2;
+    // Internal Parameters
+    localparam int unsigned RstChipSpace    = 'h1_0000;                         // 64 KiB: Current maximum HyperBus device size
+    localparam int unsigned NumBaseRegs     = 8;
+    localparam int unsigned NumRegs         = 2*NumChips + NumBaseRegs;
+    localparam int unsigned RegsBits        = cf_math_pkg::idx_width(NumRegs);
+    localparam int unsigned RegStrbWidth    = RegDataWidth/8;                   // TODO ASSERT: Must be power of two >= 16!!
 
-    // Registers
-    hyperbus_pkg::hyper_cfg_t    cfg_d, cfg_q, cfg_rstval;
-    logic [NumChips-1:0][1:0][31:0] crange_d, crange_q, crange_rstval;
+    // Data and index types
+    typedef logic [RegsBits-1:0]        reg_idx_t;
+    typedef logic [RegDataWidth-1:0]    reg_data_t;
 
     // Local signals
-    logic [RegsBits-1:0]  sel_reg;
-    logic                 sel_reg_mapped;
+    hyperbus_pkg::hyper_cfg_t       cfg_d, cfg_q, cfg_rstval;
+    reg_data_t [NumChips-1:0][1:0]  crange_d, crange_q, crange_rstval;
+    reg_idx_t   sel_reg;
+    logic       sel_reg_mapped;
+    reg_data_t  wmask;
 
-    // Regbus
-    assign sel_reg          = reg_req_i.addr[AddrWidth-1:2];
+    assign sel_reg          = reg_req_i.addr[$clog2(RegStrbWidth) +: RegsBits];
     assign sel_reg_mapped   = (sel_reg < NumRegs);
 
     assign reg_rsp_o.ready  = 1'b1;
-    assign reg_rsp_o.error  = reg_req_i.valid & ~sel_reg_mapped;
+    assign reg_rsp_o.error  = ~sel_reg_mapped;
 
-    always_comb begin : proc_read
-        logic [NumRegs-1:0][31:0] rfield;
+    // Read from register
+    always_comb begin : proc_comb_read
+        reg_data_t [NumRegs-1:0] rfield;
         reg_rsp_o.rdata = '0;
         if (sel_reg_mapped) begin
             rfield = {
                 crange_q,
-                32'(cfg_q.address_space),
-                32'(cfg_q.address_mask_msb),
-                32'(cfg_q.t_tx_clk_delay),
-                32'(cfg_q.t_rx_clk_delay),
-                32'(cfg_q.t_read_write_recovery),
-                32'(cfg_q.t_burst_max),
-                32'(cfg_q.en_latency_additional),
-                32'(cfg_q.t_latency_access)
+                reg_data_t'(cfg_q.address_space),
+                reg_data_t'(cfg_q.address_mask_msb),
+                reg_data_t'(cfg_q.t_tx_clk_delay),
+                reg_data_t'(cfg_q.t_rx_clk_delay),
+                reg_data_t'(cfg_q.t_read_write_recovery),
+                reg_data_t'(cfg_q.t_burst_max),
+                reg_data_t'(cfg_q.en_latency_additional),
+                reg_data_t'(cfg_q.t_latency_access)
             };
             reg_rsp_o.rdata = rfield[sel_reg];
         end
     end
 
-    always_comb begin : proc_write
-        logic [3:0] ws;
-        logic [31:0] wm;
+    // Generate write mask
+    for (genvar i = 0; unsigned'(i) < RegStrbWidth; ++i ) begin : gen_wmask
+        assign wmask[8*i +: 8] = {8{reg_req_i.wstrb[i]}};
+    end
+
+    // Write to register
+    always_comb begin : proc_comb_write
         logic  chip_reg;
         logic [$clog2(NumChips)-1:0] sel_chip;
         cfg_d     = cfg_q;
         crange_d  = crange_q;
         if (reg_req_i.valid & reg_req_i.write & sel_reg_mapped) begin
-            ws = reg_req_i.wstrb;
-            wm = {{4{ws[3]}}, {4{ws[2]}}, {4{ws[1]}}, {4{ws[0]}}};
             case (sel_reg)
-                'h0: cfg_d.t_latency_access         = (~wm & cfg_q.t_latency_access        ) | (wm & reg_req_i.wdata);
-                'h1: cfg_d.en_latency_additional    = (~wm & cfg_q.en_latency_additional   ) | (wm & reg_req_i.wdata);
-                'h2: cfg_d.t_burst_max              = (~wm & cfg_q.t_burst_max             ) | (wm & reg_req_i.wdata);
-                'h3: cfg_d.t_read_write_recovery    = (~wm & cfg_q.t_read_write_recovery   ) | (wm & reg_req_i.wdata);
-                'h4: cfg_d.t_rx_clk_delay           = (~wm & cfg_q.t_rx_clk_delay          ) | (wm & reg_req_i.wdata);
-                'h5: cfg_d.t_tx_clk_delay           = (~wm & cfg_q.t_tx_clk_delay          ) | (wm & reg_req_i.wdata);
-                'h6: cfg_d.address_mask_msb         = (~wm & cfg_q.address_mask_msb        ) | (wm & reg_req_i.wdata);
-                'h7: cfg_d.address_space            = (~wm & cfg_q.address_space           ) | (wm & reg_req_i.wdata);
+                'h0: cfg_d.t_latency_access         = (~wmask & cfg_q.t_latency_access        ) | (wmask & reg_req_i.wdata);
+                'h1: cfg_d.en_latency_additional    = (~wmask & cfg_q.en_latency_additional   ) | (wmask & reg_req_i.wdata);
+                'h2: cfg_d.t_burst_max              = (~wmask & cfg_q.t_burst_max             ) | (wmask & reg_req_i.wdata);
+                'h3: cfg_d.t_read_write_recovery    = (~wmask & cfg_q.t_read_write_recovery   ) | (wmask & reg_req_i.wdata);
+                'h4: cfg_d.t_rx_clk_delay           = (~wmask & cfg_q.t_rx_clk_delay          ) | (wmask & reg_req_i.wdata);
+                'h5: cfg_d.t_tx_clk_delay           = (~wmask & cfg_q.t_tx_clk_delay          ) | (wmask & reg_req_i.wdata);
+                'h6: cfg_d.address_mask_msb         = (~wmask & cfg_q.address_mask_msb        ) | (wmask & reg_req_i.wdata);
+                'h7: cfg_d.address_space            = (~wmask & cfg_q.address_space           ) | (wmask & reg_req_i.wdata);
                 default: begin
-                    {sel_chip, chip_reg} = sel_reg - 'h8;     // Bad regfile layouts have consequences...
-                    crange_d[sel_chip][chip_reg] = (~wm & crange_q[sel_chip][chip_reg]) |  (wm & reg_req_i.wdata);
+                    {sel_chip, chip_reg} = sel_reg - NumBaseRegs;
+                    crange_d[sel_chip][chip_reg] = (~wmask & crange_q[sel_chip][chip_reg]) |  (wmask & reg_req_i.wdata);
                 end
             endcase // sel_reg
         end
@@ -97,8 +106,8 @@ module hyperbus_cfg_regs #(
     };
 
     for (genvar i = 0; unsigned'(i) < NumChips; i++) begin : gen_crange_rstval
-            assign crange_rstval[i][0]  = 'h40_0000 * i;
-            assign crange_rstval[i][1]  = 'h40_0000 * (i+1);  // Address decoder: end noninclusive
+            assign crange_rstval[i][0]  = RstChipSpace * i;
+            assign crange_rstval[i][1]  = RstChipSpace * (i+1);     // Address decoder: end noninclusive
     end
 
     // Registers
@@ -107,10 +116,17 @@ module hyperbus_cfg_regs #(
 
     // Outputs
     assign cfg_o  = cfg_q;
-    for (genvar i = 0; unsigned'(i) < NumChips; ++i ) begin : gen_crange_out
+    for (genvar i = 0; unsigned'(i) < NumChips; ++i) begin : gen_crange_out
         assign chip_rules_o[i].idx         = unsigned'(i);   // No overlap: keep indices sequential
         assign chip_rules_o[i].start_addr  = crange_q[i][0];
         assign chip_rules_o[i].end_addr    = crange_q[i][1];
     end
+
+    // pragma translate_off
+    `ifndef VERILATOR
+    initial assert (RegDataWidth >= 16 && $countones(RegDataWidth) == 1)
+        else $error("RegDataWidth must be a power of two bigger than 16.");
+    `endif
+    // pragma translate_on
 
 endmodule : hyperbus_cfg_regs
