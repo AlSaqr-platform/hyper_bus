@@ -8,14 +8,15 @@ work
 .svn_setup*
 .gen_gitignore*
 *.20[0-9]*-[0-9]*-[0-9]*-[0-9]*:[0-9]*:[0-9]*
-.bender
-
-# Gitignore scripts for now
-scripts/
-!scripts/*.do
 
 # Modelsim
 modelsim.ini
 transcript
 *.vstf
 *.wlf
+
+
+# Bender
+.bender
+Bender.lock
+scripts/compile.tcl
