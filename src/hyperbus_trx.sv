@@ -147,7 +147,7 @@ module hyperbus_trx #(
     //    RX
     // ========
 
-    // Synchronize RX clock enable into RWDS domain
+    // Set and Reset RX clock enable
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_rx_delay
         if (~rst_ni)                rx_rwds_clk_ena <= 1'b0;
         else if (rx_clk_set_i)      rx_rwds_clk_ena <= 1'b1;
@@ -162,9 +162,11 @@ module hyperbus_trx #(
     );
 
     // Gate delayed RWDS clock with RX clock enable
+    // TODO: replace with TC clock gate?
     assign rx_rwds_clk_orig = rx_rwds_90 & rx_rwds_clk_ena;
 
      // Reset RX state on async reset or on gated clock (whenever inactive)
+     // TODO: is this safe?
     assign rx_rwds_soft_rst = ~rst_ni | (~rx_rwds_clk_ena & ~test_mode_i);
 
     // RX data is valid one cycle after each RX soft reset
@@ -174,7 +176,7 @@ module hyperbus_trx #(
     end
 
     // If testing, replace gated RWDS clock with primary (PHY) clock;
-    // PHY clock itself is replaced with system clock in hyperbus top level
+    // PHY clock itself may be flattened with system clock _outside_ hyperbus!
     tc_clk_mux2 i_rx_rwds_clk_mux (
         .clk0_i    ( rx_rwds_clk_orig   ),
         .clk1_i    ( clk_i              ),

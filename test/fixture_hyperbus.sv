@@ -166,8 +166,9 @@ module fixture_hyperbus #(
         .axi_rule_t     ( rule_t      )
     ) i_dut (
         .clk_phy_i              ( phy_clk               ),
+        .rst_phy_ni             ( rst_n                 ),
         .clk_sys_i              ( sys_clk               ),
-        .rst_ni                 ( rst_n                 ),
+        .rst_sys_ni             ( rst_n                 ),
         .test_mode_i            ( test_mode             ),
         .axi_req_i              ( axi_master_req        ),
         .axi_rsp_o              ( axi_master_rsp        ),

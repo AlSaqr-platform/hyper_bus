@@ -33,8 +33,9 @@ module hyperbus_synth_wrap #(
 ) (
     // SoC
     input  logic                        clk_phy_i,
+    input  logic                        rst_phy_ni,
     input  logic                        clk_sys_i,
-    input  logic                        rst_ni,
+    input  logic                        rst_sys_ni,
     input  logic                        test_mode_i,
 
     // AXI bus
@@ -142,8 +143,9 @@ module hyperbus_synth_wrap #(
         .axi_rule_t    ( axi_rule_t     )
     ) i_hyperbus (
         .clk_phy_i,
+        .rst_phy_ni,
         .clk_sys_i,
-        .rst_ni,
+        .rst_sys_ni,
         .test_mode_i,
         .axi_req_i      ( axi_req ),
         .axi_rsp_o      ( axi_rsp ),

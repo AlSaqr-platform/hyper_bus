@@ -20,8 +20,9 @@ module hyperbus #(
     parameter type          axi_rule_t      = logic
 ) (
     input  logic                        clk_phy_i,
+    input  logic                        rst_phy_ni,
     input  logic                        clk_sys_i,
-    input  logic                        rst_ni,
+    input  logic                        rst_sys_ni,
     input  logic                        test_mode_i,
     // AXI bus
     input  axi_req_t                    axi_req_i,
@@ -47,11 +48,6 @@ module hyperbus #(
         hyperbus_pkg::hyper_tf_t    trans;
         logic [NumChips-1:0]        cs;
     } tf_cdc_t;
-
-    // Clock and reset generation
-    logic rst_phy_n;
-    logic rst_sys_n;
-    logic clk_phy;      // Clock for PHY and FIFOs
 
     // Register file
     hyperbus_pkg::hyper_cfg_t   cfg;
@@ -85,33 +81,6 @@ module hyperbus #(
     logic                       phy_trans_valid;
     logic                       phy_trans_ready;
 
-
-    // Create synchronized resets for PHY
-    rstgen i_rstgen_phy (
-        .clk_i       ( clk_phy_i    ),
-        .rst_ni      ( rst_ni       ),
-        .test_mode_i ( test_mode_i  ),
-        .rst_no      ( rst_phy_n    ),
-        .init_no     (  )
-    );
-
-    // Create synchronised reset for system interfaces
-    rstgen i_rstgen_sys (
-        .clk_i       ( clk_sys_i    ),
-        .rst_ni      ( rst_ni       ),
-        .test_mode_i ( test_mode_i  ),
-        .rst_no      ( rst_sys_n    ),
-        .init_no     (  )
-    );
-
-    // Use system clock for PHY in test mode
-    tc_clk_mux2 i_test_mux_clk_phy (
-        .clk0_i     ( clk_phy_i     ),
-        .clk1_i     ( clk_sys_i     ),
-        .clk_sel_i  ( test_mode_i   ),
-        .clk_o      ( clk_phy       )
-    );
-
     // Config register File
     hyperbus_cfg_regs #(
         .NumChips       ( NumChips      ),
@@ -122,7 +91,7 @@ module hyperbus #(
         .rule_t         ( axi_rule_t    )
     ) i_cfg_regs (
         .clk_i          ( clk_sys_i     ),
-        .rst_ni         ( rst_sys_n     ),
+        .rst_ni         ( rst_sys_ni    ),
         .reg_req_i      ( reg_req_i     ),
         .reg_rsp_o      ( reg_rsp_o     ),
         .cfg_o          ( cfg           ),
@@ -140,7 +109,7 @@ module hyperbus #(
         .rule_t         ( axi_rule_t        )
     ) i_axi_slave (
         .clk_i          ( clk_sys_i         ),
-        .rst_ni         ( rst_sys_n         ),
+        .rst_ni         ( rst_sys_ni        ),
 
         .axi_req_i      ( axi_req_i         ),
         .axi_rsp_o      ( axi_rsp_o         ),
@@ -167,8 +136,8 @@ module hyperbus #(
     hyperbus_phy #(
         .NumChips       ( NumChips          )
     ) i_phy (
-        .clk_i          ( clk_phy           ),
-        .rst_ni         ( rst_phy_n         ),
+        .clk_i          ( clk_phy_i         ),
+        .rst_ni         ( rst_phy_ni        ),
         .test_mode_i    ( test_mode_i       ),
 
         .cfg_i          ( cfg               ),
@@ -202,14 +171,14 @@ module hyperbus #(
     cdc_2phase #(
         .T  ( tf_cdc_t  )
     ) i_cdc_2phase_trans (
-        .src_rst_ni     ( rst_sys_n         ),
+        .src_rst_ni     ( rst_sys_ni        ),
         .src_clk_i      ( clk_sys_i         ),
         .src_data_i     ( axi_tf_cdc        ),
         .src_valid_i    ( axi_trans_valid   ),
         .src_ready_o    ( axi_trans_ready   ),
 
-        .dst_rst_ni     ( rst_phy_n         ),
-        .dst_clk_i      ( clk_phy           ),
+        .dst_rst_ni     ( rst_phy_ni        ),
+        .dst_clk_i      ( clk_phy_i         ),
         .dst_data_o     ( phy_tf_cdc        ),
         .dst_valid_o    ( phy_trans_valid   ),
         .dst_ready_i    ( phy_trans_ready   )
@@ -218,13 +187,13 @@ module hyperbus #(
     cdc_2phase #(
         .T  ( logic )
     ) i_cdc_2phase_b (
-        .src_rst_ni     ( rst_phy_n     ),
-        .src_clk_i      ( clk_phy       ),
+        .src_rst_ni     ( rst_phy_ni    ),
+        .src_clk_i      ( clk_phy_i     ),
         .src_data_i     ( phy_b_error   ),
         .src_valid_i    ( phy_b_valid   ),
         .src_ready_o    ( phy_b_ready   ),
 
-        .dst_rst_ni     ( rst_sys_n     ),
+        .dst_rst_ni     ( rst_sys_ni    ),
         .dst_clk_i      ( clk_sys_i     ),
         .dst_data_o     ( axi_b_error   ),
         .dst_valid_o    ( axi_b_valid   ),
@@ -236,14 +205,14 @@ module hyperbus #(
         .T          ( hyperbus_pkg::hyper_tx_t  ),
         .LOG_DEPTH  ( 2                         )
     ) i_cdc_fifo_tx (
-        .src_rst_ni     ( rst_sys_n     ),
+        .src_rst_ni     ( rst_sys_ni    ),
         .src_clk_i      ( clk_sys_i     ),
         .src_data_i     ( axi_tx        ),
         .src_valid_i    ( axi_tx_valid  ),
         .src_ready_o    ( axi_tx_ready  ),
 
-        .dst_rst_ni     ( rst_phy_n     ),
-        .dst_clk_i      ( clk_phy       ),
+        .dst_rst_ni     ( rst_phy_ni    ),
+        .dst_clk_i      ( clk_phy_i     ),
         .dst_data_o     ( phy_tx        ),
         .dst_valid_o    ( phy_tx_valid  ),
         .dst_ready_i    ( phy_tx_ready  )
@@ -254,13 +223,13 @@ module hyperbus #(
         .T          ( hyperbus_pkg::hyper_rx_t  ),
         .LOG_DEPTH  ( 2                         )
     ) i_cdc_fifo_rx (
-        .src_rst_ni     ( rst_phy_n     ),
-        .src_clk_i      ( clk_phy       ),
+        .src_rst_ni     ( rst_phy_ni    ),
+        .src_clk_i      ( clk_phy_i     ),
         .src_data_i     ( phy_rx        ),
         .src_valid_i    ( phy_rx_valid  ),
         .src_ready_o    ( phy_rx_ready  ),
 
-        .dst_rst_ni     ( rst_sys_n     ),
+        .dst_rst_ni     ( rst_sys_ni    ),
         .dst_clk_i      ( clk_sys_i     ),
         .dst_data_o     ( axi_rx        ),
         .dst_valid_o    ( axi_rx_valid  ),
