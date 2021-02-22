@@ -162,11 +162,15 @@ module hyperbus_trx #(
     );
 
     // Gate delayed RWDS clock with RX clock enable
-    // TODO: replace with TC clock gate?
-    assign rx_rwds_clk_orig = rx_rwds_90 & rx_rwds_clk_ena;
+    tc_clk_gating i_rwds_in_clk_gate (
+        .clk_i      ( rx_rwds_90        ),
+        .en_i       ( rx_rwds_clk_ena   ),
+        .test_en_i  ( test_mode_i       ),
+        .clk_o      ( rx_rwds_clk_orig  )
+    );
 
      // Reset RX state on async reset or on gated clock (whenever inactive)
-     // TODO: is this safe?
+     // TODO: is this safe? Replace with tech cells?
     assign rx_rwds_soft_rst = ~rst_ni | (~rx_rwds_clk_ena & ~test_mode_i);
 
     // RX data is valid one cycle after each RX soft reset
