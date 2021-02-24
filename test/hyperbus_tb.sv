@@ -47,6 +47,8 @@ module hyperbus_tb;
         fix.write_axi('h228, 3, 3, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
         fix.read_axi('h218, 7, 3);
 
+        #1471ns;
+
         $display("=================");
         $display("32 BIT BURSTS");
         $display("=================");
@@ -104,6 +106,8 @@ module hyperbus_tb;
         fix.read_axi('h00, 0, 4);
         fix.read_axi('h00, 0, 3);
         fix.read_axi('h08, 0, 3);
+
+        #2557ns;
 
         $display("=================");
         $display("32 BIT ALIGNED ACCESSES");

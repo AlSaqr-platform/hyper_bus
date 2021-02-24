@@ -52,6 +52,7 @@ module hyperbus #(
     // Register file
     hyperbus_pkg::hyper_cfg_t   cfg;
     axi_rule_t [NumChips-1:0]   chip_rules;
+    logic                       trans_active;
 
     // AXI slave
     hyperbus_pkg::hyper_rx_t    axi_rx;
@@ -95,7 +96,8 @@ module hyperbus #(
         .reg_req_i      ( reg_req_i     ),
         .reg_rsp_o      ( reg_rsp_o     ),
         .cfg_o          ( cfg           ),
-        .chip_rules_o   ( chip_rules    )
+        .chip_rules_o   ( chip_rules    ),
+        .trans_active_i ( trans_active  )
     );
 
     // AXI slave interfacing PHY
@@ -130,7 +132,8 @@ module hyperbus #(
 
         .chip_rules_i       ( chip_rules            ),
         .addr_mask_msb_i    ( cfg.address_mask_msb  ),
-        .addr_space_i       ( cfg.address_space     )
+        .addr_space_i       ( cfg.address_space     ),
+        .trans_active_o     ( trans_active          )
     );
 
     hyperbus_phy #(

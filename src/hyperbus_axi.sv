@@ -42,7 +42,8 @@ module hyperbus_axi #(
 
     input  rule_t [NumChips-1:0]    chip_rules_i,
     input  logic [4:0]              addr_mask_msb_i,
-    input  logic                    addr_space_i
+    input  logic                    addr_space_i,
+    output logic                    trans_active_o
 );
 
     localparam AxiDataBytes = AxiDataWidth/8;
@@ -115,6 +116,10 @@ module hyperbus_axi #(
     logic [15:0]    w_sel_data;
     logic [1:0]     w_sel_strb;
     logic           endword_w;
+
+    // Whether a transfer is currently active
+    logic           trans_active_d, trans_active_q;
+    logic           trans_active_set, trans_active_reset;
 
     // ============================
     //    Serialize requests
@@ -363,6 +368,22 @@ module hyperbus_axi #(
     assign ser_out_rsp.b_valid  = b_valid_i;
     assign b_ready_o            = ser_out_req.b_ready;
 
+    // ============================
+    //    Transfer status
+    // ============================
+
+    assign trans_active_o = trans_active_q;
+
+    assign trans_active_set     = trans_valid_o & trans_ready_i;
+    assign trans_active_reset   = (rx_valid_i & rx_ready_o & rx_i.last) | (b_valid_i & b_ready_o);
+
+    // Set overrules reset as a transfer must start before it finishes
+    always_comb begin : proc_comb_trans_active
+        trans_active_d = trans_active_q;
+        if (trans_active_reset) trans_active_d = 1'b0;
+        if (trans_active_set)   trans_active_d = 1'b1;
+    end
+
     // =========================
     //    Registers
     // =========================
@@ -375,6 +396,7 @@ module hyperbus_axi #(
             byte_offs_q         <= '0;
             r_buf_q             <= '0;
             w_buf_q             <= '0;
+            trans_active_q      <= '0;
         end else begin
             ax_size_q           <= ax_size_d;
             byte_last_even_q    <= byte_last_even_d;
@@ -382,6 +404,7 @@ module hyperbus_axi #(
             byte_offs_q         <= byte_offs_d;
             r_buf_q             <= r_buf_d;
             w_buf_q             <= w_buf_d;
+            trans_active_q      <= trans_active_d;
         end
     end
 

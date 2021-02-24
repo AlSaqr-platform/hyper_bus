@@ -16,7 +16,8 @@ module hyperbus_cfg_regs #(
     output reg_rsp_t reg_rsp_o,
 
     output hyperbus_pkg::hyper_cfg_t    cfg_o,
-    output rule_t [NumChips-1:0]        chip_rules_o
+    output rule_t [NumChips-1:0]        chip_rules_o,
+    input                               trans_active_i
 );
     `include "common_cells/registers.svh"
 
@@ -41,7 +42,7 @@ module hyperbus_cfg_regs #(
     assign sel_reg          = reg_req_i.addr[$clog2(RegStrbWidth) +: RegsBits];
     assign sel_reg_mapped   = (sel_reg < NumRegs);
 
-    assign reg_rsp_o.ready  = 1'b1;
+    assign reg_rsp_o.ready  = ~trans_active_i;  // Config writeable unless currently in transfer
     assign reg_rsp_o.error  = ~sel_reg_mapped;
 
     // Read from register
