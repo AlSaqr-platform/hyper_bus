@@ -125,6 +125,8 @@ module hyperbus_axi #(
     // Whether a transfer is currently active
     logic           trans_active_d, trans_active_q;
     logic           trans_active_set, trans_active_reset;
+    logic           trans_wready_d, trans_wready_q;
+    logic           trans_wready_set, trans_wready_reset;
 
     // ============================
     //    Serialize requests
@@ -346,11 +348,11 @@ module hyperbus_axi #(
     // Complete TX word if not byte-size transfer OR at every second byte OR at final byte
     assign endword_w = ax_size_byte ? (byte_cnt_odd | w_spill.last) : 1'b1;
 
-    assign tx_valid_o = w_spill_valid & endword_w;  // Uses lock-in on upstream W channel
+    assign tx_valid_o = trans_wready_q & w_spill_valid & endword_w;  // Uses lock-in on upstream W channel
     // We block the W channel until an AW was received (transfer is active and is a write).
     // To stay AXI compliant, we use a write channel spill register decoupling the W channel.
     // Downstream TX channel must be ready unless bufferable byte-size transfer
-    assign w_spill_ready = (trans_active_q & rr_out_req_write) & (endbeat & (tx_ready_i | ~endword_w));
+    assign w_spill_ready = trans_wready_q & (endbeat & (tx_ready_i | ~endword_w));
 
     // Select word window as byte-wrapping for unaligned accesses
     assign w_sel_data = w_spill.data[16*word_cnt +:16];
@@ -403,11 +405,18 @@ module hyperbus_axi #(
     assign trans_active_set     = trans_valid_o & trans_ready_i;
     assign trans_active_reset   = (rx_valid_i & rx_ready_o & rx_i.last) | (b_valid_i & b_ready_o);
 
+    // Allow W transfers iff currently engaged in write (AW already received)
+    assign trans_wready_set     = trans_active_set & rr_out_req_write;
+    assign trans_wready_reset   = (tx_valid_o & tx_ready_i & tx_o.last);
+
     // Set overrules reset as a transfer must start before it finishes
     always_comb begin : proc_comb_trans_active
         trans_active_d = trans_active_q;
+        trans_wready_d = trans_wready_q;
         if (trans_active_reset) trans_active_d = 1'b0;
         if (trans_active_set)   trans_active_d = 1'b1;
+        if (trans_wready_reset) trans_wready_d = 1'b0;
+        if (trans_wready_set)   trans_wready_d = 1'b1;
     end
 
     // =========================
@@ -423,6 +432,7 @@ module hyperbus_axi #(
             r_buf_q             <= '0;
             w_buf_q             <= '0;
             trans_active_q      <= '0;
+            trans_wready_q      <= '0;
         end else begin
             ax_size_q           <= ax_size_d;
             byte_last_even_q    <= byte_last_even_d;
@@ -431,6 +441,7 @@ module hyperbus_axi #(
             r_buf_q             <= r_buf_d;
             w_buf_q             <= w_buf_d;
             trans_active_q      <= trans_active_d;
+            trans_wready_q      <= trans_wready_d;
         end
     end
 
