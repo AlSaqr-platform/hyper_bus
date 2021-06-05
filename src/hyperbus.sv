@@ -13,6 +13,7 @@ module hyperbus #(
     parameter int unsigned  AxiIdWidth      = -1,
     parameter type          axi_req_t       = logic,
     parameter type          axi_rsp_t       = logic,
+    parameter type          axi_w_chan_t    = logic,
     parameter int unsigned  RegAddrWidth    = -1,
     parameter int unsigned  RegDataWidth    = -1,
     parameter type          reg_req_t       = logic,
@@ -107,6 +108,7 @@ module hyperbus #(
         .AxiIdWidth     ( AxiIdWidth        ),
         .axi_req_t      ( axi_req_t         ),
         .axi_rsp_t      ( axi_rsp_t         ),
+        .axi_w_chan_t   ( axi_w_chan_t      ),
         .NumChips       ( NumChips          ),
         .rule_t         ( axi_rule_t        )
     ) i_axi_slave (

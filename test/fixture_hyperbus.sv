@@ -159,6 +159,7 @@ module fixture_hyperbus #(
         .AxiIdWidth     ( AxiIw       ),
         .axi_req_t      ( req_t       ),
         .axi_rsp_t      ( resp_t      ),
+        .axi_w_chan_t   ( w_chan_t    ),
         .RegAddrWidth   ( RegAw       ),
         .RegDataWidth   ( RegDw       ),
         .reg_req_t      ( reg_req_t   ),

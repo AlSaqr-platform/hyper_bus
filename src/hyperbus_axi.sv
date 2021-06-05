@@ -14,6 +14,7 @@ module hyperbus_axi #(
     parameter int unsigned AxiIdWidth    = -1,
     parameter type         axi_req_t     = logic,
     parameter type         axi_rsp_t     = logic,
+    parameter type         axi_w_chan_t  = logic,
     parameter int unsigned NumChips    	 = -1,
     parameter type         rule_t        = logic
 ) (
@@ -110,6 +111,10 @@ module hyperbus_axi #(
     axi_r_t         r_buf_d, r_buf_q;
     logic           r_buf_ready;
     logic           endword_r;
+
+    // W channel spill
+    axi_w_chan_t    w_spill;
+    logic           w_spill_valid, w_spill_ready;
 
     // W channel
     axi_wbyte_t     w_buf_d, w_buf_q;
@@ -260,7 +265,7 @@ module hyperbus_axi #(
             if ((tx_valid_o & tx_ready_i) | (rx_valid_i & rx_ready_o))
                 byte_cnt_d  = byte_cnt_q + 2;
             // Byte offset: advance only for byte-size transfers whenever upstream advances
-            if (ax_size_byte & ((ser_out_req.w_valid & ser_out_rsp.w_ready)
+            if (ax_size_byte & ((w_spill_valid & w_spill_ready)
                     | (ser_out_rsp.r_valid & ser_out_req.r_ready)))
                 byte_cnt_d[0]  = ~byte_cnt_q[0];
         end
@@ -315,20 +320,41 @@ module hyperbus_axi #(
     end
 
     // ============================
+    //    W channel: Buffer
+    // ============================
+
+    spill_register #(
+        .T      ( axi_w_chan_t ),
+        .Bypass ( 0            )
+    ) i_wchan_spill (
+        .clk_i,
+        .rst_ni,
+        .data_i  ( ser_out_req.w        ),
+        .valid_i ( ser_out_req.w_valid  ),
+        .ready_o ( ser_out_rsp.w_ready  ),
+        .data_o  ( w_spill              ),
+        .valid_o ( w_spill_valid        ),
+        .ready_i ( w_spill_ready        )
+    );
+
+    // ============================
     //    W channel: serialize
     // ============================
 
-    assign tx_o.last = ser_out_req.w.last & endbeat;
+    assign tx_o.last = w_spill.last & endbeat;
 
     // Complete TX word if not byte-size transfer OR at every second byte OR at final byte
-    assign endword_w = ax_size_byte ? (byte_cnt_odd | ser_out_req.w.last) : 1'b1;
+    assign endword_w = ax_size_byte ? (byte_cnt_odd | w_spill.last) : 1'b1;
 
-    assign tx_valid_o           = ser_out_req.w_valid & endword_w;      // Uses lock-in on upstream W channel
-    assign ser_out_rsp.w_ready  = endbeat & (tx_ready_i | ~endword_w);  // Downstream TX channel must be ready unless bufferable byte-size transfer
+    assign tx_valid_o = w_spill_valid & endword_w;  // Uses lock-in on upstream W channel
+    // We block the W channel until an AW was received (transfer is active and is a write).
+    // To stay AXI compliant, we use a write channel spill register decoupling the W channel.
+    // Downstream TX channel must be ready unless bufferable byte-size transfer
+    assign w_spill_ready = (trans_active_q & rr_out_req_write) & (endbeat & (tx_ready_i | ~endword_w));
 
     // Select word window as byte-wrapping for unaligned accesses
-    assign w_sel_data = ser_out_req.w.data[16*word_cnt +:16];
-    assign w_sel_strb = ser_out_req.w.strb[ 2*word_cnt +: 2];
+    assign w_sel_data = w_spill.data[16*word_cnt +:16];
+    assign w_sel_strb = w_spill.strb[ 2*word_cnt +: 2];
 
     // Assign downstream word to window
     always_comb begin : proc_comb_w_coalesce
@@ -349,7 +375,7 @@ module hyperbus_axi #(
     // Buffer lower byte and its strobe for byte-size transfer when necessary
     always_comb begin : proc_comb_w_buffer
         w_buf_d = w_buf_q;
-        if (ser_out_req.w_valid & ser_out_rsp.w_ready & ax_size_byte & ~byte_cnt_odd) begin
+        if (w_spill_valid & w_spill_ready & ax_size_byte & ~byte_cnt_odd) begin
             w_buf_d.data = w_sel_data[7:0];
             w_buf_d.strb = w_sel_strb[0];
         end else if (trans_valid_o & trans_ready_i) begin

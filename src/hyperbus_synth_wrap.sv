@@ -136,6 +136,7 @@ module hyperbus_synth_wrap #(
         .AxiIdWidth    ( AxiIdWidth     ),
         .axi_req_t     ( axi_req_t      ),
         .axi_rsp_t     ( axi_rsp_t      ),
+        .axi_w_chan_t  ( w_chan_t       ),
         .RegAddrWidth  ( RegAddrWidth   ),
         .RegDataWidth  ( RegDataWidth   ),
         .reg_req_t     ( reg_req_t      ),
