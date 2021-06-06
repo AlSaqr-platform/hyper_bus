@@ -7,7 +7,9 @@ module hyperbus_cfg_regs #(
     parameter int unsigned  RegDataWidth    = -1,
     parameter type          reg_req_t       = logic,
     parameter type          reg_rsp_t       = logic,
-    parameter type          rule_t          = logic
+    parameter type          rule_t          = logic,
+    parameter logic [RegDataWidth-1:0] RstChipBase  = -1,   // Base address for all chips
+    parameter logic [RegDataWidth-1:0] RstChipSpace = -1    // 64 KiB: Current maximum HyperBus device size
 ) (
     input logic     clk_i,
     input logic     rst_ni,
@@ -22,7 +24,6 @@ module hyperbus_cfg_regs #(
     `include "common_cells/registers.svh"
 
     // Internal Parameters
-    localparam int unsigned RstChipSpace    = 'h1_0000;                         // 64 KiB: Current maximum HyperBus device size
     localparam int unsigned NumBaseRegs     = 8;
     localparam int unsigned NumRegs         = 2*NumChips + NumBaseRegs;
     localparam int unsigned RegsBits        = cf_math_pkg::idx_width(NumRegs);
@@ -107,8 +108,8 @@ module hyperbus_cfg_regs #(
     };
 
     for (genvar i = 0; unsigned'(i) < NumChips; i++) begin : gen_crange_rstval
-            assign crange_rstval[i][0]  = RstChipSpace * i;
-            assign crange_rstval[i][1]  = RstChipSpace * (i+1);     // Address decoder: end noninclusive
+            assign crange_rstval[i][0]  = RstChipBase + (RstChipSpace * i);
+            assign crange_rstval[i][1]  = RstChipBase + (RstChipSpace * (i+1));     // Address decoder: end noninclusive
     end
 
     // Registers

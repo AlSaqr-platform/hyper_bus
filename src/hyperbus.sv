@@ -18,7 +18,12 @@ module hyperbus #(
     parameter int unsigned  RegDataWidth    = -1,
     parameter type          reg_req_t       = logic,
     parameter type          reg_rsp_t       = logic,
-    parameter type          axi_rule_t      = logic
+    parameter type          axi_rule_t      = logic,
+    // The below have sensible defaults, but should be set on integration!
+    parameter int unsigned  RxFifoLogDepth  = 2,
+    parameter int unsigned  TxFifoLogDepth  = 2,
+    parameter logic [RegDataWidth-1:0] RstChipBase  = 'h0,      // Base address for all chips
+    parameter logic [RegDataWidth-1:0] RstChipSpace = 'h1_0000  // 64 KiB: Current maximum HyperBus device size
 ) (
     input  logic                        clk_phy_i,
     input  logic                        rst_phy_ni,
@@ -90,7 +95,9 @@ module hyperbus #(
         .RegDataWidth   ( RegDataWidth  ),
         .reg_req_t      ( reg_req_t     ),
         .reg_rsp_t      ( reg_rsp_t     ),
-        .rule_t         ( axi_rule_t    )
+        .rule_t         ( axi_rule_t    ),
+        .RstChipBase    ( RstChipBase   ),
+        .RstChipSpace   ( RstChipSpace  )
     ) i_cfg_regs (
         .clk_i          ( clk_sys_i     ),
         .rst_ni         ( rst_sys_ni    ),
@@ -208,7 +215,7 @@ module hyperbus #(
     // Write data, TX CDC FIFO
     cdc_fifo_gray  #(
         .T          ( hyperbus_pkg::hyper_tx_t  ),
-        .LOG_DEPTH  ( 2                         )
+        .LOG_DEPTH  ( TxFifoLogDepth            )
     ) i_cdc_fifo_tx (
         .src_rst_ni     ( rst_sys_ni    ),
         .src_clk_i      ( clk_sys_i     ),
@@ -226,7 +233,7 @@ module hyperbus #(
     // Read data, RX CDC FIFO
     cdc_fifo_gray  #(
         .T          ( hyperbus_pkg::hyper_rx_t  ),
-        .LOG_DEPTH  ( 2                         )
+        .LOG_DEPTH  ( RxFifoLogDepth            )
     ) i_cdc_fifo_rx (
         .src_rst_ni     ( rst_phy_ni    ),
         .src_clk_i      ( clk_phy_i     ),
