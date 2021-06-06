@@ -92,6 +92,8 @@ module hyperbus_axi #(
     logic           rr_out_req_write;
 
     // AX handling
+    logic           trans_handshake;
+    logic           ax_valid, ax_ready;
     axi_pkg::size_t ax_size_d, ax_size_q;
     logic           byte_last_even_d, byte_last_even_q;
     chip_sel_idx_t  ax_chip_sel_idx;
@@ -187,11 +189,16 @@ module hyperbus_axi #(
         .req_i      ( { ser_out_req.aw_valid, ser_out_req.ar_valid } ),
         .gnt_o      ( { ser_out_rsp.aw_ready, ser_out_rsp.ar_ready } ),
         .data_i     ( { ser_out_req_aw,       ser_out_req_ar       } ),
-        .req_o      ( trans_valid_o     ),
-        .gnt_i      ( trans_ready_i     ),
+        .req_o      ( ax_valid          ),
+        .gnt_i      ( ax_ready          ),
         .data_o     ( rr_out_req_ax     ),
         .idx_o      ( rr_out_req_write  )
     );
+
+    assign trans_valid_o    = ax_valid & ~trans_active_q;
+    assign ax_ready         = trans_ready_i & ~trans_active_q;
+
+    assign trans_handshake = trans_valid_o & trans_ready_i;
 
     // ============================
     //    AX channel: handle
@@ -226,7 +233,7 @@ module hyperbus_axi #(
     always_comb begin : proc_comb_ax_buffer
         ax_size_d           = ax_size_q;
         byte_last_even_d    = byte_last_even_q;
-        if (trans_valid_o & trans_ready_i) begin
+        if (trans_handshake) begin
             ax_size_d           = rr_out_req_ax.size;
             byte_last_even_d    = ~rr_out_req_ax.len[0] ^ rr_out_req_ax.addr[0];
         end
@@ -259,7 +266,7 @@ module hyperbus_axi #(
     always_comb begin : proc_comb_byte_cnt
         byte_cnt_d  = byte_cnt_q;
         byte_offs_d = byte_offs_q;
-        if (trans_valid_o & trans_ready_i) begin
+        if (trans_handshake) begin
             byte_cnt_d  = rr_out_req_ax.addr[ByteCntWidth-1:0];
             byte_offs_d = rr_out_req_ax.addr[ByteCntWidth-1:0];
         end else begin
@@ -380,7 +387,7 @@ module hyperbus_axi #(
         if (w_spill_valid & w_spill_ready & ax_size_byte & ~byte_cnt_odd) begin
             w_buf_d.data = w_sel_data[7:0];
             w_buf_d.strb = w_sel_strb[0];
-        end else if (trans_valid_o & trans_ready_i) begin
+        end else if (trans_handshake) begin
             // TODO POWER @paulsc: unnecessary clear of data; strb suffices (but easier for debug)
             w_buf_d = '0;       // Reset buffer new transfer begins (in case of odd upbeat)
         end
@@ -402,7 +409,7 @@ module hyperbus_axi #(
 
     assign trans_active_o = trans_active_q;
 
-    assign trans_active_set     = trans_valid_o & trans_ready_i;
+    assign trans_active_set     = trans_handshake;
     assign trans_active_reset   = (rx_valid_i & rx_ready_o & rx_i.last) | (b_valid_i & b_ready_o);
 
     // Allow W transfers iff currently engaged in write (AW already received)
@@ -459,11 +466,11 @@ module hyperbus_axi #(
         else $fatal (1, "Last word of read should be aligned with transfer size.");
 
     access_16b_align : assert property(
-      @(posedge clk_i) trans_valid_o & trans_ready_i & (rr_out_req_ax.size != '0) |-> (rr_out_req_ax.addr[0] == 1'b0))
+      @(posedge clk_i) trans_handshake & (rr_out_req_ax.size != '0) |-> (rr_out_req_ax.addr[0] == 1'b0))
         else $fatal (1, "The address of a non-byte-size access must be 2-byte aligned.");
 
     burst_type : assert property(
-      @(posedge clk_i) trans_valid_o & trans_ready_i |-> rr_out_req_ax.burst == axi_pkg::BURST_INCR)
+      @(posedge clk_i) trans_handshake |-> rr_out_req_ax.burst == axi_pkg::BURST_INCR)
         else $fatal (1, "Non-incremental burst passed; this is currently not supported.");
     `endif
     // pragma translate_on
