@@ -21,7 +21,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     parameter int unsigned NumChips         = 2,
     parameter int unsigned TimerWidth       = 16,
     parameter int unsigned RxFifoLogDepth   = 3,
-    parameter int unsigned StartupCycles    = 150 /*us*/ * 100 /*MHz*/ // Conservative minmum frequency estimate
+    parameter int unsigned StartupCycles    = 300 /*us*/ * 200 /*MHz*/ // Conservative maximum frequency estimate
 )(
     input  logic                clk_i,
     input  logic                rst_ni,
