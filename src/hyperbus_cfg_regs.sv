@@ -103,7 +103,7 @@ module hyperbus_cfg_regs #(
         t_read_write_recovery:      'h6,
         t_rx_clk_delay:             'h8,
         t_tx_clk_delay:             'h8,
-        address_mask_msb:           'd15,       // 16 bit addresses = 2^6*2^10B == 64 KiB per chip (biggest availale as of now)
+        address_mask_msb:           'd25,       // 26 bit addresses = 2^6*2^20B == 64 MB per chip (biggest availale as of now)
         address_space:              'b0
     };
 
