@@ -21,6 +21,7 @@ module hyperbus_trx #(
 )(
     // Global signals
     input  logic            clk_i,
+    input  logic            clk_i_90,
     input  logic            rst_ni,
     input  logic            test_mode_i,
     // Transciever control: facing controller
@@ -79,12 +80,16 @@ module hyperbus_trx #(
     // =================
 
     // Shift clock by 90 degrees
+`ifdef FPGA_EMUL
+   assign tx_clk_90 = clk_i_90;
+`else
     hyperbus_delay i_delay_tx_clk_90 (
         .in_i       ( clk_i          ),
         .delay_i    ( tx_clk_delay_i ),
         .out_o      ( tx_clk_90      )
     );
-
+`endif
+   
     // 90deg-shifted differential output clock, sampling output bytes centrally
     hyperbus_clock_diff_out i_clock_diff_out (
         .in_i   ( tx_clk_90     ),

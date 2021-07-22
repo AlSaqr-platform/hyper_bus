@@ -27,6 +27,7 @@ module hyperbus #(
     parameter int unsigned  PhyStartupCycles = 300 /*us*/ * 200 /*MHz*/ // Conservative maximum frequency estimate
 ) (
     input  logic                        clk_phy_i,
+    input  logic                        clk_phy_i_90,
     input  logic                        rst_phy_ni,
     input  logic                        clk_sys_i,
     input  logic                        rst_sys_ni,
@@ -151,6 +152,7 @@ module hyperbus #(
         .StartupCycles  ( PhyStartupCycles  )
     ) i_phy (
         .clk_i          ( clk_phy_i         ),
+        .clk_i_90       ( clk_phy_i_90      ),
         .rst_ni         ( rst_phy_ni        ),
         .test_mode_i    ( test_mode_i       ),
 

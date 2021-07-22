@@ -24,13 +24,23 @@ module hyperbus_ddr_out #(
     logic q0;
     logic q1;
 
+`ifdef FPGA_EMUL
+       always_comb
+      begin
+        if(clk_i == 1'b0)
+           q_o = q1;
+        else
+           q_o = q0;
+      end
+`else
     tc_clk_mux2 i_ddrmux (
         .clk_o     ( q_o   ),
         .clk0_i    ( q1    ),
         .clk1_i    ( q0    ),
         .clk_sel_i ( clk_i )
     );
-
+`endif // !`ifdef FPGA_EMUL
+   
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if (~rst_ni) begin
             q0 <= Init;

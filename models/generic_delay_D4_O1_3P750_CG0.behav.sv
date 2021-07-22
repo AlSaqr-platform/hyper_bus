@@ -8,7 +8,8 @@
 // Florian Zaruba <zarubaf@iis.ee.ethz.ch>
 
 // Automatically generated
-
+`timescale 1ps/1ps
+  
 (* no_ungroup *)
 (* no_boundary_optimization *)
 module generic_delay_D4_O1_3P750_CG0 (

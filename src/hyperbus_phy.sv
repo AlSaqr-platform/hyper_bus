@@ -24,6 +24,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     parameter int unsigned StartupCycles    = 300 /*us*/ * 200 /*MHz*/ // Conservative maximum frequency estimate
 )(
     input  logic                clk_i,
+    input  logic                clk_i_90,
     input  logic                rst_ni,
     input  logic                test_mode_i,
     // Config registers
@@ -114,6 +115,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         .RxFifoLogDepth ( RxFifoLogDepth    )
     ) i_trx (
         .clk_i,
+        .clk_i_90,
         .rst_ni,
         .test_mode_i,
         .cs_i               ( cs_q                  ),
