@@ -18,6 +18,11 @@ sources:
     - target: all(synthesis,tsmc65)
       files:
         - tsmc65/sourcecode/tc_clk.sv
+    - target: all(fpga,xilinx)
+      defines:
+        FPGA_EMUL:~
+      files:
+        - models/generic_delay_D4_O1_3P750_CG0.fpga.sv
     - target: test
       files:
         - models/generic_delay_D4_O1_3P750_CG0.behav.sv

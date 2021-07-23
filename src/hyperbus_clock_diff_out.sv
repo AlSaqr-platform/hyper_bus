@@ -20,6 +20,21 @@ module hyperbus_clock_diff_out
     output logic out_no
 );
 
+   `ifdef FPGA_EMUL
+
+       logic en_sync;
+    
+       always_latch
+       begin
+         if (in_i == 1'b0)
+           en_sync <= en_i;
+       end
+
+       assign out_o = in_i & en_sync;
+       assign out_no = ~out_o;
+
+   `else
+
     tc_clk_gating i_hyper_ck_gating (
         .clk_i     ( in_i  ),
         .en_i      ( en_i  ),
@@ -32,4 +47,6 @@ module hyperbus_clock_diff_out
         .clk_o ( out_no )
     );
 
+   `endif // !`ifdef FPGA_EMUL
+   
 endmodule
