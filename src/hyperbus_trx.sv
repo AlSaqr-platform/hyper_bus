@@ -16,8 +16,9 @@
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
 module hyperbus_trx #(
-    parameter int unsigned NumChips         = 2,
-    parameter int unsigned RxFifoLogDepth   = 3
+    parameter int unsigned IsClockODelayed = -1,
+    parameter int unsigned NumChips = 2,
+    parameter int unsigned RxFifoLogDepth = 3
 )(
     // Global signals
     input  logic            clk_i,
@@ -80,16 +81,18 @@ module hyperbus_trx #(
     // =================
 
     // Shift clock by 90 degrees
-`ifdef FPGA_EMUL
-   assign tx_clk_90 = clk_i_90;
-`else
-    hyperbus_delay i_delay_tx_clk_90 (
-        .in_i       ( clk_i          ),
-        .delay_i    ( tx_clk_delay_i ),
-        .out_o      ( tx_clk_90      )
-    );
-`endif
-   
+    generate
+       if(IsClockODelayed==1)
+         assign tx_clk_90 = clk_i_90;
+       else if (IsClockODelayed==0) begin      
+         hyperbus_delay i_delay_tx_clk_90 (
+          .in_i       ( clk_i          ),
+          .delay_i    ( tx_clk_delay_i ),
+          .out_o      ( tx_clk_90      )
+         );
+       end
+    endgenerate
+
     // 90deg-shifted differential output clock, sampling output bytes centrally
     hyperbus_clock_diff_out i_clock_diff_out (
         .in_i   ( tx_clk_90     ),

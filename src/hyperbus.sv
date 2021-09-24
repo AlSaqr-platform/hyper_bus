@@ -5,9 +5,11 @@
 
 // Author: Thomas Benz <paulsc@iis.ee.ethz.ch>
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
+// Contributor: Luca Valente <luca.valente@unibo.it>
 
 module hyperbus #(
     parameter int unsigned  NumChips        = -1,
+    parameter int unsigned  IsClockODelayed = -1,
     parameter int unsigned  AxiAddrWidth    = -1,
     parameter int unsigned  AxiDataWidth    = -1,
     parameter int unsigned  AxiIdWidth      = -1,
@@ -148,6 +150,7 @@ module hyperbus #(
     );
 
     hyperbus_phy #(
+        .IsClockODelayed( IsClockODelayed   ),
         .NumChips       ( NumChips          ),
         .StartupCycles  ( PhyStartupCycles  )
     ) i_phy (

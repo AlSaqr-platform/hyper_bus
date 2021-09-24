@@ -18,6 +18,7 @@
 // TODO: rename, change t_burst_max to t_burst_max
 
 module hyperbus_phy import hyperbus_pkg::*; #(
+    parameter int unsigned IsClockODelayed = -1,
     parameter int unsigned NumChips         = 2,
     parameter int unsigned TimerWidth       = 16,
     parameter int unsigned RxFifoLogDepth   = 3,
@@ -111,6 +112,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // =================
 
     hyperbus_trx #(
+        .IsClockODelayed( IsClockODelayed   ),
         .NumChips       ( NumChips          ),
         .RxFifoLogDepth ( RxFifoLogDepth    )
     ) i_trx (
