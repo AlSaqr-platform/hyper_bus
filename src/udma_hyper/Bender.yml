@@ -1,0 +1,21 @@
+package:
+  name: udma_hyper
+  authors:
+    - "Hayate Okuhara <hayate.okuhara@unibo.it>"
+    - "Luca Valente <luca.valente@unibo.it>"
+
+sources:
+  - udma_cmd_queue.sv
+  - hyper_arb_primitive.sv
+  - hyper_arbiter.sv
+  - udma_hyper_reg_if_common.sv
+  - udma_hyper_reg_if_mulid.sv
+  - hyper_twd_trans_spliter.sv
+  - udma_rxbuffer.sv
+  - udma_txbuffer.sv
+  - hyper_rr_flag_req.sv
+  - udma_hyper_ctrl.sv
+  - hyper_unpack.sv
+  - udma_cfg_outbuff.sv
+  - udma_hyper_busy_phy.sv
+  - udma_hyper.sv

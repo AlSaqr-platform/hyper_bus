@@ -308,25 +308,7 @@ module hyperbus #(
         .dst_ready_i    ( axi_rx_ready  )
     );
 
-    // transactions
-    logic [31:0]            trans_address;
-    logic [NumChips-1:0]    trans_cs;        // chipselect
-    logic                   trans_write;     // transaction is a write
-    logic [TRANS_SIZE-1:0]  trans_burst;
-    logic                   trans_burst_type;
-    logic                   trans_address_space;
 
-    // transmitting
-    logic [31:0]            tx_data;
-    logic [1:0]             tx_strb_lower;   // mask data
-    logic [1:0]             tx_strb_upper;   // mask data
-    // receiving channel
-    logic [31:0]            rx_data;
-    logic                   rx_error;
-
-    logic                   b_valid;
-    logic                   b_last;
-    logic                   b_error;
     // spram select
     logic [1:0]             mem_sel; 
     logic                   is_udma_hyper_busy;
@@ -338,9 +320,6 @@ module hyperbus #(
     hyperbus_pkg::hyper_tx_t    udma_phy_tx;
     logic                       udma_phy_tx_valid;
     logic                       udma_phy_tx_ready;
-    logic                       udma_phy_b_error;
-    logic                       udma_phy_b_valid;
-    logic                       udma_phy_b_ready;
     tf_cdc_t                    udma_phy_tf_cdc;
     logic                       udma_phy_trans_valid;
     logic                       udma_phy_trans_ready;
@@ -408,43 +387,20 @@ module hyperbus #(
         
         .trans_valid_o(udma_phy_trans_valid),
         .trans_ready_i(udma_phy_trans_ready),
-        .trans_address_o(trans_address),
-        .trans_cs_o(trans_cs),        // chipselect
-        .trans_write_o(trans_write),     // transaction is a write
-        .trans_burst_o(trans_burst),
-        .trans_burst_type_o(trans_burst_type),
-        .trans_address_space_o(trans_address_space),       
+        .udma_phy_tf(udma_phy_tf_cdc.trans),
+        .trans_cs_o(udma_phy_tf_cdc.cs),        // chipselect      
         
         .tx_valid_o(udma_phy_tx_valid),
         .tx_ready_i(udma_phy_tx_ready),
-        .tx_data_o(tx_data),
-        .tx_strb_lower_o(tx_strb_lower),   // mask data
-        .tx_strb_upper_o(tx_strb_upper),   // mask data
+        .udma_phy_tx(udma_phy_tx),
     
         .rx_valid_i(udma_phy_rx_valid),
         .rx_ready_o(udma_phy_rx_ready),
-        .rx_data_i(rx_data),
-        .rx_error_i(rx_error),
+        .udma_phy_rx(udma_phy_rx),
             
         .mem_sel_o(mem_sel),
         .busy_o(is_udma_hyper_busy)
         );
-
-       assign udma_phy_tf_cdc.trans.write=trans_write;     // transaction is a write
-       assign udma_phy_tf_cdc.trans.burst=trans_burst;
-       assign udma_phy_tf_cdc.trans.burst_type=trans_burst_type;
-       assign udma_phy_tf_cdc.trans.address_space=trans_address_space;
-       assign udma_phy_tf_cdc.trans.address=trans_address;
-       assign udma_phy_tf_cdc.cs=trans_cs;
-   
-                                       
-       assign udma_phy_tx.data = tx_data[15:0];   
-       assign udma_phy_tx.last = '0; // phy does not use this signal
-       assign udma_phy_tx.strb = ~tx_strb_lower;
-   
-       assign rx_data  = udma_phy_rx.data;
-       assign rx_error = udma_phy_rx.error;
-   
 
 
  stream_mux #(
