@@ -10,6 +10,9 @@
 module hyperbus #(
     parameter int unsigned  NumChips        = -1,
     parameter int unsigned  IsClockODelayed = -1,
+    parameter int unsigned  L2_AWIDTH_NOAL  = 12,
+    parameter int unsigned  TRANS_SIZE      = 16,
+    parameter int unsigned  NB_CH           = 8,
     parameter int unsigned  AxiAddrWidth    = -1,
     parameter int unsigned  AxiDataWidth    = -1,
     parameter int unsigned  AxiIdWidth      = -1,
@@ -40,6 +43,42 @@ module hyperbus #(
     // Reg bus
     input  reg_req_t                    reg_req_i,
     output reg_rsp_t                    reg_rsp_o,
+    // UDMA interface
+    input  logic [31:0]                 cfg_data_i,
+    input  logic [4:0]                  cfg_addr_i,
+    input  logic [NB_CH:0]              cfg_valid_i,
+    input  logic                        cfg_rwn_i,
+    output logic [NB_CH:0]              cfg_ready_o,
+    output logic [NB_CH:0][31:0]        cfg_data_o,
+    output logic [L2_AWIDTH_NOAL-1:0]   cfg_rx_startaddr_o,
+    output logic     [TRANS_SIZE-1:0]   cfg_rx_size_o,
+    output logic                        cfg_rx_continuous_o,
+    output logic                        cfg_rx_en_o,
+    output logic                        cfg_rx_clr_o,
+    input  logic                        cfg_rx_en_i,
+    input  logic                        cfg_rx_pending_i,
+    input  logic [L2_AWIDTH_NOAL-1:0]   cfg_rx_curr_addr_i,
+    input  logic     [TRANS_SIZE-1:0]   cfg_rx_bytes_left_i,
+    output logic [L2_AWIDTH_NOAL-1:0]   cfg_tx_startaddr_o,
+    output logic     [TRANS_SIZE-1:0]   cfg_tx_size_o,
+    output logic                        cfg_tx_continuous_o,
+    output logic                        cfg_tx_en_o,
+    output logic                        cfg_tx_clr_o,
+    input  logic                        cfg_tx_en_i,
+    input  logic                        cfg_tx_pending_i,
+    input  logic [L2_AWIDTH_NOAL-1:0]   cfg_tx_curr_addr_i,
+    input  logic     [TRANS_SIZE-1:0]   cfg_tx_bytes_left_i,
+    output logic          [NB_CH-1:0]   evt_eot_hyper_o,
+    output logic                        data_tx_req_o,
+    input  logic                        data_tx_gnt_i,
+    output logic                [1:0]   data_tx_datasize_o,
+    input  logic               [31:0]   data_tx_i,
+    input  logic                        data_tx_valid_i,
+    output logic                        data_tx_ready_o,
+    output logic                [1:0]   data_rx_datasize_o,
+    output logic               [31:0]   data_rx_o,
+    output logic                        data_rx_valid_o,
+    input  logic                        data_rx_ready_i,
     // PHY interface
     output logic [NumChips-1:0]         hyper_cs_no,
     output logic                        hyper_ck_o,
@@ -78,6 +117,20 @@ module hyperbus #(
     logic                       axi_trans_valid;
     logic                       axi_trans_ready;
 
+    // PHY
+    hyperbus_pkg::hyper_rx_t    axi_phy_rx;
+    logic                       axi_phy_rx_valid;
+    logic                       axi_phy_rx_ready;
+    hyperbus_pkg::hyper_tx_t    axi_phy_tx;
+    logic                       axi_phy_tx_valid;
+    logic                       axi_phy_tx_ready;
+    logic                       axi_phy_b_error;
+    logic                       axi_phy_b_valid;
+    logic                       axi_phy_b_ready;
+    tf_cdc_t                    axi_phy_tf_cdc;
+    logic                       axi_phy_trans_valid;
+    logic                       axi_phy_trans_ready;
+   
     // PHY
     hyperbus_pkg::hyper_rx_t    phy_rx;
     logic                       phy_rx_valid;
@@ -198,9 +251,9 @@ module hyperbus #(
 
         .dst_rst_ni     ( rst_phy_ni        ),
         .dst_clk_i      ( clk_phy_i         ),
-        .dst_data_o     ( phy_tf_cdc        ),
-        .dst_valid_o    ( phy_trans_valid   ),
-        .dst_ready_i    ( phy_trans_ready   )
+        .dst_data_o     ( axi_phy_tf_cdc        ),
+        .dst_valid_o    ( axi_phy_trans_valid   ),
+        .dst_ready_i    ( axi_phy_trans_ready   )
     );
 
     cdc_2phase #(
@@ -208,9 +261,9 @@ module hyperbus #(
     ) i_cdc_2phase_b (
         .src_rst_ni     ( rst_phy_ni    ),
         .src_clk_i      ( clk_phy_i     ),
-        .src_data_i     ( phy_b_error   ),
-        .src_valid_i    ( phy_b_valid   ),
-        .src_ready_o    ( phy_b_ready   ),
+        .src_data_i     ( axi_phy_b_error   ),
+        .src_valid_i    ( axi_phy_b_valid   ),
+        .src_ready_o    ( axi_phy_b_ready   ),
 
         .dst_rst_ni     ( rst_sys_ni    ),
         .dst_clk_i      ( clk_sys_i     ),
@@ -232,9 +285,9 @@ module hyperbus #(
 
         .dst_rst_ni     ( rst_phy_ni    ),
         .dst_clk_i      ( clk_phy_i     ),
-        .dst_data_o     ( phy_tx        ),
-        .dst_valid_o    ( phy_tx_valid  ),
-        .dst_ready_i    ( phy_tx_ready  )
+        .dst_data_o     ( axi_phy_tx       ),
+        .dst_valid_o    ( axi_phy_tx_valid ),
+        .dst_ready_i    ( axi_phy_tx_ready )
     );
 
     // Read data, RX CDC FIFO
@@ -244,9 +297,9 @@ module hyperbus #(
     ) i_cdc_fifo_rx (
         .src_rst_ni     ( rst_phy_ni    ),
         .src_clk_i      ( clk_phy_i     ),
-        .src_data_i     ( phy_rx        ),
-        .src_valid_i    ( phy_rx_valid  ),
-        .src_ready_o    ( phy_rx_ready  ),
+        .src_data_i     ( axi_phy_rx       ),
+        .src_valid_i    ( axi_phy_rx_valid ),
+        .src_ready_o    ( axi_phy_rx_ready ),
 
         .dst_rst_ni     ( rst_sys_ni    ),
         .dst_clk_i      ( clk_sys_i     ),
@@ -255,4 +308,194 @@ module hyperbus #(
         .dst_ready_i    ( axi_rx_ready  )
     );
 
+    // transactions
+    logic [31:0]            trans_address;
+    logic [NumChips-1:0]    trans_cs;        // chipselect
+    logic                   trans_write;     // transaction is a write
+    logic [TRANS_SIZE-1:0]  trans_burst;
+    logic                   trans_burst_type;
+    logic                   trans_address_space;
+
+    // transmitting
+    logic [31:0]            tx_data;
+    logic [1:0]             tx_strb_lower;   // mask data
+    logic [1:0]             tx_strb_upper;   // mask data
+    // receiving channel
+    logic [31:0]            rx_data;
+    logic                   rx_error;
+
+    logic                   b_valid;
+    logic                   b_last;
+    logic                   b_error;
+    // spram select
+    logic [1:0]             mem_sel; 
+    logic                   is_udma_hyper_busy;
+   
+    // PHY
+    hyperbus_pkg::hyper_rx_t    udma_phy_rx;
+    logic                       udma_phy_rx_valid;
+    logic                       udma_phy_rx_ready;
+    hyperbus_pkg::hyper_tx_t    udma_phy_tx;
+    logic                       udma_phy_tx_valid;
+    logic                       udma_phy_tx_ready;
+    logic                       udma_phy_b_error;
+    logic                       udma_phy_b_valid;
+    logic                       udma_phy_b_ready;
+    tf_cdc_t                    udma_phy_tf_cdc;
+    logic                       udma_phy_trans_valid;
+    logic                       udma_phy_trans_ready;
+   
+  udma_hyperbus #(
+    .L2_AWIDTH_NOAL  (L2_AWIDTH_NOAL),
+    .TRANS_SIZE      (TRANS_SIZE),
+    .DELAY_BIT_WIDTH (4),
+    .NR_CS           (NumChips), // not actually a parameter for now :)
+    .NB_CH           (NB_CH)
+   ) udma_hyper (    
+        .sys_clk_i               ( clk_sys_i                    ),
+        .clk_phy_i               ( clk_phy_i                    ),
+        .clk_phy_i_90            ( clk_phy_i_90                 ),
+        .rst_ni                  ( rst_sys_ni                   ),
+        .phy_rst_ni              ( rst_phy_ni                   ),
+
+        .cfg_data_i              ( cfg_data_i                   ),
+        .cfg_addr_i              ( cfg_addr_i                   ),
+        .cfg_valid_i             ( cfg_valid_i                  ),
+        .cfg_rwn_i               ( cfg_rwn_i                    ),
+        .cfg_ready_o             ( cfg_ready_o                  ),
+        .cfg_data_o              ( cfg_data_o                   ),
+
+        .data_tx_req_o           ( data_tx_req_o                ),
+        .data_tx_gnt_i           ( data_tx_gnt_i                ),
+        .data_tx_valid_i         ( data_tx_valid_i              ),
+        .data_tx_i               ( data_tx_i                    ),
+        .data_tx_ready_o         ( data_tx_ready_o              ),
+     
+        .rx_data_udma_o          ( data_rx_o                    ),
+        .rx_valid_udma_o         ( data_rx_valid_o              ),
+        .rx_ready_udma_i         ( data_rx_ready_i              ),
+
+        .udma_rx_startaddr_o     ( cfg_rx_startaddr_o           ),
+        .udma_rx_size_o          ( cfg_rx_size_o                ),
+        .cfg_rx_datasize_o       ( data_rx_datasize_o           ),
+        .cfg_rx_continuous_o     ( cfg_rx_continuous_o          ),
+        .udma_rx_en_o            ( cfg_rx_en_o                  ),
+        .cfg_rx_clr_o            ( cfg_rx_clr_o                 ),
+        .cfg_rx_en_i             ( cfg_rx_en_i                  ),
+        .cfg_rx_pending_i        ( cfg_rx_pending_i             ),
+        .cfg_rx_curr_addr_i      ( cfg_rx_curr_addr_i           ),
+        .cfg_rx_bytes_left_i     ( cfg_rx_bytes_left_i          ),
+
+        .udma_tx_startaddr_o     ( cfg_tx_startaddr_o           ),
+        .udma_tx_size_o          ( cfg_tx_size_o                ),
+        .cfg_tx_datasize_o       ( data_tx_datasize_o           ),
+        .cfg_tx_continuous_o     ( cfg_tx_continuous_o          ),
+        .udma_tx_en_o            ( cfg_tx_en_o                  ),
+        .cfg_tx_clr_o            ( cfg_tx_clr_o                 ),
+        .cfg_tx_en_i             ( cfg_tx_en_i                  ),
+        .cfg_tx_pending_i        ( cfg_tx_pending_i             ),
+        .cfg_tx_curr_addr_i      ( cfg_tx_curr_addr_i           ),
+        .cfg_tx_bytes_left_i     ( cfg_tx_bytes_left_i          ),
+        .evt_eot_hyper_o         ( evt_eot_hyper_o              ),
+        // phy interface
+        // we keep configuring the phy with the config regs
+        .config_t_latency_access(),
+        .config_en_latency_additional(),
+        .config_t_cs_max(),
+        .config_t_read_write_recovery(),
+        .config_t_variable_latency_check(),
+        .config_t_rwds_delay_line(),
+        
+        .trans_valid_o(udma_phy_trans_valid),
+        .trans_ready_i(udma_phy_trans_ready),
+        .trans_address_o(trans_address),
+        .trans_cs_o(trans_cs),        // chipselect
+        .trans_write_o(trans_write),     // transaction is a write
+        .trans_burst_o(trans_burst),
+        .trans_burst_type_o(trans_burst_type),
+        .trans_address_space_o(trans_address_space),       
+        
+        .tx_valid_o(udma_phy_tx_valid),
+        .tx_ready_i(udma_phy_tx_ready),
+        .tx_data_o(tx_data),
+        .tx_strb_lower_o(tx_strb_lower),   // mask data
+        .tx_strb_upper_o(tx_strb_upper),   // mask data
+    
+        .rx_valid_i(udma_phy_rx_valid),
+        .rx_ready_o(udma_phy_rx_ready),
+        .rx_data_i(rx_data),
+        .rx_error_i(rx_error),
+            
+        .mem_sel_o(mem_sel),
+        .busy_o(is_udma_hyper_busy)
+        );
+
+       assign udma_phy_tf_cdc.trans.write=trans_write;     // transaction is a write
+       assign udma_phy_tf_cdc.trans.burst=trans_burst;
+       assign udma_phy_tf_cdc.trans.burst_type=trans_burst_type;
+       assign udma_phy_tf_cdc.trans.address_space=trans_address_space;
+       assign udma_phy_tf_cdc.trans.address=trans_address;
+       assign udma_phy_tf_cdc.cs=trans_cs;
+   
+                                       
+       assign udma_phy_tx.data = tx_data[15:0];   
+       assign udma_phy_tx.last = '0; // phy does not use this signal
+       assign udma_phy_tx.strb = ~tx_strb_lower;
+   
+       assign rx_data  = udma_phy_rx.data;
+       assign rx_error = udma_phy_rx.error;
+   
+
+
+ stream_mux #(
+  .DATA_T(hyperbus_pkg::hyper_tx_t),
+  .N_INP(2)
+ )tx_mux(
+  .inp_data_i({udma_phy_tx,axi_phy_tx}),
+  .inp_valid_i({udma_phy_tx_valid,axi_phy_tx_valid}),
+  .inp_ready_o({udma_phy_tx_ready,axi_phy_tx_ready}),
+
+  .inp_sel_i(is_udma_hyper_busy),
+
+  .oup_data_o(phy_tx),
+  .oup_valid_o(phy_tx_valid),
+  .oup_ready_i(phy_tx_ready)
+  );
+
+ stream_mux #(
+  .DATA_T(tf_cdc_t),
+  .N_INP(2)
+ )trans_mux(
+  .inp_data_i({udma_phy_tf_cdc,axi_phy_tf_cdc}),
+  .inp_valid_i({udma_phy_trans_valid,axi_phy_trans_valid}),
+  .inp_ready_o({udma_phy_trans_ready,axi_phy_trans_ready}),
+
+  .inp_sel_i(is_udma_hyper_busy),
+
+  .oup_data_o(phy_tf_cdc),
+  .oup_valid_o(phy_trans_valid),
+  .oup_ready_i(phy_trans_ready)
+  );
+
+ stream_demux #(
+  .N_OUP(2)
+ )rx_demux(
+  .inp_valid_i(phy_rx_valid),
+  .inp_ready_o(phy_rx_ready),
+
+  .oup_sel_i(is_udma_hyper_busy),
+
+  .oup_valid_o({udma_phy_rx_valid,axi_phy_rx_valid}),
+  .oup_ready_i({udma_phy_rx_ready,axi_phy_rx_ready})
+  );
+   
+   assign udma_phy_rx = phy_rx;
+   assign axi_phy_rx = phy_rx;
+ 
+
+   assign axi_phy_b_error = is_udma_hyper_busy ? '0 : phy_b_error;
+   assign axi_phy_b_valid = is_udma_hyper_busy ? '0 : phy_b_valid;
+   assign phy_b_ready     = is_udma_hyper_busy ? 1'b1 : axi_phy_b_ready;
+ 
+   
 endmodule : hyperbus
