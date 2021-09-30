@@ -9,6 +9,7 @@ package:
 dependencies:
   common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.21.0 }
   axi:                 { git: "https://github.com/pulp-platform/axi.git",                version: 0.29.1 }
+  udma_core: { git: "https://github.com/pulp-platform/udma_core.git", version: 1.0.2 }
   # TODO: RTL attributes, then MR
   tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.4  }
   register_interface:  { git: "https://github.com/pulp-platform/register_interface.git", version: 0.3.1  }
@@ -29,14 +30,11 @@ sources:
     - src/hyperbus_pkg.sv
     - src/udma_hyper/udma_hyper_busy.sv
     - src/udma_hyper/udma_cmd_queue.sv
-    - src/udma_hyper/hyper_arb_primitive.sv
-    - src/udma_hyper/hyper_arbiter.sv
     - src/udma_hyper/udma_hyper_reg_if_common.sv
     - src/udma_hyper/udma_hyper_reg_if_mulid.sv
     - src/udma_hyper/hyper_twd_trans_spliter.sv
     - src/udma_hyper/udma_rxbuffer.sv
     - src/udma_hyper/udma_txbuffer.sv
-    - src/udma_hyper/hyper_rr_flag_req.sv
     - src/udma_hyper/udma_hyper_ctrl.sv
     - src/udma_hyper/hyper_unpack.sv
     - src/udma_hyper/udma_cfg_outbuff.sv

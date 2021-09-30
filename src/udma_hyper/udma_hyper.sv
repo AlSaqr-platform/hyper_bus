@@ -335,17 +335,19 @@ module udma_hyperbus
        end
    endgenerate
 
-   hyper_arbiter #(
-      .DATA_WIDTH(L2_AWIDTH_NOAL*2+TRANS_SIZE*6+32+16+1+1+1+1+1),
-      .N_MASTER(NB_CH)
+   rr_arb_tree #(
+      .DataWidth(L2_AWIDTH_NOAL*2+TRANS_SIZE*6+32+16+1+1+1+1+1),
+      .NumIn(NB_CH)
    ) arbiter_i (
-       .clk                ( sys_clk_i                                       ),
-       .rst_n              ( rst_ni                                          ),
+       .clk_i              ( sys_clk_i                                       ),
+       .rst_ni             ( rst_ni                                          ),
+       .flush_i            ( 1'b0                                            ),
+       .rr_i               ( '0                                              ),
        .req_i              ( trans_cmd_valid                                 ),
        .gnt_o              ( trans_cmd_ready                                 ),
        .data_i             ( trans_cmd_data                                  ),
 
-       .id_o               ( twd_trans_id                                    ),
+       .idx_o              ( twd_trans_id                                    ),
        .req_o              ( twd_trans_valid                                 ),
        .gnt_i              ( twd_trans_ready                                 ),
        .data_o             ({twd_rx_start_addr,   twd_rx_size,
