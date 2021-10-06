@@ -47,6 +47,7 @@ sources:
     - src/hyperbus_cfg_regs.sv
     - src/hyperbus_phy.sv
     - src/hyperbus_axi.sv
+    - src/hyperbus_arbiter.sv
     - src/hyperbus.sv
     - src/hyperbus_synth_wrap.sv
     - target: test

@@ -311,9 +311,7 @@ module hyperbus #(
     );
 
 
-    // spram select
-    logic [1:0]             mem_sel; 
-    logic                   is_udma_hyper_busy;
+    logic                   s_sel; 
    
     // PHY
     hyperbus_pkg::hyper_rx_t    udma_phy_rx;
@@ -400,10 +398,27 @@ module hyperbus #(
         .rx_ready_o(udma_phy_rx_ready),
         .udma_phy_rx(udma_phy_rx),
             
-        .mem_sel_o(mem_sel),
-        .busy_o(is_udma_hyper_busy)
+        .mem_sel_o(),
+        .busy_o()
         );
 
+
+ hyperbus_arbiter i_hyperbus_arbiter
+   (
+   .clk_i          ( clk_phy_i         ),
+   .rst_ni         ( rst_phy_ni        ),
+   .udma_phy_trans_valid(udma_phy_trans_valid),
+   .udma_phy_trans_ready(udma_phy_trans_ready),
+   .axi_phy_trans_valid(axi_phy_trans_valid),
+   .axi_phy_trans_ready(axi_phy_trans_ready),
+   .phy_rx_valid(phy_rx_valid),
+   .phy_rx_ready(phy_rx_ready),
+   .phy_rx_last(phy_rx.last),
+   .phy_tx_valid(phy_tx_valid),
+   .phy_tx_ready(phy_tx_ready),
+   .phy_tx_last(phy_tx.last),   
+   .sel_o(s_sel)
+   );   
 
  stream_mux #(
   .DATA_T(hyperbus_pkg::hyper_tx_t),
@@ -413,7 +428,7 @@ module hyperbus #(
   .inp_valid_i({udma_phy_tx_valid,axi_phy_tx_valid}),
   .inp_ready_o({udma_phy_tx_ready,axi_phy_tx_ready}),
 
-  .inp_sel_i(is_udma_hyper_busy),
+  .inp_sel_i(s_sel),
 
   .oup_data_o(phy_tx),
   .oup_valid_o(phy_tx_valid),
@@ -428,7 +443,7 @@ module hyperbus #(
   .inp_valid_i({udma_phy_trans_valid,axi_phy_trans_valid}),
   .inp_ready_o({udma_phy_trans_ready,axi_phy_trans_ready}),
 
-  .inp_sel_i(is_udma_hyper_busy),
+  .inp_sel_i(s_sel),
 
   .oup_data_o(phy_tf_cdc),
   .oup_valid_o(phy_trans_valid),
@@ -441,7 +456,7 @@ module hyperbus #(
   .inp_valid_i(phy_rx_valid),
   .inp_ready_o(phy_rx_ready),
 
-  .oup_sel_i(is_udma_hyper_busy),
+  .oup_sel_i(s_sel),
 
   .oup_valid_o({udma_phy_rx_valid,axi_phy_rx_valid}),
   .oup_ready_i({udma_phy_rx_ready,axi_phy_rx_ready})
@@ -451,9 +466,9 @@ module hyperbus #(
    assign axi_phy_rx = phy_rx;
  
 
-   assign axi_phy_b_error = is_udma_hyper_busy ? '0 : phy_b_error;
-   assign axi_phy_b_valid = is_udma_hyper_busy ? '0 : phy_b_valid;
-   assign phy_b_ready     = is_udma_hyper_busy ? 1'b1 : axi_phy_b_ready;
+   assign axi_phy_b_error = s_sel ? '0 : phy_b_error;
+   assign axi_phy_b_valid = s_sel ? '0 : phy_b_valid;
+   assign phy_b_ready     = s_sel ? 1'b1 : axi_phy_b_ready;
  
    
 endmodule : hyperbus
