@@ -41,6 +41,7 @@ module udma_hyper_ctrl
     input  logic [31:0]             hyper_addr_i,
     input  logic [15:0]             hyper_intreg_i,
     input  logic [1:0]              mem_sel_i,
+    input  logic [4:0]              chip_sel_i,
     input  logic [ID_WIDTH:0]       trans_id_i,
     //input  logic [2:0]              n_hyperdevice_i,
 
@@ -88,6 +89,7 @@ module udma_hyper_ctrl
     logic        [31:0]             r_hyper_addr;
     logic        [15:0]             r_hyper_intreg;
     logic        [1:0]              r_mem_sel;
+    logic        [4:0]              r_chip_sel;
     logic        [ID_WIDTH:0]       r_trans_id;
     logic                           r_rw_hyper;
     logic                           r_addr_space;
@@ -135,6 +137,7 @@ module udma_hyper_ctrl
             r_addr_space <= 0;
             r_burst_type <= 0;
             r_mem_sel    <= 0;
+            r_chip_sel   <= 0; 
             r_t_latency_access         <= 'h6;
             r_en_latency_additional    <= 'b1;
             r_t_cs_max                 <= 'd665;
@@ -154,6 +157,7 @@ module udma_hyper_ctrl
                 r_addr_space <= addr_space_i;
                 r_burst_type <= burst_type_i;
                 r_mem_sel <= mem_sel_i;
+                r_chip_sel <= chip_sel_i; 
                 r_t_latency_access         <= unpack_t_latency_access_i;
                 r_en_latency_additional    <= unpack_en_latency_additional_i;
                 r_t_cs_max                 <= unpack_t_cs_max_i;
@@ -400,8 +404,9 @@ module udma_hyper_ctrl
 /////////////////////////
 // Generate chip select//
 ///////////////////////// 
-
-    assign trans_cs_o[0] = (r_mem_sel == 2'b01) ? 1'b1 : 1'b0; // Hyper flash
-    assign trans_cs_o[1] = (r_mem_sel == 2'b00) | (r_mem_sel == 2'b10) | (r_mem_sel == 2'b11 ) ? 1'b1 : 1'b0; // Hyperram or psram
-
+   
+   for (genvar i=0; i<NR_CS; i++) begin: tag_trans
+      assign trans_cs_o[i] = (r_chip_sel==i) ? 1'b1 : 1'b0;
+   end
+   
 endmodule

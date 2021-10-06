@@ -98,7 +98,7 @@ module hyperbus_cfg_regs #(
     // Register reset values
     assign cfg_rstval = hyperbus_pkg::hyper_cfg_t'{
         t_latency_access:           'h6,
-        en_latency_additional:      'b1,
+        en_latency_additional:      'b0,
         t_burst_max:                'd350,      // At lowest legal clock (100 MHz): 3.5ns (0.5ns safety margin)
         t_read_write_recovery:      'h6,
         t_rx_clk_delay:             'h8,

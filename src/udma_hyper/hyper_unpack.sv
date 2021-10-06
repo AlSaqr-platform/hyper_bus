@@ -21,57 +21,59 @@ module hyper_unpack
 
 )
 (
-  input  logic                      clk_i,
-  input  logic                      rst_ni,
+  input logic                        clk_i,
+  input logic                        rst_ni,
 
-  input  logic                      pack_trans_valid_i,
-  output logic                      pack_trans_ready_o,
-  input  logic [TRANS_SIZE-1:0]     pack_rx_size_i,
-  input  logic [TRANS_SIZE-1:0]     pack_tx_size_i,
-  input  logic [L2_AWIDTH_NOAL-1:0] pack_rx_start_addr_i,
-  input  logic [L2_AWIDTH_NOAL-1:0] pack_tx_start_addr_i,
+  input logic                        pack_trans_valid_i,
+  output logic                       pack_trans_ready_o,
+  input logic [TRANS_SIZE-1:0]       pack_rx_size_i,
+  input logic [TRANS_SIZE-1:0]       pack_tx_size_i,
+  input logic [L2_AWIDTH_NOAL-1:0]   pack_rx_start_addr_i,
+  input logic [L2_AWIDTH_NOAL-1:0]   pack_tx_start_addr_i,
 
-  input  logic                      pack_rw_hyper_i,
-  input  logic                      pack_addr_space_i,
-  input  logic                      pack_burst_type_i,
-  input  logic [1:0]                pack_mem_sel_i,
-  input  logic [ID_WIDTH:0]         pack_trans_id_i,
-  input  logic [2:0]                pack_page_bound_i,
+  input logic                        pack_rw_hyper_i,
+  input logic                        pack_addr_space_i,
+  input logic                        pack_burst_type_i,
+  input logic [1:0]                  pack_mem_sel_i,
+  input logic [4:0]                  pack_chip_sel_i,
+  input logic [ID_WIDTH:0]           pack_trans_id_i,
+  input logic [2:0]                  pack_page_bound_i,
 
-  input  logic [31:0]               pack_hyper_addr_i,
-  input  logic [15:0]               pack_hyper_intreg_i,
+  input logic [31:0]                 pack_hyper_addr_i,
+  input logic [15:0]                 pack_hyper_intreg_i,
   //input  logic [15:0]               pack_psram_inst_i,
 
-  input  logic [4:0]                pack_t_latency_access_i,
-  input  logic                      pack_en_latency_additional_i,
-  input  logic [31:0]               pack_t_cs_max_i,
-  input  logic [31:0]               pack_t_read_write_recovery_i,
-  input  logic [DELAY_BIT_WIDTH-1:0] pack_t_rwds_delay_line_i,
-  input  logic [3:0]                pack_t_variable_latency_check_i,
+  input logic [4:0]                  pack_t_latency_access_i,
+  input logic                        pack_en_latency_additional_i,
+  input logic [31:0]                 pack_t_cs_max_i,
+  input logic [31:0]                 pack_t_read_write_recovery_i,
+  input logic [DELAY_BIT_WIDTH-1:0]  pack_t_rwds_delay_line_i,
+  input logic [3:0]                  pack_t_variable_latency_check_i,
 
 
-  input  logic                      unpack_trans_ready_i,
-  output logic                      unpack_trans_valid_o,
-  output logic [31:0]               unpack_hyper_addr_o,
-  output logic [15:0]               unpack_hyper_intreg_o,
+  input logic                        unpack_trans_ready_i,
+  output logic                       unpack_trans_valid_o,
+  output logic [31:0]                unpack_hyper_addr_o,
+  output logic [15:0]                unpack_hyper_intreg_o,
   //output logic [15:0]               unpack_psram_inst_o,
-  output logic [L2_AWIDTH_NOAL-1:0] unpack_rx_start_addr_o,
-  output logic [L2_AWIDTH_NOAL-1:0] unpack_tx_start_addr_o,
-  output logic [TRANS_SIZE-1:0]     unpack_rx_size_o,
-  output logic [TRANS_SIZE-1:0]     unpack_tx_size_o,
-  output logic                      unpack_rw_hyper_o,
-  output logic                      unpack_addr_space_o,
-  output logic                      unpack_burst_type_o,
-  output logic [1:0]                unpack_mem_sel_o,
-  output logic [ID_WIDTH:0]         unpack_trans_id_o,
-  output logic                      unpack_rx_en_o,
-  output logic                      unpack_tx_en_o,
-  output logic [4:0]                unpack_t_latency_access_o,
-  output logic                      unpack_en_latency_additional_o,
-  output logic [31:0]               unpack_t_cs_max_o,
-  output logic [31:0]               unpack_t_read_write_recovery_o,
+  output logic [L2_AWIDTH_NOAL-1:0]  unpack_rx_start_addr_o,
+  output logic [L2_AWIDTH_NOAL-1:0]  unpack_tx_start_addr_o,
+  output logic [TRANS_SIZE-1:0]      unpack_rx_size_o,
+  output logic [TRANS_SIZE-1:0]      unpack_tx_size_o,
+  output logic                       unpack_rw_hyper_o,
+  output logic                       unpack_addr_space_o,
+  output logic                       unpack_burst_type_o,
+  output logic [1:0]                 unpack_mem_sel_o,
+  output logic [4:0]                 unpack_chip_sel_o, 
+  output logic [ID_WIDTH:0]          unpack_trans_id_o,
+  output logic                       unpack_rx_en_o,
+  output logic                       unpack_tx_en_o,
+  output logic [4:0]                 unpack_t_latency_access_o,
+  output logic                       unpack_en_latency_additional_o,
+  output logic [31:0]                unpack_t_cs_max_o,
+  output logic [31:0]                unpack_t_read_write_recovery_o,
   output logic [DELAY_BIT_WIDTH-1:0] unpack_t_rwds_delay_line_o,
-  output logic [3:0]                unpack_t_variable_latency_check_o
+  output logic [3:0]                 unpack_t_variable_latency_check_o
 
  // output logic [NR_CS-1:0]          unpack_cs_o
   );
@@ -108,6 +110,7 @@ module hyper_unpack
   logic [TRANS_SIZE-1:0]     nb_cmd;
   logic [TRANS_SIZE-1:0]     nb_cmd_count;
   logic [1:0]                r_mem_sel;
+  logic [4:0]                r_chip_sel;
   logic                      last_tran;
 
   logic [4:0]                 r_t_latency_access;
@@ -138,7 +141,7 @@ module hyper_unpack
           r_trans_id <=1 << ID_WIDTH;
           //r_psram_inst <= '0;
           r_mem_sel <= 2'b0;
-          
+          r_chip_sel <= 4'b0;
           r_t_latency_access         <= 'h6;
           r_en_latency_additional    <= 'b1;
           r_t_cs_max                 <= 'd665;
@@ -165,6 +168,7 @@ module hyper_unpack
                   r_tx_rem_size <= pack_tx_size_i;
                   //r_psram_inst <= pack_psram_inst_i;
                   r_mem_sel <= pack_mem_sel_i;
+                  r_chip_sel <= pack_chip_sel_i;
                   r_trans_id <= pack_trans_id_i;
                   r_rx_en <= 0;
                   r_tx_en <= 0;
@@ -218,6 +222,7 @@ module hyper_unpack
   assign unpack_rx_size_o       = (r_rw_hyper) ? cur_length:0;
   assign unpack_tx_size_o       = ((!r_rw_hyper) & (r_mem_sel != 2'b01))? cur_length:0;
   assign unpack_mem_sel_o       = r_mem_sel;
+  assign unpack_chip_sel_o      = r_chip_sel;
   assign unpack_trans_id_o      = r_trans_id;
 
   assign unpack_t_latency_access_o = r_t_latency_access;

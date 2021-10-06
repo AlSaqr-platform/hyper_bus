@@ -225,6 +225,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
 
     // Auxiliary control signals
     assign ctl_write_zero_lat   = tf_q.address_space & tf_q.write;
+    // cfg_i.latency_addentional overwrites the trx_rwds_sample. Be careful.
     assign ctl_add_latency      = trx_rwds_sample | cfg_i.en_latency_additional;
 
     assign ctl_tf_burst_last    = (tf_q.burst == 1);

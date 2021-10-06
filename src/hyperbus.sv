@@ -50,6 +50,7 @@ module hyperbus #(
     input  logic                        cfg_rwn_i,
     output logic [NB_CH:0]              cfg_ready_o,
     output logic [NB_CH:0][31:0]        cfg_data_o,
+
     output logic [L2_AWIDTH_NOAL-1:0]   cfg_rx_startaddr_o,
     output logic     [TRANS_SIZE-1:0]   cfg_rx_size_o,
     output logic                        cfg_rx_continuous_o,
@@ -59,6 +60,7 @@ module hyperbus #(
     input  logic                        cfg_rx_pending_i,
     input  logic [L2_AWIDTH_NOAL-1:0]   cfg_rx_curr_addr_i,
     input  logic     [TRANS_SIZE-1:0]   cfg_rx_bytes_left_i,
+
     output logic [L2_AWIDTH_NOAL-1:0]   cfg_tx_startaddr_o,
     output logic     [TRANS_SIZE-1:0]   cfg_tx_size_o,
     output logic                        cfg_tx_continuous_o,
@@ -328,7 +330,7 @@ module hyperbus #(
     .L2_AWIDTH_NOAL  (L2_AWIDTH_NOAL),
     .TRANS_SIZE      (TRANS_SIZE),
     .DELAY_BIT_WIDTH (4),
-    .NR_CS           (NumChips), // not actually a parameter for now :)
+    .NumChips        (NumChips), 
     .NB_CH           (NB_CH)
    ) udma_hyper (    
         .sys_clk_i               ( clk_sys_i                    ),

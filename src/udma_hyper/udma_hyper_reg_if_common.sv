@@ -22,7 +22,8 @@
 `define REG_T_VARI_LATENCY      5'b00110 //BASEADDR+0x18 set t_variable_latency_check
 `define N_HYPER_DEVICE          5'b00111 //BASEADDR+0x1C set the number of connected devices
 `define MEM_SEL                 5'b01000 //BASEADDR+0x20 set Memory select: HyperRAM, Hyperflash, or PSRAM 00:Hyper RAM, 01: Hyper Flash, 10:PSRAM
-`define TRANS_ID_ALLOC          5'b01001 //BASEADDR+0x30 set 2D transfer stride
+`define TRANS_ID_ALLOC          5'b01001 //BASEADDR+0x24 set 2D transfer stride
+`define CHIPSEL_SEL             5'b01010 //BASEADDR+0x28 set which chip select to lower in the transaction
 
 module udma_hyper_reg_if_common #(
                           parameter L2_AWIDTH_NOAL = 12,
@@ -38,19 +39,20 @@ module udma_hyper_reg_if_common #(
 	                     input logic [4:0]                  cfg_addr_i,
 	                     input logic                        cfg_valid_i,
 	                     input logic                        cfg_reg_rwn_i,
-                             output logic [31:0]                cfg_data_o,
+                       output logic [31:0]                cfg_data_o,
 	                     output logic                       cfg_ready_o,
 
-                             output logic [4:0]                 cfg_t_latency_access_o,
-                             output logic                       cfg_en_latency_additional_o,
-                             output logic [31:0]                cfg_t_cs_max_o,
-                             output logic [31:0]                cfg_t_read_write_recovery_o,
-                             output logic [DELAY_BIT_WIDTH-1:0] cfg_t_rwds_delay_line_o,
-                             output logic [3:0]                 cfg_t_variable_latency_check_o,
-                             output logic [2:0 ]                cfg_page_bound_o,
-                             output logic [1:0]                 cfg_mem_sel_o,
+                       output logic [4:0]                 cfg_t_latency_access_o,
+                       output logic                       cfg_en_latency_additional_o,
+                       output logic [31:0]                cfg_t_cs_max_o,
+                       output logic [31:0]                cfg_t_read_write_recovery_o,
+                       output logic [DELAY_BIT_WIDTH-1:0] cfg_t_rwds_delay_line_o,
+                       output logic [3:0]                 cfg_t_variable_latency_check_o,
+                       output logic [2:0 ]                cfg_page_bound_o,
+                       output logic [1:0]                 cfg_mem_sel_o,
+                       output logic [4:0]                 cfg_chipsel_sel_o,
 
-                             input logic [NB_CH-1:0]            busy_vec_i
+                       input logic [NB_CH-1:0]            busy_vec_i
                              );
 
 
@@ -62,7 +64,9 @@ module udma_hyper_reg_if_common #(
    logic [31:0]                                                r_t_variable_latency_check;
    logic [2:0]                                                 r_n_hyperdevice;
    logic [2:0]                                                 r_page_bound;
-
+   logic [4:0]                                                 r_chipsel_tran;
+   
+   
    logic [4:0]                                                 s_wr_addr;
    logic [4:0]                                                 s_rd_addr;
    logic [1:0]                                                 r_mem_sel;
@@ -82,7 +86,8 @@ module udma_hyper_reg_if_common #(
    assign cfg_n_hyperdevice_o            = r_n_hyperdevice;
    assign cfg_page_bound_o               = r_page_bound;
    assign cfg_mem_sel_o                  = r_mem_sel;
-
+   assign cfg_chipsel_sel_o              = r_chipsel_tran;
+   
 
    always_ff @(posedge clk_i, negedge rst_ni) 
      begin
@@ -98,6 +103,8 @@ module udma_hyper_reg_if_common #(
              r_n_hyperdevice <= 32'h1;
              r_mem_sel <= 2'b0;
              r_page_bound <= 0;
+             r_chipsel_tran <= 0;
+             
 
           end
         else
@@ -141,6 +148,10 @@ module udma_hyper_reg_if_common #(
                       begin
                          r_mem_sel <= cfg_data_i[1:0];
                       end
+                    `CHIPSEL_SEL:
+                      begin
+                         r_chipsel_tran <= cfg_data_i[4:0];
+                      end
                   endcase
                end
           end
@@ -172,6 +183,8 @@ module udma_hyper_reg_if_common #(
             cfg_data_o = {{30{1'b0}}, cfg_mem_sel_o};
           `TRANS_ID_ALLOC:
             cfg_data_o = {{(32-$clog2(NB_CH)){1'b0}},alloc_id};
+          `CHIPSEL_SEL:
+            cfg_data_o = {27'b0,r_chipsel_tran};
           default:
             cfg_data_o = 'h0;
         endcase

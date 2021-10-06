@@ -19,44 +19,45 @@ module hyper_twd_trans_spliter
    parameter TRANS_SIZE      = 16
 )
 (
-   input  logic                       clk_i,
-   input  logic                       rst_ni,
+   input logic                        clk_i,
+   input logic                        rst_ni,
 
-   input  logic                       src_valid_i,
+   input logic                        src_valid_i,
    output logic                       src_ready_o,
 
-   input  logic                       dst_ready_i,
+   input logic                        dst_ready_i,
    output logic                       dst_valid_o,
 
-   input  logic [L2_AWIDTH_NOAL-1:0]  rx_start_addr_i,
-   input  logic [L2_AWIDTH_NOAL-1:0]  tx_start_addr_i,
-   input  logic [TRANS_SIZE-1:0]      rx_size_i,
-   input  logic [TRANS_SIZE-1:0]      tx_size_i,
+   input logic [L2_AWIDTH_NOAL-1:0]   rx_start_addr_i,
+   input logic [L2_AWIDTH_NOAL-1:0]   tx_start_addr_i,
+   input logic [TRANS_SIZE-1:0]       rx_size_i,
+   input logic [TRANS_SIZE-1:0]       tx_size_i,
 
-   input  logic [31:0]                hyper_sa_addr_i,
-   input  logic [15:0]                hyper_int_reg_i,
+   input logic [31:0]                 hyper_sa_addr_i,
+   input logic [15:0]                 hyper_int_reg_i,
    
-   input  logic [2:0]                 hyper_page_bound_i,
-   input  logic                       rw_hyper_i,
-   input  logic                       addr_space_i,
-   input  logic                       burst_type_i,
-   input  logic [1:0]                 mem_sel_i,
-   input  logic [ID_WIDTH-1:0]        trans_id_i,
+   input logic [2:0]                  hyper_page_bound_i,
+   input logic                        rw_hyper_i,
+   input logic                        addr_space_i,
+   input logic                        burst_type_i,
+   input logic [1:0]                  mem_sel_i,
+   input logic [4:0]                  chip_sel_i,
+   input logic [ID_WIDTH-1:0]         trans_id_i,
 
-   input  logic                       twd_trans_ext_act_i,
-   input  logic [TRANS_SIZE-1:0]      twd_trans_ext_count_i,
-   input  logic [TRANS_SIZE-1:0]      twd_trans_ext_stride_i,
+   input logic                        twd_trans_ext_act_i,
+   input logic [TRANS_SIZE-1:0]       twd_trans_ext_count_i,
+   input logic [TRANS_SIZE-1:0]       twd_trans_ext_stride_i,
 
-   input  logic                       twd_trans_l2_act_i,
-   input  logic [TRANS_SIZE-1:0]      twd_trans_l2_count_i,
-   input  logic [TRANS_SIZE-1:0]      twd_trans_l2_stride_i,
+   input logic                        twd_trans_l2_act_i,
+   input logic [TRANS_SIZE-1:0]       twd_trans_l2_count_i,
+   input logic [TRANS_SIZE-1:0]       twd_trans_l2_stride_i,
 
-   input  logic [4:0]                 cfg_t_latency_access_i,
-   input  logic                       cfg_en_latency_additional_i,
-   input  logic [31:0]                cfg_t_cs_max_i,
-   input  logic [31:0]                cfg_t_read_write_recovery_i,
-   input  logic [DELAY_BIT_WIDTH-1:0] cfg_t_rwds_delay_line_i,
-   input  logic [3:0]                 cfg_t_variable_latency_check_i,
+   input logic [4:0]                  cfg_t_latency_access_i,
+   input logic                        cfg_en_latency_additional_i,
+   input logic [31:0]                 cfg_t_cs_max_i,
+   input logic [31:0]                 cfg_t_read_write_recovery_i,
+   input logic [DELAY_BIT_WIDTH-1:0]  cfg_t_rwds_delay_line_i,
+   input logic [3:0]                  cfg_t_variable_latency_check_i,
 
    output logic [L2_AWIDTH_NOAL-1:0]  rx_start_addr_o,
    output logic [L2_AWIDTH_NOAL-1:0]  tx_start_addr_o,
@@ -71,14 +72,15 @@ module hyper_twd_trans_spliter
    output logic                       addr_space_o,
    output logic                       burst_type_o,
    output logic [1:0]                 mem_sel_o,
+   output logic [4:0]                 chip_sel_o,
    output logic [ID_WIDTH:0]          trans_id_o,
 
-   output  logic [4:0]                t_latency_access_o,
-   output  logic                      en_latency_additional_o,
-   output  logic [31:0]               t_cs_max_o,
-   output  logic [31:0]               t_read_write_recovery_o,
-   output  logic [DELAY_BIT_WIDTH-1:0] t_rwds_delay_line_o,
-   output  logic [3:0]                t_variable_latency_check_o
+   output logic [4:0]                 t_latency_access_o,
+   output logic                       en_latency_additional_o,
+   output logic [31:0]                t_cs_max_o,
+   output logic [31:0]                t_read_write_recovery_o,
+   output logic [DELAY_BIT_WIDTH-1:0] t_rwds_delay_line_o,
+   output logic [3:0]                 t_variable_latency_check_o
 );
 
    logic [L2_AWIDTH_NOAL -1:0]        r_rx_start_addr;
@@ -94,6 +96,7 @@ module hyper_twd_trans_spliter
    logic                              r_addr_space;
    logic                              r_burst_type;
    logic [1:0]                        r_mem_sel;
+   logic [4:0]                        r_chip_sel;
    logic [ID_WIDTH:0]                 r_trans_id;
 
    logic                              r_twd_trans_ext_act;
@@ -139,6 +142,7 @@ module hyper_twd_trans_spliter
            r_addr_space <= 0;
            r_burst_type <=0;
            r_mem_sel <=0;
+           r_chip_sel <= 0;
            r_trans_id <= 1 << ID_WIDTH;
            r_twd_trans_ext_act <= 0;
            r_twd_trans_ext_count <=0;
@@ -175,6 +179,7 @@ module hyper_twd_trans_spliter
                    r_addr_space <= addr_space_i;
                    r_burst_type <= burst_type_i;
                    r_mem_sel <= mem_sel_i;
+                   r_chip_sel <= chip_sel_i; 
                    r_trans_id <= {1'b0, trans_id_i};
 
                    r_twd_trans_ext_act <= twd_trans_ext_act_i;
@@ -225,6 +230,7 @@ module hyper_twd_trans_spliter
    assign addr_space_o = r_addr_space;
    assign burst_type_o = r_burst_type;
    assign mem_sel_o = r_mem_sel;
+   assign chip_sel_o = r_chip_sel;
    assign rx_size_o = (r_rw_hyper)  ? cur_length: 0;
    assign tx_size_o = (!r_rw_hyper) ? cur_length: 0;
    assign trans_id_o = r_trans_id;
