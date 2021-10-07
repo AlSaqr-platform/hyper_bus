@@ -825,7 +825,7 @@ module udma_hyperbus
    assign tx_ready_phy                    =tx_ready_i;
    assign udma_phy_tx.data                =tx_data_phy[15:0];
    assign udma_phy_tx.strb                =~tx_data_lower_mask;
-   assign udma_phy_tx.last                ='0;
+   assign udma_phy_tx.last                =(remained_data==1)&tx_valid_phy&tx_ready_phy;
 
    assign rx_valid_phy                    =rx_valid_i;
    assign rx_ready_o                      =rx_ready_phy;
