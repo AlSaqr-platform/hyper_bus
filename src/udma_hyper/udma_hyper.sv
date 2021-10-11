@@ -35,7 +35,6 @@ module udma_hyperbus
 
     output logic                       data_tx_req_o,
     input logic                        data_tx_gnt_i,
-    output logic [1:0]                 data_tx_datasize_o,
     input logic [31:0]                 data_tx_i,
     input logic                        data_tx_valid_i,
     output logic                       data_tx_ready_o,
@@ -69,9 +68,6 @@ module udma_hyperbus
     input logic [L2_AWIDTH_NOAL-1:0]   cfg_tx_curr_addr_i,
     input logic [TRANS_SIZE-1:0]       cfg_tx_bytes_left_i,
     output logic [NB_CH-1:0]           evt_eot_hyper_o,
-    // PHY interface
-    output logic                       clk0_o, // Clock
-    output logic                       clk90_o, // Clock
 
     // configuration TODO : remove
     output logic [31:0]                config_t_latency_access,
