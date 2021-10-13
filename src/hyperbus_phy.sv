@@ -157,7 +157,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         write:      ~tf_q.write,
         addr_space: tf_q.address_space,
         burst_type: tf_q.burst_type,
-        addr_upper: tf_q.address[31:3],
+        addr_upper: tf_q.address[31:3],//we could shift here according to hyperbus number
         reserved:   '0,
         addr_lower: tf_q.address[2:0]
     };

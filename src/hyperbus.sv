@@ -176,6 +176,7 @@ module hyperbus #(
         .axi_rsp_t      ( axi_rsp_t         ),
         .axi_w_chan_t   ( axi_w_chan_t      ),
         .NumChips       ( NumChips          ),
+        .NumHyperbus    ( 1                 ),
         .rule_t         ( axi_rule_t        )
     ) i_axi_slave (
         .clk_i          ( clk_sys_i         ),
