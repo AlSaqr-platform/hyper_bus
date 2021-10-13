@@ -21,6 +21,7 @@ module fixture_hyperbus #(
 
     logic sys_clk      = 0;
     logic phy_clk      = 0;
+    logic phy_clk90    = 0;
     logic test_mode    = 0;
     logic rst_n        = 1;
     logic eos          = 0; // end of sim
@@ -89,6 +90,16 @@ module fixture_hyperbus #(
     `REG_BUS_TYPEDEF_REQ(reg_req_t, reg_addr_t, reg_data_t, reg_strb_t)
     `REG_BUS_TYPEDEF_RSP(reg_rsp_t, reg_data_t)
 
+    logic [127:0] trans_wdata;
+    logic [127:0] trans_rdata;
+    axi_addr_t    temp_waddr;
+    axi_addr_t    temp_raddr;
+    typedef logic [127:0] data_t;   
+    data_t        memory[bit [31:0]];
+    int           read_index = 0;
+    int           write_index = 0;
+   
+   
     reg_req_t   reg_req;
     reg_rsp_t   reg_rsp;
 
@@ -98,6 +109,7 @@ module fixture_hyperbus #(
     ) i_rbus (
         .clk_i (sys_clk)
     );
+    integer fr, fw;
 
     reg_test::reg_driver #(
         .AW ( RegAw  ),
@@ -164,9 +176,11 @@ module fixture_hyperbus #(
         .RegDataWidth   ( RegDw       ),
         .reg_req_t      ( reg_req_t   ),
         .reg_rsp_t      ( reg_rsp_t   ),
+        .IsClockODelayed( 1           ),
         .axi_rule_t     ( rule_t      )
     ) i_dut (
         .clk_phy_i              ( phy_clk               ),
+        .clk_phy_i_90           ( phy_clk90             ),
         .rst_phy_ni             ( rst_n                 ),
         .clk_sys_i              ( sys_clk               ),
         .rst_sys_ni             ( rst_n                 ),
@@ -218,6 +232,8 @@ module fixture_hyperbus #(
     initial begin
         rst_n = 0;
         axi_master_drv.reset_master();
+        fr = $fopen ("readvalues.txt","w");
+        fw = $fopen ("wrotevalues.txt","w");
         // i_rmaster.reset_master();
         #(0.25*SYS_TCK);
         #(10*SYS_TCK);
@@ -253,6 +269,8 @@ module fixture_hyperbus #(
         phy_clk = 0;
         #(PHY_TCK/2);
     end
+ 
+   always @(phy_clk) phy_clk90 <= #(PHY_TCK/4) phy_clk;
 
     task reset_end;
         @(posedge rst_n);
@@ -274,10 +292,21 @@ module fixture_hyperbus #(
 
         axi_master_drv.send_ar(ar_beat);
 
+        temp_raddr = raddr;
+       
         for(int unsigned i = 0; i < burst_len + 1; i++) begin
             axi_master_drv.recv_r(r_beat);
             $display("%p", r_beat);
             $display("%x", r_beat.r_data);
+            temp_raddr = temp_raddr + (2**size);
+            for(int unsigned j=0;j<16;j++) begin
+              trans_rdata[(127-j*8) -: 8]=  ( ( (j<(2**size)+((16-(temp_raddr%16))%16)) && (j+1>((16-(temp_raddr%16))%16)) ) == 1 ) ?  r_beat.r_data[(127-j*8) -: 8] : '0;
+            end
+            $fwrite(fr, "%x %x\n", trans_rdata, temp_raddr);
+            if(memory[read_index]!=trans_rdata) begin
+               $fatal(1,"Error @%x\n", temp_raddr-(2**size));
+            end
+            read_index++;           
         end
     endtask
 
@@ -291,6 +320,7 @@ module fixture_hyperbus #(
 
         @(posedge sys_clk);
 
+        temp_waddr = waddr;
         aw_beat.ax_addr  = waddr;
         aw_beat.ax_len   = burst_len;
         aw_beat.ax_burst = axi_pkg::BURST_INCR;
@@ -301,18 +331,25 @@ module fixture_hyperbus #(
 
         axi_master_drv.send_aw(aw_beat);
 
+       
         for(int unsigned i = 0; i < burst_len + 1; i++) begin
             if (i == burst_len) begin
                 w_beat.w_last = 1'b1;
             end
+            temp_waddr = temp_waddr + (2**size);
             axi_master_drv.send_w(w_beat);
             $display("%p", w_beat);
             $display("%x", w_beat.w_data);
-        end
+            for(int unsigned j=0;j<16;j++) begin
+              trans_wdata[(127-j*8) -: 8]=  ( ((wstrb[15-j]==1'b1) && (j<(2**size)+((16-(temp_waddr%16))%16)) && (j+1>((16-(temp_waddr%16))%16)) ) == 1 ) ?  w_beat.w_data[(127-j*8) -: 8] : '0;
+            end
+            $fwrite(fw, "%x %x\n",trans_wdata, temp_waddr);
+            memory[write_index]=trans_wdata;
+            write_index++;           
+        end // for (int unsigned i = 0; i < burst_len + 1; i++)
 
         axi_master_drv.recv_b(b_beat);
-        $display("%p", b_beat);
-
+        //$display("%x", b_beat);
     endtask
 
 
