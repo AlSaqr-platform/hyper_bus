@@ -29,7 +29,8 @@ module hyperbus_upsizer #(
                              
    hyper_upsizer_state_t state_d,    state_q;
    T data_buffer_d, data_buffer_q;
-   logic [2:0]      counter_d, counter_q;
+   logic [3:0]      counter_d, counter_q;
+   logic [4:0]      word_idx_d, word_idx_q;
 
    assign sel_o = !is_16_bw;
    assign data_o = data_buffer_q;
@@ -81,15 +82,19 @@ module hyperbus_upsizer #(
    
    always_comb begin : counter
       counter_d = counter_q;
+      word_idx_d = word_idx_q;
       if (trans_handshake) begin
-         counter_d[1] = 1'b0;
+         counter_d[3:1] = '0;
          counter_d[0] = start_addr;
+         word_idx_d[4:1] = '0;
+         word_idx_d[0] = start_addr;
       end else if ( valid_i & data_i.last ) begin
          counter_d = 2;
       end else if ( counter_q == 2 ) begin
          counter_d = 0;
       end else if ( valid_i & ready_o ) begin
          counter_d = counter_q + 1;
+         word_idx_d = word_idx_q + 1;
       end
    end // block: counter
 
@@ -100,10 +105,12 @@ module hyperbus_upsizer #(
            data_buffer_d = data_i;
            data_buffer_d.strb[1:0] = '0;
          end else if ( data_i.last && counter_q==0 ) begin
-           data_buffer_d = data_i;
-           data_buffer_d.strb[3:2]='0;
+           data_buffer_d.data[word_idx_q*16 +: 16] = data_i.data[word_idx_q*16 +: 16];
+           data_buffer_d.strb[word_idx_q*2 +: 2] = data_i.strb[word_idx_q*2 +: 2];
+           data_buffer_d.strb[word_idx_q*2 +2 +: 2] = '0;
          end else begin
-           data_buffer_d = data_i;
+           data_buffer_d.data[word_idx_q*16 +: 16] = data_i.data[word_idx_q*16 +: 16];
+           data_buffer_d.strb[word_idx_q*2 +: 2] = data_i.strb[word_idx_q*2 +: 2];
          end
       end
    end 
@@ -113,10 +120,12 @@ module hyperbus_upsizer #(
            data_buffer_q <= '0;
            state_q <= Idle;
            counter_q <= '0;
+           word_idx_q <= '0;
        end else begin
            state_q <= state_d;
            data_buffer_q <= data_buffer_d;
            counter_q <= counter_d;
+           word_idx_q <= word_idx_d;
        end
    end            
 
