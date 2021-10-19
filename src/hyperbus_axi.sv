@@ -315,7 +315,6 @@ module hyperbus_axi #(
     assign ser_out_rsp.r.resp   = r_buf_q.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign ser_out_rsp.r.id     = '0;
     assign ser_out_rsp.r.user   = '0;
-//    assign ser_out_rsp.r_valid  = r_buf_q.valid ;
     assign ser_out_rsp.r_valid  = splitted_r_valid;
 
     hyperbus_splitter i_hyperbus_splitter (
@@ -383,16 +382,17 @@ module hyperbus_axi #(
     ) i_hyperbus_upsizer (
         .clk_i,
         .rst_ni,
-        .is_16_bw  ( ax_size_q == 1         ),
-        .sel_o     ( sel_spill              ),
-        .first_tx  ( first_tx_q             ),
-        .start_addr( word_cnt_odd           ),
-        .data_i    ( w_spill_buffer         ),
-        .valid_i   ( w_spill_valid_buffer   ),
-        .ready_o   ( w_spill_ready_composed ),
-        .data_o    ( w_spill_composed       ),
-        .valid_o   ( w_spill_valid_composed ),
-        .ready_i   ( w_spill_ready          )
+        .is_16_bw        ( ax_size_q == 1         ),
+        .sel_o           ( sel_spill              ),
+        .first_tx        ( first_tx_q             ),
+        .trans_handshake ( trans_handshake        ),
+        .start_addr      ( rr_out_req_ax.addr[1]  ),
+        .data_i          ( w_spill_buffer         ),
+        .valid_i         ( w_spill_valid_buffer   ),
+        .ready_o         ( w_spill_ready_composed ),
+        .data_o          ( w_spill_composed       ),
+        .valid_o         ( w_spill_valid_composed ),
+        .ready_i         ( w_spill_ready          )
     );
    
     assign w_spill              = ( sel_spill ) ? w_spill_buffer       : w_spill_composed;

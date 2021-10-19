@@ -81,14 +81,6 @@ module hyperbus_tb;
         // narrow 16 bit burst
         fix.write_axi('h452, 6, 1, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
         fix.read_axi('h452, 6, 1);
-
-        $display("=================");
-        $display("128 BIT BURSTS");
-        $display("=================");
-
-        // 128 bit access (burst)
-        fix.write_axi('h110, 3, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
-        fix.read_axi('h110, 3, 4);
        
         $display("=================");
         $display("8 BIT BURSTS");
