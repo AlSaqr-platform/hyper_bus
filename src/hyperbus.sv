@@ -82,16 +82,30 @@ module hyperbus #(
     output logic                        data_rx_valid_o,
     input  logic                        data_rx_ready_i,
     // PHY interface
-    output logic [NumChips-1:0]         hyper_cs_no,
-    output logic                        hyper_ck_o,
-    output logic                        hyper_ck_no,
-    output logic                        hyper_rwds_o,
-    input  logic                        hyper_rwds_i,
-    output logic                        hyper_rwds_oe_o,
-    input  logic [7:0]                  hyper_dq_i,
-    output logic [7:0]                  hyper_dq_o,
-    output logic                        hyper_dq_oe_o,
-    output logic                        hyper_reset_no
+
+    // Physical interace: facing HyperBus
+    output logic [NumChips-1:0]    hyper0_cs_no,
+    output logic                   hyper0_ck_o,
+    output logic                   hyper0_ck_no,
+    output logic                   hyper0_rwds_o,
+    input  logic                   hyper0_rwds_i,
+    output logic                   hyper0_rwds_oe_o,
+    input  logic [7:0]             hyper0_dq_i,
+    output logic [7:0]             hyper0_dq_o,
+    output logic                   hyper0_dq_oe_o,
+    output logic                   hyper0_reset_no,
+
+    output logic [NumChips-1:0]    hyper1_cs_no,
+    output logic                   hyper1_ck_o,
+    output logic                   hyper1_ck_no,
+    output logic                   hyper1_rwds_o,
+    input  logic                   hyper1_rwds_i,
+    output logic                   hyper1_rwds_oe_o,
+    input  logic [7:0]             hyper1_dq_i,
+    output logic [7:0]             hyper1_dq_o,
+    output logic                   hyper1_dq_oe_o,
+    output logic                   hyper1_reset_no
+
 );
 
     // Combined transfer type for CDC
@@ -176,7 +190,6 @@ module hyperbus #(
         .axi_rsp_t      ( axi_rsp_t         ),
         .axi_w_chan_t   ( axi_w_chan_t      ),
         .NumChips       ( NumChips          ),
-        .NumHyperbus    ( 1                 ),
         .rule_t         ( axi_rule_t        )
     ) i_axi_slave (
         .clk_i          ( clk_sys_i         ),
@@ -231,16 +244,26 @@ module hyperbus #(
         .trans_valid_i  ( phy_trans_valid   ),
         .trans_ready_o  ( phy_trans_ready   ),
 
-        .hyper_cs_no,
-        .hyper_ck_o,
-        .hyper_ck_no,
-        .hyper_rwds_o,
-        .hyper_rwds_i,
-        .hyper_rwds_oe_o,
-        .hyper_dq_i,
-        .hyper_dq_o,
-        .hyper_dq_oe_o,
-        .hyper_reset_no
+        .hyper0_cs_no,
+        .hyper0_ck_o,
+        .hyper0_ck_no,
+        .hyper0_rwds_o,
+        .hyper0_rwds_i,
+        .hyper0_rwds_oe_o,
+        .hyper0_dq_i,
+        .hyper0_dq_o,
+        .hyper0_dq_oe_o,
+        .hyper0_reset_no,
+        .hyper1_cs_no,
+        .hyper1_ck_o,
+        .hyper1_ck_no,
+        .hyper1_rwds_o,
+        .hyper1_rwds_i,
+        .hyper1_rwds_oe_o,
+        .hyper1_dq_i,
+        .hyper1_dq_o,
+        .hyper1_dq_oe_o,
+        .hyper1_reset_no
     );
 
     cdc_2phase #(

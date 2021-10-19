@@ -65,15 +65,31 @@ module hyperbus_tb;
         $display("=================");
         $display("16 BIT BURSTS");
         $display("=================");
-
+  
+        // wide 16 bit burst
+        fix.write_axi('h410, 18, 1, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h410, 18, 1);
+       
         // narrow 16 bit burst
         fix.write_axi('h402, 5, 1, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
         fix.read_axi('h402, 5, 1);
-
+       
         // wide 16 bit burst
-        fix.write_axi('h412, 18, 1, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
-        fix.read_axi('h412, 18, 1);
+        fix.write_axi('h470, 5, 1, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h470, 5, 1);  
+     
+        // narrow 16 bit burst
+        fix.write_axi('h452, 6, 1, 'h11ee_ddcc_bbaa_9988_7766_5544_3322_1100, 'hffff);
+        fix.read_axi('h452, 6, 1);
 
+        $display("=================");
+        $display("128 BIT BURSTS");
+        $display("=================");
+
+        // 128 bit access (burst)
+        fix.write_axi('h110, 3, 4, 'hbad0_beef_cafe_dead_b00b_8888_7777_aa55, 'hffff);
+        fix.read_axi('h110, 3, 4);
+       
         $display("=================");
         $display("8 BIT BURSTS");
         $display("=================");

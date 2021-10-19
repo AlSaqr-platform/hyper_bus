@@ -17,13 +17,13 @@ package hyperbus_pkg;
     } hyper_cfg_t;
 
     typedef struct packed {
-        logic [15:0]    data;
+        logic [31:0]    data;
         logic           last;
-        logic [1:0]     strb;   // mask data
+        logic [3:0]     strb;   // mask data
     } hyper_tx_t;
 
     typedef struct packed {
-        logic [15:0]    data;
+        logic [31:0]    data;
         logic           last;
         logic           error;
     } hyper_rx_t;

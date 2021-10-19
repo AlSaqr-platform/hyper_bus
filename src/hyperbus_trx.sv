@@ -33,34 +33,47 @@ module hyperbus_trx #(
 
     input  logic [3:0]             tx_clk_delay_i,
     input  logic                   tx_clk_ena_i,
-    input  logic [15:0]            tx_data_i,
+    input  logic [31:0]            tx_data_i,
     input  logic                   tx_data_oe_i,
-    input  logic [1:0]             tx_rwds_i,
+    input  logic [3:0]             tx_rwds_i,
     input  logic                   tx_rwds_oe_i,
 
     input  logic [3:0]             rx_clk_delay_i,
     input  logic                   rx_clk_set_i,
     input  logic                   rx_clk_reset_i,
-    output logic [15:0]            rx_data_o,
+    output logic [31:0]            rx_data_o,
     output logic                   rx_valid_o,
     input  logic                   rx_ready_i,
+
     // Physical interace: facing HyperBus
-    output logic [NumChips-1:0]    hyper_cs_no,
-    output logic                   hyper_ck_o,
-    output logic                   hyper_ck_no,
-    output logic                   hyper_rwds_o,
-    input  logic                   hyper_rwds_i,
-    output logic                   hyper_rwds_oe_o,
-    input  logic [7:0]             hyper_dq_i,
-    output logic [7:0]             hyper_dq_o,
-    output logic                   hyper_dq_oe_o,
-    output logic                   hyper_reset_no
+    output logic [NumChips-1:0]    hyper0_cs_no,
+    output logic                   hyper0_ck_o,
+    output logic                   hyper0_ck_no,
+    output logic                   hyper0_rwds_o,
+    input  logic                   hyper0_rwds_i,
+    output logic                   hyper0_rwds_oe_o,
+    input  logic [7:0]             hyper0_dq_i,
+    output logic [7:0]             hyper0_dq_o,
+    output logic                   hyper0_dq_oe_o,
+    output logic                   hyper0_reset_no,
+
+    output logic [NumChips-1:0]    hyper1_cs_no,
+    output logic                   hyper1_ck_o,
+    output logic                   hyper1_ck_no,
+    output logic                   hyper1_rwds_o,
+    input  logic                   hyper1_rwds_i,
+    output logic                   hyper1_rwds_oe_o,
+    input  logic [7:0]             hyper1_dq_i,
+    output logic [7:0]             hyper1_dq_o,
+    output logic                   hyper1_dq_oe_o,
+    output logic                   hyper1_reset_no
+
 );
 
     // 90-degree-shifted clocks generated with delay line
-    logic tx_clk_ena_q;
-    logic tx_clk_90;
-    logic rx_rwds_90;
+    logic       tx_clk_ena_q;
+    logic       tx_clk_90;
+    logic [1:0] rx_rwds_90;
 
     // Delayed clock enable synchronous with data
 
@@ -69,12 +82,14 @@ module hyperbus_trx #(
     logic           rx_rwds_clk_orig;
     logic           rx_rwds_clk;
     logic           rx_rwds_soft_rst;
-    logic [15:0]    rx_rwds_fifo_in;
+    logic [31:0]    rx_rwds_fifo_in;
     logic           rx_rwds_fifo_valid;
     logic           rx_rwds_fifo_ready;
 
     // Feed through async reset
-    assign hyper_reset_no = rst_ni;
+    assign hyper0_reset_no = rst_ni;
+    // Feed through async reset
+    assign hyper1_reset_no = rst_ni;
 
     // =================
     //    TX + control
@@ -94,53 +109,87 @@ module hyperbus_trx #(
     endgenerate
 
     // 90deg-shifted differential output clock, sampling output bytes centrally
-    hyperbus_clock_diff_out i_clock_diff_out (
-        .in_i   ( tx_clk_90     ),
-        .en_i   ( tx_clk_ena_q  ),
-        .out_o  ( hyper_ck_o    ),
-        .out_no ( hyper_ck_no   )
+    hyperbus_clock_diff_out i_clock_diff_out0 (
+        .in_i   ( tx_clk_90      ),
+        .en_i   ( tx_clk_ena_q   ),
+        .out_o  ( hyper0_ck_o    ),
+        .out_no ( hyper0_ck_no   )
     );
-
+    // 90deg-shifted differential output clock, sampling output bytes centrally
+    hyperbus_clock_diff_out i_clock_diff_out1 (
+        .in_i   ( tx_clk_90      ),
+        .en_i   ( tx_clk_ena_q   ),
+        .out_o  ( hyper1_ck_o    ),
+        .out_no ( hyper1_ck_no   )
+    );
     // Synchronize output chip select to shifted differential output clock
-    always_ff @(posedge tx_clk_90 or negedge rst_ni) begin : proc_ff_tx_shift90
-        if (~rst_ni)    hyper_cs_no <= '1;
-        else            hyper_cs_no <= cs_ena_i ? ~cs_i : '1;
+    always_ff @(posedge tx_clk_90 or negedge rst_ni) begin : proc_ff0_tx_shift90
+        if (~rst_ni)    hyper0_cs_no <= '1;
+        else            hyper0_cs_no <= cs_ena_i ? ~cs_i : '1;
+    end
+    // Synchronize output chip select to shifted differential output clock
+    always_ff @(posedge tx_clk_90 or negedge rst_ni) begin : proc_ff1_tx_shift90
+        if (~rst_ni)    hyper1_cs_no <= '1;
+        else            hyper1_cs_no <= cs_ena_i ? ~cs_i : '1;
     end
 
     // Data output DDR converters
     for (genvar i = 0; i <= 7; i++) begin: gen_ddr_tx_data
         hyperbus_ddr_out #(
             .Init   ( 1'b0 )
-        ) i_ddr_tx_data (
-            .clk_i  ( clk_i             ),
-            .rst_ni ( rst_ni            ),
-            .d0_i   ( tx_data_i  [i+8]  ),
-            .d1_i   ( tx_data_i  [i]    ),
-            .q_o    ( hyper_dq_o [i]    )
+        ) i_ddr_tx_data0 (
+            .clk_i  ( clk_i              ),
+            .rst_ni ( rst_ni             ),
+            .d0_i   ( tx_data_i   [i+8]  ),
+            .d1_i   ( tx_data_i   [i]    ),
+            .q_o    ( hyper0_dq_o [i]    )
+        );
+        hyperbus_ddr_out #(
+            .Init   ( 1'b0 )
+        ) i_ddr_tx_data1 (
+            .clk_i  ( clk_i              ),
+            .rst_ni ( rst_ni             ),
+            .d0_i   ( tx_data_i   [i+24] ),
+            .d1_i   ( tx_data_i   [i+16] ),
+            .q_o    ( hyper1_dq_o [i]    )
         );
     end
 
     // RWDS output DDR converter
     hyperbus_ddr_out #(
         .Init   ( 1'b0 )
-    ) i_ddr_tx_rwds (
+    ) i_ddr_tx_rwds0 (
         .clk_i  ( clk_i         ),
         .rst_ni ( rst_ni        ),
         .d0_i   ( tx_rwds_i [1] ),
         .d1_i   ( tx_rwds_i [0] ),
-        .q_o    ( hyper_rwds_o  )
+        .q_o    ( hyper0_rwds_o  )
     );
 
+    hyperbus_ddr_out #(
+        .Init   ( 1'b0 )
+    ) i_ddr_tx_rwds1 (
+        .clk_i  ( clk_i          ),
+        .rst_ni ( rst_ni         ),
+        .d0_i   ( tx_rwds_i [3]  ),
+        .d1_i   ( tx_rwds_i [2]  ),
+        .q_o    ( hyper1_rwds_o  )
+    );
+   
     // Delay output, clock enables to be synchronous with DDR-converted data
     // The delayed clock also ensures t_CSS is respected at the start, end of CS
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_tx_delay
         if(~rst_ni) begin
-            hyper_rwds_oe_o <= 1'b0;
-            hyper_dq_oe_o   <= 1'b0;
+            hyper0_rwds_oe_o <= 1'b0;
+            hyper0_dq_oe_o   <= 1'b0;
+            hyper1_rwds_oe_o <= 1'b0;
+            hyper1_dq_oe_o   <= 1'b0;
             tx_clk_ena_q    <= 1'b0;
         end else begin
-            hyper_rwds_oe_o <= tx_rwds_oe_i;
-            hyper_dq_oe_o   <= tx_data_oe_i;
+            hyper0_rwds_oe_o <= tx_rwds_oe_i;
+            hyper0_dq_oe_o   <= tx_data_oe_i;
+            hyper1_rwds_oe_o <= tx_rwds_oe_i;
+            hyper1_dq_oe_o   <= tx_data_oe_i;
             tx_clk_ena_q    <= tx_clk_ena_i;
         end
     end
@@ -148,7 +197,7 @@ module hyperbus_trx #(
     // Sample RWDS on demand for extra latency determination
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_rwds_sample
         if (~rst_ni)                rwds_sample_o <= '0;
-        else if (rwds_sample_ena_i) rwds_sample_o <= hyper_rwds_i;
+        else if (rwds_sample_ena_i) rwds_sample_o <= hyper0_rwds_i;
     end
 
     // ========
@@ -164,9 +213,9 @@ module hyperbus_trx #(
 
     // Shift RWDS clock by 90 degrees
     hyperbus_delay i_delay_rx_rwds_90 (
-        .in_i       ( hyper_rwds_i   ),
-        .delay_i    ( rx_clk_delay_i ),
-        .out_o      ( rx_rwds_90     )
+        .in_i       ( hyper0_rwds_i   ),
+        .delay_i    ( rx_clk_delay_i  ),
+        .out_o      ( rx_rwds_90      )
     );
 
     // Gate delayed RWDS clock with RX clock enable
@@ -197,15 +246,21 @@ module hyperbus_trx #(
     );
 
     // Data input DDR conversion
-    assign rx_rwds_fifo_in[7:0] = hyper_dq_i;
-    always @(posedge rx_rwds_clk or posedge rx_rwds_soft_rst) begin : proc_ff_ddr_in
+    assign rx_rwds_fifo_in[7:0] = hyper0_dq_i;
+    always @(posedge rx_rwds_clk or posedge rx_rwds_soft_rst) begin : proc_ff0_ddr_in
         if(rx_rwds_soft_rst)    rx_rwds_fifo_in[15:8] <= '0;
-        else                    rx_rwds_fifo_in[15:8] <= hyper_dq_i;
+        else                    rx_rwds_fifo_in[15:8] <= hyper0_dq_i;
+    end
+    // Data input DDR conversion
+    assign rx_rwds_fifo_in[23:16] = hyper1_dq_i;
+    always @(posedge rx_rwds_clk or posedge rx_rwds_soft_rst) begin : proc_ff1_ddr_in
+        if(rx_rwds_soft_rst)    rx_rwds_fifo_in[31:24] <= '0;
+        else                    rx_rwds_fifo_in[31:24] <= hyper1_dq_i;
     end
 
     // Cross input data from RWDS domain into system domain
     cdc_fifo_gray  #(
-        .T          ( logic [15:0]      ),
+        .T          ( logic [31:0]      ),
         .LOG_DEPTH  ( RxFifoLogDepth    )
     ) i_rx_rwds_cdc_fifo (
         // RWDS domain
@@ -228,4 +283,9 @@ module hyperbus_trx #(
         else $error("%m: HyperBus RX FIFO must always be ready to receive data");
     `endif
 
+//    access_latency : assert property(
+  //    @(posedge clk_i) trans_handshake & (rr_out_req_ax.size != '0) |-> (rr_out_req_ax.addr[0] == 1'b0))
+    //    else $fatal (1, "The address of a non-byte-size access must be 2-byte aligned.");
+   
+   
 endmodule
