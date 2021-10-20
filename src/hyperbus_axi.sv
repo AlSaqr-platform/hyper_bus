@@ -263,8 +263,9 @@ module hyperbus_axi #(
                trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size - 1)) + (rr_out_req_ax.addr[1]<<1);
             end
         end else begin
-            ax_blen_inc = rr_out_req_ax.addr[0];
-            trans_o.burst = (ax_blen_postinc >> 1) + 1;
+           ax_blen_inc = 1'b1; //rr_out_req_ax.addr[0];
+         //   trans_o.burst = (ax_blen_postinc >> 1) + 1;
+            trans_o.burst = (( rr_out_req_ax.addr[1:0] + ax_blen_postinc + 3 ) >> 3 ) <<2;
         end
     end
 
@@ -286,9 +287,9 @@ module hyperbus_axi #(
             if ((tx_valid_o & tx_ready_i) | (rx_valid_i & rx_ready_o)) 
                   byte_cnt_d = byte_cnt_q + 4;
             // Byte offset: advance only for byte-size transfers whenever upstream advances
-            if (ax_size_byte & ((w_spill_valid & w_spill_ready)
-                    | (ser_out_rsp.r_valid & ser_out_req.r_ready)))
-                byte_cnt_d[0]  = ~byte_cnt_q[0];
+            //if (ax_size_byte & ((w_spill_valid & w_spill_ready)
+            //        | (ser_out_rsp.r_valid & ser_out_req.r_ready)))
+            //    byte_cnt_d[0]  = ~byte_cnt_q[0];
         end
     end
 
@@ -320,21 +321,23 @@ module hyperbus_axi #(
     hyperbus_splitter i_hyperbus_splitter (
         .clk_i,
         .rst_ni,
-        .is_16_bw        ( ax_size_q == 1                             ),
-        .trans_handshake ( trans_handshake                            ),
-        .start_addr      ( rr_out_req_ax.addr[1]                      ),
-        .last_addr       ( rr_out_req_ax.addr[1] ^ ax_blen_postinc[0] ),
-        .last_i          ( r_buf_q.last                               ),
-        .valid_i         ( r_buf_q.valid                              ),
-        .valid_o         ( splitted_r_valid                           ),
-        .last_o          ( s_last                                     ),
-        .ready_i         ( ser_out_req.r_ready                        )
+        .is_16_bw        ( ax_size_q == 1          ),
+        .is_8_bw         ( ax_size_byte            ),
+        .trans_handshake ( trans_handshake         ),
+        .start_addr      ( rr_out_req_ax.addr[1:0] ),
+        .len             ( ax_blen_postinc[1:0]    ),
+        .last_i          ( r_buf_q.last            ),
+        .valid_i         ( r_buf_q.valid           ),
+        .valid_o         ( splitted_r_valid        ),
+        .last_o          ( s_last                  ),
+        .ready_i         ( ser_out_req.r_ready     )
     );
 
     // Complete RX word if not byte-size transfer OR at every odd byte OR at last byte (if it has even index)
     assign endword_r = ~ax_size_byte | byte_cnt_odd | (rx_i.last & byte_last_even_q);
 
-    assign r_buf_ready  = endword_r & ser_out_req.r_ready ;
+   assign r_buf_ready  = ser_out_req.r_ready;
+ //endword_r & ser_out_req.r_ready ;
     assign rx_ready_o   = ( ~r_buf_q.valid | r_buf_ready ) ;
 
     // Read-coalescing beat buffer: is marked valid once a beat is pushed on completion
@@ -383,10 +386,11 @@ module hyperbus_axi #(
         .clk_i,
         .rst_ni,
         .is_16_bw        ( ax_size_q == 1         ),
+        .is_8_bw         ( ax_size_q == 0         ),
         .sel_o           ( sel_spill              ),
         .first_tx        ( first_tx_q             ),
         .trans_handshake ( trans_handshake        ),
-        .start_addr      ( rr_out_req_ax.addr[1]  ),
+        .start_addr      ( rr_out_req_ax.addr[3:0]),
         .data_i          ( w_spill_buffer         ),
         .valid_i         ( w_spill_valid_buffer   ),
         .ready_o         ( w_spill_ready_composed ),
@@ -408,7 +412,7 @@ module hyperbus_axi #(
     // Complete TX word if not byte-size transfer OR at every second byte OR at final byte:
     assign endword_w = ax_size_byte ? (byte_cnt_odd | w_spill.last) : 1'b1;
 
-    assign tx_valid_o = trans_wready_q & w_spill_valid & endword_w;  // Uses lock-in on upstream W channel
+   assign tx_valid_o = trans_wready_q & w_spill_valid ; //& endword_w;  // Uses lock-in on upstream W channel
     // We block the W channel until an AW was received (transfer is active and is a write).
     // To stay AXI compliant, we use a write channel spill register decoupling the W channel.
     // Downstream TX channel must be ready unless bufferable byte-size transfer
@@ -422,40 +426,41 @@ module hyperbus_axi #(
     always_comb begin : proc_comb_w_coalesce
         tx_o.data = w_sel_data;
         tx_o.strb = w_sel_strb;
-        if (ax_size_byte) begin
-            if (word_cnt_odd) begin
-               if (byte_cnt_odd) begin
-                   // On odd byte: overlay previous byte if in byte-size transfer
-                   tx_o.data[23:16]  = w_buf_q.data;
-                   tx_o.strb[2]      = w_buf_q.strb;
-               end else begin
-                   // On even byte: masks out upper strobe
-                   tx_o.strb[0]      = 1'b0;
-                   tx_o.strb[1]      = 1'b0;
-                   tx_o.strb[3]      = 1'b0;
-               end
-            end else begin
-               if (byte_cnt_odd) begin
-                   // On odd byte: overlay previous byte if in byte-size transfer
-                   tx_o.data[7:0]  = w_buf_q.data;
-                   tx_o.strb[0]    = w_buf_q.strb;
-               end else begin
-                   // On even byte: masks out upper strobe
-                   tx_o.strb[1]    = 1'b0;
-                   tx_o.strb[2]    = 1'b0;
-                   tx_o.strb[3]    = 1'b0;
-               end
-             end    
-        end
+       // if (ax_size_byte) begin
+       //     if (word_cnt_odd) begin
+       //        if (byte_cnt_odd) begin
+       //            // On odd byte: overlay previous byte if in byte-size transfer
+       //            tx_o.data[23:16]  = w_buf_q.data;
+       //            tx_o.strb[2]      = w_buf_q.strb;
+       //        end else begin
+       //            // On even byte: masks out upper strobe
+       //            tx_o.strb[0]      = 1'b0;
+       //            tx_o.strb[1]      = 1'b0;
+       //            tx_o.strb[3]      = 1'b0;
+       //        end
+       //     end else begin
+       //        if (byte_cnt_odd) begin
+       //            // On odd byte: overlay previous byte if in byte-size transfer
+       //            tx_o.data[7:0]  = w_buf_q.data;
+       //            tx_o.strb[0]    = w_buf_q.strb;
+       //        end else begin
+       //            // On even byte: masks out upper strobe
+       //            tx_o.strb[1]    = 1'b0;
+       //            tx_o.strb[2]    = 1'b0;
+       //            tx_o.strb[3]    = 1'b0;
+       //        end
+       //      end    
+       // end
     end
 
     // Buffer lower byte and its strobe for byte-size transfer when necessary
     always_comb begin : proc_comb_w_buffer
         w_buf_d = w_buf_q;
-        if (w_spill_valid & w_spill_ready & ax_size_byte & ~byte_cnt_odd) begin
-            w_buf_d.data = w_sel_data[7:0];
-            w_buf_d.strb = w_sel_strb[0];
-        end else if (trans_handshake) begin
+        //if (w_spill_valid & w_spill_ready & ax_size_byte & ~byte_cnt_odd) begin
+        //    w_buf_d.data = w_sel_data[7:0];
+        //    w_buf_d.strb = w_sel_strb[0];
+        //end else 
+        if (trans_handshake) begin
             // TODO POWER @paulsc: unnecessary clear of data; strb suffices (but easier for debug)
             w_buf_d = '0;       // Reset buffer new transfer begins (in case of odd upbeat)
         end
@@ -498,7 +503,7 @@ module hyperbus_axi #(
     always_comb begin : proc_comb_is_first_tx
         first_tx_d = first_tx_q;
         if (trans_handshake) first_tx_d = 1'b1;
-        if (tx_valid_o & tx_ready_i)  first_tx_d = 1'b0;
+        if (w_spill_valid_buffer & w_spill_ready_composed)  first_tx_d = 1'b0;
     end
 
     // =========================
