@@ -98,6 +98,7 @@ module hyperbus_axi #(
     logic           byte_last_even_d, byte_last_even_q;
     chip_sel_idx_t  ax_chip_sel_idx;
     logic           ax_size_byte;
+    logic           ax_size_word;
     hyperbus_pkg::hyper_blen_t ax_blen_postinc;
     logic           ax_blen_inc;
 
@@ -236,7 +237,8 @@ module hyperbus_axi #(
 
     // Whether this is a byte-size transfer
     assign ax_size_byte = (ax_size_q == '0);
-
+    assign ax_size_word = (ax_size_q == 1);
+   
     // Remember properties of transfer that we will need (rest forwarded to PHY)
     always_comb begin : proc_comb_ax_buffer
         ax_size_d           = ax_size_q;
@@ -338,7 +340,7 @@ module hyperbus_axi #(
     );
 
     // Complete RX word if not byte-size transfer OR at every odd byte OR at last byte (if it has even index)
-    assign endword_r = ~ax_size_byte | byte_cnt_odd | (rx_i.last & byte_last_even_q);
+    assign endword_r = ~ax_size_word | byte_cnt_odd | (rx_i.last & byte_last_even_q);
 
    assign r_buf_ready  = ser_out_req.r_ready;
  //endword_r & ser_out_req.r_ready ;
@@ -385,16 +387,19 @@ module hyperbus_axi #(
     // ============================
 
     hyperbus_upsizer # (
-        .T      ( axi_w_chan_t )
+        .AxiDataWidth ( AxiDataWidth    ),
+        .BurstLength  ( hyperbus_pkg::HyperBurstWidth ),
+        .T            ( axi_w_chan_t    )
     ) i_hyperbus_upsizer (
         .clk_i,
         .rst_ni,
-        .is_16_bw        ( ax_size_q == 1         ),
-        .is_8_bw         ( ax_size_q == 0         ),
+        .size            ( ax_size_d              ),
+        .len             ( ax_blen_postinc        ),
         .sel_o           ( sel_spill              ),
         .first_tx        ( first_tx_q             ),
+        .is_a_write      ( rr_out_req_write       ),
         .trans_handshake ( trans_handshake        ),
-        .start_addr      ( rr_out_req_ax.addr[3:0]),
+        .start_addr      ( rr_out_req_ax.addr     ),
         .data_i          ( w_spill_buffer         ),
         .valid_i         ( w_spill_valid_buffer   ),
         .ready_o         ( w_spill_ready_composed ),
