@@ -265,7 +265,11 @@ module hyperbus_axi #(
         end else begin
            ax_blen_inc = 1'b1; //rr_out_req_ax.addr[0];
          //   trans_o.burst = (ax_blen_postinc >> 1) + 1;
-            trans_o.burst = (( rr_out_req_ax.addr[1:0] + ax_blen_postinc + 3 ) >> 3 ) <<2;
+           if (ax_blen_postinc==1) begin
+              trans_o.burst= 'h2;
+           end else begin
+              trans_o.burst = (( rr_out_req_ax.addr[1:0] + ax_blen_postinc + 3 ) >> 3 ) <<2;
+           end
         end
     end
 
