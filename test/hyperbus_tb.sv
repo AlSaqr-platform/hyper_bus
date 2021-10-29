@@ -223,12 +223,12 @@ module hyperbus_tb;
         fix.read_axi('h91C, 0, 3);
 
         // 64b inner 5-burst on 16b boundary
-        fix.write_axi('h992, 4, 3, 'h0000_0000_0000_0000_0000_0000_0000_0000, 'hFFFF);
-        fix.read_axi('h992, 4, 3);
+        fix.write_axi('h990, 5, 3, 'h0000_0000_0000_0000_0000_0000_0000_0000, 'hFFFF);
+        fix.read_axi('h990, 5, 3);
         fix.write_axi('h992, 4, 3, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFF0F);
         fix.read_axi('h992, 4, 3);
 
-        // 64b inner single on 32b boundary
+        // 64b inner single on 32b boundary 
         fix.write_axi('h924, 0, 3, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hF0FF);
         fix.read_axi('h924, 0, 3);
 
@@ -237,21 +237,27 @@ module hyperbus_tb;
         fix.read_axi('h930, 0, 4);
 
         fix.write_axi('h954, 0, 4, 'h0000_0000_0000_0000_0000_0000_0000_0000, 'hFFFF);
-        fix.read_axi('h954, 0, 4);       
+        fix.read_axi('h954, 0, 4);  
+     
         // 128 outer single on 32b boundary (read back in aligned fasion)
         fix.write_axi('h954, 0, 4, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFFFF);
         fix.read_axi('h954, 0, 4);
-    
+
+       
         // 128 outer single on 64b boundary (read back in aligned fasion)
         fix.write_axi('h978, 0, 4, 'h0000_0000_0000_0000_0000_0000_0000_0000, 'hFFFF);
-        fix.read_axi('h978, 0, 4);
+        fix.read_axi('h978, 0, 4); //siamo qua
         // 128 outer single on 64b boundary (read back in aligned fasion)
         fix.write_axi('h978, 0, 4, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFFFF);
         fix.read_axi('h978, 0, 4);
 
-        // 128 5-burst single on 16b boundary (read back in aligned fasion)
+        // 128 5-burst single on 16b boundary (read back in aligned fasion) //here
         fix.write_axi('h1c02, 4, 4, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFFFF);
         fix.read_axi('h1c02, 4, 4);
+
+        // 128 bit access (burst, extrawide --> will be split)
+        fix.write_axi('ha00, 4090, 4, 'h1234_5678_9abc_def0_7766_5544_3322_1100, 'hffff);
+        fix.read_axi('ha00, 4090, 4);
 
         $display("==================");
         $display("DONE WITH SUCCESS!");

@@ -124,8 +124,9 @@ module hyperbus_axi #(
     logic           w_spill_valid_buffer, w_spill_ready_buffer;
     logic           w_spill_valid_composed, w_spill_ready_composed;
     logic           first_tx_d, first_tx_q;
+    logic           first_rx_d, first_rx_q;
     logic           cnt_buffer_words_d, cnt_buffer_words_q;
-    logic            sel_spill;
+    logic           sel_spill;
        
     // W channel
     axi_wbyte_t     w_buf_d, w_buf_q;
@@ -261,8 +262,10 @@ module hyperbus_axi #(
             ax_blen_inc   = 1'b1;
             if ((rr_out_req_ax.size==1) && ax_blen_postinc[0]) begin
                trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size - 1)) + 1;
+            end else if (ax_size_d!=4) begin
+               trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size - 1)) + (rr_out_req_ax.addr[1]<<(1<<(ax_size_d==3)));
             end else begin
-               trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size - 1)) + (rr_out_req_ax.addr[1]<<1);
+               trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size -1));
             end
         end else begin
            ax_blen_inc = 1'b1; //rr_out_req_ax.addr[0];
@@ -327,10 +330,11 @@ module hyperbus_axi #(
     hyperbus_splitter i_hyperbus_splitter (
         .clk_i,
         .rst_ni,
-        .is_16_bw        ( ax_size_q == 1          ),
-        .is_8_bw         ( ax_size_byte            ),
+        .size            ( ax_size_d               ),
         .trans_handshake ( trans_handshake         ),
         .start_addr      ( rr_out_req_ax.addr[1:0] ),
+        .first_rx        ( first_rx_q              ),
+        .is_a_read       ( !rr_out_req_write       ),
         .len             ( ax_blen_postinc[1:0]    ),
         .last_i          ( r_buf_q.last            ),
         .valid_i         ( r_buf_q.valid           ),
@@ -515,6 +519,13 @@ module hyperbus_axi #(
         if (w_spill_valid_buffer & w_spill_ready_composed)  first_tx_d = 1'b0;
     end
 
+    // Set overrules reset as a transfer must start before it finishes
+    always_comb begin : proc_comb_is_first_rx
+        first_rx_d = first_rx_q;
+        if (trans_handshake) first_rx_d = 1'b1;
+        if (r_buf_q.valid & r_buf_ready)  first_rx_d = 1'b0;
+    end
+   
     // =========================
     //    Registers
     // =========================
@@ -530,6 +541,7 @@ module hyperbus_axi #(
             trans_active_q      <= '0;
             trans_wready_q      <= '0;
             first_tx_q          <= '0;
+            first_rx_q          <= '0;
         end else begin
             ax_size_q           <= ax_size_d;
             byte_last_even_q    <= byte_last_even_d;
@@ -540,6 +552,7 @@ module hyperbus_axi #(
             trans_active_q      <= trans_active_d;
             trans_wready_q      <= trans_wready_d;
             first_tx_q          <= first_tx_d;
+            first_rx_q          <= first_rx_d;
         end
     end
 
@@ -554,7 +567,7 @@ module hyperbus_axi #(
 
     read_endbeat_align : assert property(
       @(posedge clk_i) rx_valid_i & rx_ready_o & rx_i.last |-> endbeat)
-        else $fatal (1, "Last word of read should be aligned with transfer size.");
+        else $warning (1, "Last word of read should be aligned with transfer size.");
 
     access_16b_align : assert property(
       @(posedge clk_i) trans_handshake & (rr_out_req_ax.size != '0) |-> (rr_out_req_ax.addr[0] == 1'b0))

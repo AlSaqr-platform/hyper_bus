@@ -94,6 +94,8 @@ module fixture_hyperbus #(
     logic [127:0] trans_rdata;
     axi_addr_t    temp_waddr;
     axi_addr_t    temp_raddr;
+    logic [4:0]   last_waddr;
+    logic [4:0]   last_raddr;
     typedef logic [127:0] data_t;   
     data_t        memory[bit [31:0]];
     int           read_index = 0;
@@ -354,6 +356,8 @@ module fixture_hyperbus #(
         axi_master_drv.send_ar(ar_beat);
 
         temp_raddr = raddr;
+        last_raddr = '0;
+       
        
         for(int unsigned i = 0; i < burst_len + 1; i++) begin
             axi_master_drv.recv_r(r_beat);
@@ -361,13 +365,14 @@ module fixture_hyperbus #(
             $display("%x", r_beat.r_data);
             temp_raddr = temp_raddr + (2**size);
             for(int unsigned j=0;j<16;j++) begin
-              trans_rdata[(127-j*8) -: 8]=  ( ( (j<(2**size)+((16-(temp_raddr%16))%16)) && (j+1>((16-(temp_raddr%16))%16)) ) == 1 ) ?  r_beat.r_data[(127-j*8) -: 8] : '0;
+              trans_rdata[(127-j*8) -: 8]= ( ( ( (j<(2**size)+((16-(temp_raddr%16))%16)) && (j+1>((16-(temp_raddr%16))%16)) ) == 1 ) && !( (last_raddr>16) & j>(last_raddr-15) ) ) ?  r_beat.r_data[(127-j*8) -: 8] : '0;
             end
             $fwrite(fr, "%x %x\n", trans_rdata, temp_raddr);
             if(memory[read_index]!=trans_rdata) begin
                $fatal(1,"Error @%x\n", temp_raddr-(2**size));
             end
-            read_index++;           
+            read_index++;    
+            last_raddr = temp_raddr[3:0] + (2**size);       
         end
     endtask
 
@@ -389,6 +394,7 @@ module fixture_hyperbus #(
         w_beat.w_data   = wdata;
         w_beat.w_strb   = wstrb;
         w_beat.w_last   = 1'b0;
+        last_waddr = '0;
 
         axi_master_drv.send_aw(aw_beat);
 
@@ -402,11 +408,12 @@ module fixture_hyperbus #(
             $display("%p", w_beat);
             $display("%x", w_beat.w_data);
             for(int unsigned j=0;j<16;j++) begin
-              trans_wdata[(127-j*8) -: 8]=  ( ((wstrb[15-j]==1'b1) && (j<(2**size)+((16-(temp_waddr%16))%16)) && (j+1>((16-(temp_waddr%16))%16)) ) == 1 ) ?  w_beat.w_data[(127-j*8) -: 8] : '0;
+              trans_wdata[(127-j*8) -: 8]= ( ( ((wstrb[15-j]==1'b1) && (j<(2**size)+((16-(temp_waddr%16))%16)) && (j+1>((16-(temp_waddr%16))%16)) ) == 1 ) && !( (last_waddr>16) & j>(last_waddr-15) ) )?  w_beat.w_data[(127-j*8) -: 8] : '0;
             end
-            $fwrite(fw, "%x %x\n",trans_wdata, temp_waddr);
+           $fwrite(fw, "%x %x, %d\n",trans_wdata, temp_waddr, last_waddr);
             memory[write_index]=trans_wdata;
             write_index++;           
+            last_waddr = temp_waddr[3:0] + (2**size);
         end // for (int unsigned i = 0; i < burst_len + 1; i++)
 
         axi_master_drv.recv_b(b_beat);

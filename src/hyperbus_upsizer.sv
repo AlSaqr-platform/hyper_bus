@@ -7,7 +7,7 @@ module hyperbus_upsizer  #(
   parameter int unsigned AxiDataWidth = -1, 
   parameter int unsigned BurstLength = -1,
   parameter type T = logic,
-  parameter int unsigned AddrWidth = $clog2(AxiDataWidth/8) 
+  parameter int unsigned AddrWidth = $clog2(AxiDataWidth/8)
 ) (
   input logic                   clk_i,
   input logic                   rst_ni,
@@ -26,6 +26,7 @@ module hyperbus_upsizer  #(
   output                        T data_o
 );
 
+   localparam NumBitStrb = AxiDataWidth/8;
    typedef enum logic [2:0] {
        Idle,
        Sample,
@@ -37,21 +38,25 @@ module hyperbus_upsizer  #(
    hyper_upsizer_state_t state_d,    state_q;
    T data_buffer_d, data_buffer_q;
 
+   int          i;
+   
    logic        is_16_bw, is_8_bw;
    logic        upsize;
    logic        split_ltx;
    logic        mask_last;
-
+   logic        test_s;
+   
    logic [AddrWidth-1:0] byte_idx_d, byte_idx_q;
    logic [AddrWidth-1:0] start_addr_d, start_addr_q;
    logic [AddrWidth-1:0] last_addr_d, last_addr_q;
    logic [3:0]           size_d, size_q;
+   logic [AddrWidth-1:0] addr_sample [NumBitStrb-1:0];
    
 
    assign is_8_bw = (size_d == 0);
    assign is_16_bw = (size_d == 1) ;
    assign upsize = is_16_bw | is_8_bw ;
-   assign split_ltx = (start_addr_d[1:0]!='0 & !is_16_bw & !is_8_bw);
+   assign split_ltx = (start_addr_d[1:0]!='0 & !is_16_bw & !is_8_bw & (size_d!=4));
    assign sel_o = ! (upsize | split_ltx) ;
    assign data_o.data = data_buffer_q.data;
    assign data_o.strb = data_buffer_q.strb;
@@ -81,17 +86,32 @@ module hyperbus_upsizer  #(
          if ( (byte_idx_q[1:0]!=0) && first_tx ) begin
             data_buffer_d = data_i;
             data_buffer_d.strb[byte_idx_q-1 -: 3] = '0;
-            data_buffer_d.strb[byte_idx_q] = 1'b1;
+            data_buffer_d.strb[byte_idx_q] = data_i.strb[byte_idx_q];
          end else if (data_i.last && (byte_idx_d==last_addr_q)) begin
             data_buffer_d.data[byte_idx_q*8 +: AxiDataWidth] = data_i.data[byte_idx_q*8 +: AxiDataWidth];
-            data_buffer_d.strb[byte_idx_q] = 1'b1;
-            data_buffer_d.strb[byte_idx_q+1] = is_16_bw;
-            data_buffer_d.strb[byte_idx_q+2 +: AddrWidth] = '0;
+            data_buffer_d.strb[byte_idx_q +: NumBitStrb] = data_i.strb[byte_idx_q +: NumBitStrb];
+            data_buffer_d.strb[byte_idx_q+1] = (size_d>0) & data_i.strb[byte_idx_q+1];
+            data_buffer_d.strb[byte_idx_q+2] = (size_d>1) & data_i.strb[byte_idx_q+2];
+            data_buffer_d.strb[byte_idx_q+3] = (size_d>1) & data_i.strb[byte_idx_q+3];
+            data_buffer_d.strb[byte_idx_q+4] = (size_d>2) & data_i.strb[byte_idx_q+4];
+            data_buffer_d.strb[byte_idx_q+5] = (size_d>2) & data_i.strb[byte_idx_q+5];
+            data_buffer_d.strb[byte_idx_q+6] = (size_d>2) & data_i.strb[byte_idx_q+6];
+            data_buffer_d.strb[byte_idx_q+7] = (size_d>2) & data_i.strb[byte_idx_q+7];
             data_buffer_d.last = 1'b1;
          end else begin
             data_buffer_d.data[byte_idx_q*8 +: AxiDataWidth] = data_i.data[byte_idx_q*8 +: AxiDataWidth];
-            data_buffer_d.strb[byte_idx_q +: AddrWidth] = data_i.strb[byte_idx_q +: AddrWidth];
             data_buffer_d.last = data_i.last;
+            data_buffer_d.strb[byte_idx_q +: NumBitStrb] = data_i.strb[byte_idx_q +: NumBitStrb];
+            if (byte_idx_q+(2**size_d)>NumBitStrb) begin
+               data_buffer_d.strb[0] = 1'b0;
+               data_buffer_d.strb[1] = (byte_idx_q+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[1];
+               data_buffer_d.strb[2] = (byte_idx_q+1+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[2];
+               data_buffer_d.strb[3] = (byte_idx_q+2+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[3];
+               data_buffer_d.strb[4] = (byte_idx_q+3+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[4];
+               data_buffer_d.strb[5] = (byte_idx_q+4+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[5];
+               data_buffer_d.strb[6] = (byte_idx_q+5+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[6];
+               data_buffer_d.strb[7] = (byte_idx_q+6+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[7];
+            end 
          end 
       end 
    end 
