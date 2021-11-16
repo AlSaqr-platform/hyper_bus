@@ -7,7 +7,8 @@ module hyperbus_upsizer  #(
   parameter int unsigned AxiDataWidth = -1, 
   parameter int unsigned BurstLength = -1,
   parameter type T = logic,
-  parameter int unsigned AddrWidth = $clog2(AxiDataWidth/8)
+  parameter int unsigned AddrWidth = $clog2(AxiDataWidth/8),
+  parameter NumPhys = 2
 ) (
   input logic                   clk_i,
   input logic                   rst_ni,
@@ -16,181 +17,156 @@ module hyperbus_upsizer  #(
   input logic [BurstLength-1:0] len,
   input logic                   is_a_write,
   input logic                   trans_handshake, 
-  input logic                   first_tx,
-  input logic                   valid_i,
-  output logic                  sel_o,
-  output logic                  ready_o,
+  input logic                   axi_valid_i,
+  output logic                  axi_ready_o,
   input                         T data_i,
-  output logic                  valid_o,
-  input logic                   ready_i,
-  output                        T data_o
+  output logic                  phy_valid_o,
+  input logic                   phy_ready_i,
+  output logic [16*NumPhys-1:0] data_o,
+  output logic                  last_o,
+  output logic [2*NumPhys-1:0]  strb_o
 );
 
    localparam NumBitStrb = AxiDataWidth/8;
+   // Cutting the combinatorial path between AXI master and cdc fifo
    typedef enum logic [2:0] {
        Idle,
+       WaitData,
        Sample,
-       WaitReady,
-       WaitNextTrans,
-       SplitLastTransfer
+       CntReady
    } hyper_upsizer_state_t;
                              
    hyper_upsizer_state_t state_d,    state_q;
    T data_buffer_d, data_buffer_q;
-
-   int          i;
    
    logic        is_16_bw, is_8_bw;
    logic        upsize;
-   logic        split_ltx;
-   logic        mask_last;
-   logic        test_s;
+   logic        enough_data;
+   logic        first_tx_d, first_tx_q;
    
-   logic [AddrWidth-1:0] byte_idx_d, byte_idx_q;
-   logic [AddrWidth-1:0] start_addr_d, start_addr_q;
-   logic [AddrWidth-1:0] last_addr_d, last_addr_q;
-   logic [3:0]           size_d, size_q;
-   logic [AddrWidth-1:0] addr_sample [NumBitStrb-1:0];
-   
+
+   logic [NumPhys*2-1:0]         mask_strobe_d, mask_strobe_q;
+   logic [AddrWidth-NumPhys-1:0] word_cnt;   
+   logic [AddrWidth-1:0]         byte_idx_d, byte_idx_q;
+   logic [3:0]                   size_d, size_q;
+   logic [AddrWidth-1:0]         cnt_data_phy_d, cnt_data_phy_q;
 
    assign is_8_bw = (size_d == 0);
    assign is_16_bw = (size_d == 1) ;
    assign upsize = is_16_bw | is_8_bw ;
-   assign split_ltx = (start_addr_d[1:0]!='0 & !is_16_bw & !is_8_bw & (size_d!=4));
-   assign sel_o = ! (upsize | split_ltx) ;
-   assign data_o.data = data_buffer_q.data;
-   assign data_o.strb = data_buffer_q.strb;
-   assign data_o.user = data_buffer_q.user;
-   assign data_o.last = data_buffer_q.last & !mask_last;
+   assign enough_data = !upsize;
+   assign keep_sampling = (size_d<NumPhys) && (byte_idx_d[NumPhys-1:0]!='0);
+   assign keep_sending = (size_d>NumPhys) && (cnt_data_phy_d != byte_idx_q);
+   assign word_cnt = cnt_data_phy_q>>NumPhys;
+   
+
+   assign data_o = data_buffer_q.data[32*word_cnt +:32];
+   assign strb_o = data_buffer_q.strb[ 4*word_cnt +: 4] & mask_strobe_q;
+   assign last_o = data_buffer_q.last && !keep_sending;
                         
    always_comb begin : counter
       byte_idx_d = byte_idx_q;
       size_d = size_q;
-      start_addr_d = start_addr_q;
-      last_addr_d = last_addr_q;
-       if (trans_handshake) begin
-         start_addr_d = start_addr;
+      cnt_data_phy_d = cnt_data_phy_q;
+      first_tx_d = first_tx_q;
+      if (trans_handshake) begin
          byte_idx_d = start_addr;
          size_d = size;
-         last_addr_d = start_addr + (len<<size_d);
-      end else if ( valid_i & ready_o ) begin
-         byte_idx_d = byte_idx_q + (1<<size_d);
+         cnt_data_phy_d = (start_addr>>NumPhys)<<NumPhys;
+         first_tx_d = 1'b1;
+      end
+      if ( axi_valid_i & axi_ready_o ) begin
+         byte_idx_d = ((byte_idx_q>>size_d)<< size_d) + (1<<size_d);
+         first_tx_d = 1'b0;
+      end
+      if ( phy_valid_o & phy_ready_i ) begin
+         cnt_data_phy_d = cnt_data_phy_q + NumPhys*2;
       end
    end 
 
    always_comb begin : sampler
       data_buffer_d = data_buffer_q;
-      if ( (state_q==WaitNextTrans) | (state_q==Idle) ) begin
-         data_buffer_d.last = '0;
-      end else if (state_q == Sample & valid_i) begin
-         if ( (byte_idx_q[1:0]!=0) && first_tx ) begin
+      if (state_d==Idle) begin
+         data_buffer_d.last = 1'b0;
+         data_buffer_d.data = '0; // for debug
+      end else if (state_d==Sample && axi_valid_i) begin
+         if(!upsize) begin
+            // If we sample enough data in a single beat, we can sample the whole
+            // AXI DATA WIDTH as we'll send all the data to the phy before sampling again.
             data_buffer_d = data_i;
-            data_buffer_d.strb[byte_idx_q-1 -: 3] = '0;
-            data_buffer_d.strb[byte_idx_q] = data_i.strb[byte_idx_q];
-         end else if (data_i.last && (byte_idx_d==last_addr_q)) begin
-            data_buffer_d.data[byte_idx_q*8 +: AxiDataWidth] = data_i.data[byte_idx_q*8 +: AxiDataWidth];
-            data_buffer_d.strb[byte_idx_q +: NumBitStrb] = data_i.strb[byte_idx_q +: NumBitStrb];
-            data_buffer_d.strb[byte_idx_q+1] = (size_d>0) & data_i.strb[byte_idx_q+1];
-            data_buffer_d.strb[byte_idx_q+2] = (size_d>1) & data_i.strb[byte_idx_q+2];
-            data_buffer_d.strb[byte_idx_q+3] = (size_d>1) & data_i.strb[byte_idx_q+3];
-            data_buffer_d.strb[byte_idx_q+4] = (size_d>2) & data_i.strb[byte_idx_q+4];
-            data_buffer_d.strb[byte_idx_q+5] = (size_d>2) & data_i.strb[byte_idx_q+5];
-            data_buffer_d.strb[byte_idx_q+6] = (size_d>2) & data_i.strb[byte_idx_q+6];
-            data_buffer_d.strb[byte_idx_q+7] = (size_d>2) & data_i.strb[byte_idx_q+7];
-            data_buffer_d.last = 1'b1;
+            if(first_tx_q) begin
+               for (int i=0; i<byte_idx_q; i++)
+                 data_buffer_d.strb[i]='0;
+            end
          end else begin
-            data_buffer_d.data[byte_idx_q*8 +: AxiDataWidth] = data_i.data[byte_idx_q*8 +: AxiDataWidth];
+            data_buffer_d.data[byte_idx_q*8 +: 16] = data_i.data[byte_idx_q*8 +: 16];
+            data_buffer_d.strb[byte_idx_q +: 4] = data_i.strb[byte_idx_q +: 4];
             data_buffer_d.last = data_i.last;
-            data_buffer_d.strb[byte_idx_q +: NumBitStrb] = data_i.strb[byte_idx_q +: NumBitStrb];
-            if (byte_idx_q+(2**size_d)>NumBitStrb) begin
-               data_buffer_d.strb[0] = 1'b0;
-               data_buffer_d.strb[1] = (byte_idx_q+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[1];
-               data_buffer_d.strb[2] = (byte_idx_q+1+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[2];
-               data_buffer_d.strb[3] = (byte_idx_q+2+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[3];
-               data_buffer_d.strb[4] = (byte_idx_q+3+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[4];
-               data_buffer_d.strb[5] = (byte_idx_q+4+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[5];
-               data_buffer_d.strb[6] = (byte_idx_q+5+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[6];
-               data_buffer_d.strb[7] = (byte_idx_q+6+(1<<size_d))>NumBitStrb ? 1'b0 : data_buffer_q.strb[7];
-            end 
-         end 
+            if(first_tx_q) begin
+               for (int j=0; j<byte_idx_q; j++)
+                 data_buffer_d.strb[j]='0;
+            end
+         end
       end 
    end 
-   
- 
 
    always_comb begin : fsm
       state_d = state_q;
+      phy_valid_o = 1'b0;
+      axi_ready_o = 1'b0;
+      mask_strobe_d = mask_strobe_q;
       case (state_q)
         Idle: begin
-           if (upsize | split_ltx) begin
+           mask_strobe_d = '1;
+           if (trans_handshake & is_a_write) begin
+              state_d = WaitData;
+           end
+        end
+        WaitData: begin
+           if (axi_valid_i) begin
               state_d = Sample;
            end
         end
         Sample: begin
-           if (upsize & !split_ltx) begin
-              if (byte_idx_d[1:0]==2'b00 & valid_i & ready_o) begin
-                 state_d = WaitReady;
-              end else if (data_buffer_q.last) begin
-                 state_d = WaitReady;
-              end
-           end else if (!upsize & split_ltx & (valid_i & ready_o)) begin
-                state_d = data_buffer_d.last ? SplitLastTransfer : WaitReady;
-           end else if (!upsize & !split_ltx) begin
-              state_d = Idle;
-           end
-        end
-        WaitReady: begin
-           if (ready_i) begin
-              if (upsize | split_ltx) begin
-                 if (data_buffer_q.last)
-                   state_d = WaitNextTrans;
-                 else
-                   state_d = Sample;
+           axi_ready_o = 1'b1;
+           if(axi_valid_i && enough_data) begin
+              state_d = CntReady;
+           end else if (axi_valid_i && !enough_data) begin
+              if (byte_idx_d[NumPhys-1:0]!='0) begin
+                 if (data_i.last) begin
+                    state_d = CntReady;
+                    for (int k=0; k<NumPhys*2 ; k++)
+                      mask_strobe_d[k] = (k<byte_idx_d[NumPhys-1:0]) ? 1'b1 : 1'b0;
+                 end else begin
+                    state_d = WaitData;
+                 end
               end else begin
-                 state_d = Idle;
+                 state_d = CntReady;
               end
            end
         end
-        WaitNextTrans: begin
-           if (trans_handshake & is_a_write)
-             state_d = Sample;
-        end
-        SplitLastTransfer: begin
-           if (ready_i) begin
-              state_d = WaitReady;
+        CntReady: begin
+           axi_ready_o = 1'b0;
+           phy_valid_o = 1'b1;
+           if(phy_ready_i) begin
+              if(last_o) begin
+                 state_d = Idle;
+              end else if (size_d>=NumPhys) begin
+                 if (cnt_data_phy_d != byte_idx_q) begin
+                   state_d = CntReady;
+                 end else begin
+                   state_d = WaitData;
+                 end
+              end else if (size_d<NumPhys) begin
+                 if (cnt_data_phy_d[NumPhys-1:0]=='0) begin
+                    state_d = WaitData;
+                 end 
+              end
            end
         end
-      endcase 
-   end // block: fsm
-
-   always_comb begin : valid_ready
-      valid_o = 1'b0;
-      ready_o = 1'b0;
-      mask_last = 1'b0;
-      case (state_q)
-        Idle: begin
-           valid_o = 1'b0;
-           ready_o = 1'b0;
-        end
-        Sample: begin
-           valid_o = 1'b0;
-           ready_o = 1'b1;
-        end
-        WaitReady: begin
-           valid_o = 1'b1;
-           ready_o = 1'b0;
-        end
-        WaitNextTrans: begin
-           valid_o = 1'b0;
-           ready_o = 1'b0;
-        end
-        SplitLastTransfer: begin
-           valid_o = 1'b1;
-           ready_o = 1'b0;
-           mask_last = 1'b1;
-        end        
       endcase 
    end 
+
    
    always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff_phy
        if (~rst_ni) begin
@@ -198,15 +174,17 @@ module hyperbus_upsizer  #(
            state_q <= Idle;
            byte_idx_q <= '0;
            size_q <= '0;
-           last_addr_q <= '0;
-           start_addr_q <= '0;
+           cnt_data_phy_q <= '0;
+           first_tx_q <= '0;
+           mask_strobe_q <= '0;
        end else begin
            state_q <= state_d;
            data_buffer_q <= data_buffer_d;
            byte_idx_q <= byte_idx_d;
            size_q <= size_d;
-           last_addr_q <= last_addr_d;
-           start_addr_q <= start_addr_d;
+           cnt_data_phy_q <= cnt_data_phy_d;
+           first_tx_q <= first_tx_d;
+           mask_strobe_q <= mask_strobe_d;
        end
    end            
 
