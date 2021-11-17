@@ -96,46 +96,13 @@ module hyperbus_axi #(
     logic           trans_handshake;
     logic           ax_valid, ax_ready;
     axi_pkg::size_t ax_size_d, ax_size_q;
-    logic           byte_last_even_d, byte_last_even_q;
     chip_sel_idx_t  ax_chip_sel_idx;
-    logic           ax_size_byte;
-    logic           ax_size_word;
     hyperbus_pkg::hyper_blen_t ax_blen_postinc;
     logic           ax_blen_inc;
 
-    // R/W shared byte lane counter
-    byte_cnt_t      byte_cnt_d, byte_cnt_q;
-    byte_cnt_t      byte_offs_d, byte_offs_q;
-    byte_cnt_t      byte_in_beat;
-    logic           byte_cnt_odd;
-    logic           word_cnt_odd;
-    word_cnt_t      word_cnt;
-    logic           endbeat;
-   
     // R channel
-    axi_r_t         s_r_split, r_buf_d, r_buf_q;
-    logic           r_buf_ready;
-    logic           endword_r;
-    logic           splitted_r_valid;
-    logic           s_last;
-    logic           is_misaligned;
-   
-    // W channel spill
-    axi_w_chan_t    w_spill_d, w_spill_q;
-    logic           w_spill_valid, w_spill_ready;
-    logic           w_spill_valid_buffer, w_spill_ready_buffer;
-    logic           w_spill_valid_composed, w_spill_ready_composed;
-    logic           first_tx_d, first_tx_q;
-    logic           first_rx_d, first_rx_q;
-    logic           cnt_buffer_words_d, cnt_buffer_words_q;
-    logic           sel_spill;
-       
-    // W channel
-    axi_wbyte_t     w_buf_d, w_buf_q;
-    logic [31:0]    w_sel_data;
-    logic [3:0]     w_sel_strb;
-    logic           endword_w;
-
+    axi_r_t         s_r_split;
+          
     // Whether a transfer is currently active
     logic           trans_active_d, trans_active_q;
     logic           trans_active_set, trans_active_reset;
@@ -226,8 +193,8 @@ module hyperbus_axi #(
         .addr_i             ( rr_out_req_ax.addr    ),
         .addr_map_i         ( chip_rules_i          ),
         .idx_o              ( ax_chip_sel_idx       ),
-        .dec_valid_o        (  ),
-        .dec_error_o        (  ),
+        .dec_valid_o        (                       ),
+        .dec_error_o        (                       ),
         .en_default_idx_i   ( 1'b1                  ),
         .default_idx_i      ( '0                    )
     );
@@ -236,20 +203,6 @@ module hyperbus_axi #(
     always_comb begin : proc_comb_trans_cs
         trans_cs_o = '0;
         trans_cs_o[ax_chip_sel_idx] = 1'b1;
-    end
-
-    // Whether this is a byte-size transfer
-    assign ax_size_byte = (ax_size_q == '0);
-    assign ax_size_word = (ax_size_q == 1);
-   
-    // Remember properties of transfer that we will need (rest forwarded to PHY)
-    always_comb begin : proc_comb_ax_buffer
-        ax_size_d           = ax_size_q;
-        byte_last_even_d    = byte_last_even_q;
-        if (trans_handshake) begin
-            ax_size_d           = rr_out_req_ax.size;
-            byte_last_even_d    = ~rr_out_req_ax.len[0] ^ rr_out_req_ax.addr[0];
-        end
     end
 
     // AX channel: forward, converting unmasked byte to masked word addresses
@@ -286,68 +239,25 @@ module hyperbus_axi #(
     end
 
     assign ax_blen_postinc = rr_out_req_ax.len + hyperbus_pkg::hyper_blen_t'(ax_blen_inc) ; 
-
-    // ============================
-    //    R/W byte counting
-    // ============================
-
-    // Counts base byte offset for current 16-bit window in data lanes
-    always_comb begin : proc_comb_byte_cnt
-        byte_cnt_d  = byte_cnt_q;
-        byte_offs_d = byte_offs_q;
-        if (trans_handshake) begin
-            byte_cnt_d  = rr_out_req_ax.addr[ByteCntWidth-1:0];
-            byte_offs_d = rr_out_req_ax.addr[ByteCntWidth-1:0];
-        end else begin
-            // 16-bit aligned: advance whenever downstream advances. Misaligned accesses are simply masked.
-            if (tx_valid_o & tx_ready_i) begin
-               byte_cnt_d = ( (byte_cnt_q>>2) << 2 ) + ( (ax_size_q < 2) ? (ax_size_q + 1)  : 4 );
-            end else if (rx_valid_i & rx_ready_o) begin
-               // Write phy always loads 32 bits.
-               byte_cnt_d = ( (byte_cnt_q>>2) << 2 ) + 4;
-            end
-        end
-    end
-
-    // Byte offset in current beat, possibly unaligned address offset are managed by masking
-    assign byte_in_beat = byte_cnt_q - byte_offs_q;
-
-    always_comb begin : proc_comb_endbeat
-        // Size 0 (8b) and 1 (16b) transfers complete upstream beats in every handshaked cycle
-        endbeat = 1'b1;
-        for (int unsigned i=2; i < ax_size_q; ++i)
-              endbeat &= byte_in_beat[i];
-    end
-
-    // Current word AND whether current byte pointer is on odd byte address
-    assign {word_cnt, word_cnt_odd, byte_cnt_odd} = byte_cnt_q;
    
     // ============================
-    //    R channel: coalesce
+    //    R channel
     // ============================
 
-    // R channel pops beat (or two for bytes) from coalescing buffer as soon as it is valid
-//    assign ser_out_rsp.r.data   = r_buf_q.data;
-//    assign ser_out_rsp.r.last   = s_last ; //r_buf_q.last & endword_r & !s_mask_last;
-//    assign ser_out_rsp.r.resp   = r_buf_q.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
-//    assign ser_out_rsp.r.id     = '0;
-//    assign ser_out_rsp.r.user   = '0;
-//   // assign ser_out_rsp.r_valid  = splitted_r_valid;
-
     assign ser_out_rsp.r.data   = s_r_split.data;
-    assign ser_out_rsp.r.last   = s_r_split.last ; 
+    assign ser_out_rsp.r.last   = s_r_split.last; 
     assign ser_out_rsp.r.resp   = s_r_split.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign ser_out_rsp.r.id     = '0;
     assign ser_out_rsp.r.user   = '0;
    
-    hyperbus_splitter #(
+    hyperbus_phy2r #(
         .AxiDataWidth  ( AxiDataWidth                  ),
         .BurstLength   ( hyperbus_pkg::HyperBurstWidth ),
         .T             ( axi_r_t                       )
-    ) i_hyperbus_splitter (
+    ) i_hyperbus_phy2r (
         .clk_i,
         .rst_ni,
-        .size            ( ax_size_d               ),
+        .size            ( rr_out_req_ax.size      ),
         .trans_handshake ( trans_handshake         ),
         .start_addr      ( rr_out_req_ax.addr[3:0] ),
         .burst_len       ( ax_blen_postinc         ),
@@ -362,43 +272,19 @@ module hyperbus_axi #(
         .data_o          ( s_r_split               )
     );
 
-    // Complete RX word if not byte-size transfer OR at every odd byte OR at last byte (if it has even index)
-    assign endword_r = ~ax_size_word | byte_cnt_odd | (rx_i.last & byte_last_even_q);
-
-   assign r_buf_ready  = ser_out_req.r_ready;
- //endword_r & ser_out_req.r_ready ;
-  //  assign rx_ready_o   = ( ~r_buf_q.valid | r_buf_ready ) ;
-
-    // Read-coalescing beat buffer: is marked valid once a beat is pushed on completion
-    always_comb begin : proc_comb_r_buf
-        r_buf_d = r_buf_q;
-        // Pop: vacate old beat when it is valid and upstream is ready to consume data
-        if (r_buf_q.valid & r_buf_ready) begin
-            // TODO POWER @paulsc: unnecessary clear of data; valid suffices (but easier for debug)
-            r_buf_d.valid = '0;
-            r_buf_d.last = '0;
-        end
-        // Push: load new beat, onto cleared data if concurrent with pop
-        if (rx_valid_i & rx_ready_o) begin
-            r_buf_d.valid   = endbeat | rx_i.last;
-            r_buf_d.error   = r_buf_q.error | rx_i.error;
-            r_buf_d.last    = rx_i.last;
-            r_buf_d.data[32*word_cnt +:32] = rx_i.data;
-        end
-    end
 
     // =========================================================
     //    W channel: Buffer. Cuts path and upsamples when needed
     // =========================================================
 
-    hyperbus_upsizer #(
+    hyperbus_w2phy #(
         .AxiDataWidth ( AxiDataWidth                  ),
         .BurstLength  ( hyperbus_pkg::HyperBurstWidth ),
         .T            ( axi_w_chan_t                  )
-    ) i_wchan_spill (
+        ) i_hyperbus_w2phy (
         .clk_i,
         .rst_ni,
-        .size            ( ax_size_d           ),
+        .size            ( rr_out_req_ax.size  ),
         .len             ( ax_blen_postinc     ),
         .is_a_write      ( rr_out_req_write    ),
         .trans_handshake ( trans_handshake     ),
@@ -413,14 +299,6 @@ module hyperbus_axi #(
         .phy_ready_i     ( tx_ready_i          )
     );
 
-    // Buffer lower byte and its strobe for byte-size transfer when necessary
-    always_comb begin : proc_comb_w_buffer
-        w_buf_d = w_buf_q;
-        if (trans_handshake) begin
-            // TODO POWER @paulsc: unnecessary clear of data; strb suffices (but easier for debug)
-            w_buf_d = '0;       // Reset buffer new transfer begins (in case of odd upbeat)
-        end
-    end
 
     // ============================
     //    B channel: passthrough
@@ -454,41 +332,18 @@ module hyperbus_axi #(
         if (trans_wready_reset) trans_wready_d = 1'b0;
         if (trans_wready_set)   trans_wready_d = 1'b1;
     end
-   
-    // Set overrules reset as a transfer must start before it finishes
-    always_comb begin : proc_comb_is_first_rx
-        first_rx_d = first_rx_q;
-        if (trans_handshake) first_rx_d = 1'b1;
-        if (r_buf_q.valid & r_buf_ready)  first_rx_d = 1'b0;
-    end
-   
+     
     // =========================
     //    Registers
     // =========================
 
     always_ff @(posedge clk_i or negedge rst_ni) begin : proc_ff
         if(~rst_ni) begin
-            ax_size_q           <= '0;
-            byte_last_even_q    <= '0;
-            byte_cnt_q          <= '0;
-            byte_offs_q         <= '0;
-            r_buf_q             <= '0;
-            w_buf_q             <= '0;
             trans_active_q      <= '0;
             trans_wready_q      <= '0;
-            first_tx_q          <= '0;
-            first_rx_q          <= '0;
         end else begin
-            ax_size_q           <= ax_size_d;
-            byte_last_even_q    <= byte_last_even_d;
-            byte_cnt_q          <= byte_cnt_d;
-            byte_offs_q         <= byte_offs_d;
-            r_buf_q             <= r_buf_d;
-            w_buf_q             <= w_buf_d;
             trans_active_q      <= trans_active_d;
             trans_wready_q      <= trans_wready_d;
-            first_tx_q          <= first_tx_d;
-            first_rx_q          <= first_rx_d;
         end
     end
 

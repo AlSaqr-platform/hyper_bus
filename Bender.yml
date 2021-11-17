@@ -41,8 +41,8 @@ sources:
     - src/udma_hyper/udma_hyper_busy_phy.sv
     - src/udma_hyper/udma_hyper.sv
     - src/hyperbus_clock_diff_out.sv
-    - src/hyperbus_upsizer.sv
-    - src/hyperbus_splitter.rv
+    - src/hyperbus_w2phy.sv
+    - src/hyperbus_phy2r.rv
     - src/hyperbus_ddr_out.sv
     - src/hyperbus_delay.sv
     - src/hyperbus_trx.sv

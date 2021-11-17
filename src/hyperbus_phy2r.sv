@@ -3,9 +3,7 @@
 // this code is unstable and most likely buggy
 // it should not be used by anyone
 
-// TODO: Add control with LAST
-
-module hyperbus_splitter #(
+module hyperbus_phy2r #(
   parameter int unsigned AxiDataWidth = -1,
   parameter type T = logic,
   parameter int unsigned BurstLength = -1,
@@ -61,9 +59,7 @@ module hyperbus_splitter #(
    assign data_o.data = data_buffer_q.data;
    assign data_o.error = data_buffer_q.error;
    assign data_o.valid = '0;
-   assign data_o.last = data_buffer_q.last && (last_addr_q==byte_axi_addr_d);
-//&& sent_available_data;
-   
+   assign data_o.last = data_buffer_q.last && (last_addr_q==byte_axi_addr_d);   
 
    always_comb begin : counter
       byte_axi_addr_d = byte_axi_addr_q;
