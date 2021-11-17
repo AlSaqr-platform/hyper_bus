@@ -76,7 +76,7 @@ module hyperbus_splitter #(
          size_d = size;
          byte_phy_cnt_d[BurstLength-1:AddrWidth] = '0;
          byte_phy_cnt_d[AddrWidth-1:0] = (start_addr>>NumPhys)<<NumPhys;
-         last_addr_d = start_addr + (burst_len<<size);
+         last_addr_d = ((start_addr>>size)<<size) + (burst_len<<size);
       end
       if ( axi_valid_o & axi_ready_i ) begin
          byte_axi_addr_d = ((byte_axi_addr_q>>size_d)<< size_d) + (1<<size_d);

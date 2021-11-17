@@ -118,6 +118,7 @@ module hyperbus_axi #(
     logic           endword_r;
     logic           splitted_r_valid;
     logic           s_last;
+    logic           is_misaligned;
    
     // W channel spill
     axi_w_chan_t    w_spill_d, w_spill_q;
@@ -256,11 +257,23 @@ module hyperbus_axi #(
     assign trans_o.burst_type       = 1'b1;             // Wrapping bursts not (yet) supported
     assign trans_o.address_space    = addr_space_i;
     assign trans_o.address          = (rr_out_req_ax.addr & ~32'(32'hFFFF_FFFF << addr_mask_msb_i)) >> ( 1 + 1 );
-      
+
     // Convert burst length from decremented, unaligned beats to non-decremented, aligned 16-bit words
     always_comb begin
-        if (rr_out_req_ax.size >= NumPhys) begin
-            ax_blen_inc   = 1'b1;
+        if (rr_out_req_ax.size > NumPhys) begin
+           ax_blen_inc   = 1'b1;
+           if( ((rr_out_req_ax.addr>>rr_out_req_ax.size)<<rr_out_req_ax.size) != rr_out_req_ax.addr) begin
+              if (rr_out_req_ax.size==2) begin
+                 trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1)) - 1;
+              end else if (rr_out_req_ax.size==3) begin
+                 trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1)) - (rr_out_req_ax.addr[2]<<1);
+              end else if (rr_out_req_ax.size==4) begin
+                 trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1)) - (rr_out_req_ax.addr[3:2]<<1);
+              end
+           end else begin
+              trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1));
+           end
+        end else if (rr_out_req_ax.size == NumPhys) begin
             trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1));
         end else begin
            ax_blen_inc = 1'b1; 
@@ -268,7 +281,6 @@ module hyperbus_axi #(
               trans_o.burst= 'h2;
            end else begin
               trans_o.burst = ( ( ( rr_out_req_ax.addr[1:0] + (ax_blen_postinc<<rr_out_req_ax.size) - 1 ) >> 2 ) + 1 ) << 1;
-//              trans_o.burst = (( rr_out_req_ax.addr[1:0] + (ax_blen_postinc<<rr_out_req_ax.size) +3) >> (2+rr_out_req_ax.size) ) << (1+rr_out_req_ax.size);
            end
         end
     end
@@ -488,10 +500,6 @@ module hyperbus_axi #(
     `ifndef VERILATOR
     initial assert (AxiDataWidth >= 16 && AxiDataWidth <= 1024)
             else $error("AxiDatawidth must be a power of two within [16, 1024].");
-
-    read_endbeat_align : assert property(
-      @(posedge clk_i) rx_valid_i & rx_ready_o & rx_i.last |-> endbeat)
-        else $warning (1, "Last word of read should be aligned with transfer size.");
 
     access_16b_align : assert property(
       @(posedge clk_i) trans_handshake & (rr_out_req_ax.size != '0) |-> (rr_out_req_ax.addr[0] == 1'b0))
