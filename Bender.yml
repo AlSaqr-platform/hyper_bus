@@ -42,12 +42,13 @@ sources:
     - src/udma_hyper/udma_hyper.sv
     - src/hyperbus_clock_diff_out.sv
     - src/hyperbus_w2phy.sv
-    - src/hyperbus_phy2r.rv
+    - src/hyperbus_phy2r.sv
     - src/hyperbus_ddr_out.sv
     - src/hyperbus_delay.sv
     - src/hyperbus_trx.sv
     - src/hyperbus_cfg_regs.sv
     - src/hyperbus_phy.sv
+    - src/hyperbus_phy_if.sv
     - src/hyperbus_axi.sv
     - src/hyperbus_arbiter.sv
     - src/hyperbus.sv

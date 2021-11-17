@@ -218,7 +218,7 @@ module hyperbus #(
         .trans_active_o     ( trans_active          )
     );
 
-    hyperbus_phy #(
+    hyperbus_phy_if #(
         .IsClockODelayed( IsClockODelayed   ),
         .NumChips       ( NumChips          ),
         .StartupCycles  ( PhyStartupCycles  )

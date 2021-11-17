@@ -22,6 +22,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     parameter int unsigned NumChips         = 2,
     parameter int unsigned TimerWidth       = 16,
     parameter int unsigned RxFifoLogDepth   = 3,
+    parameter int unsigned NumPhys          = 2,
     parameter int unsigned StartupCycles    = 300 /*us*/ * 200 /*MHz*/ // Conservative maximum frequency estimate
 )(
     input  logic                clk_i,
@@ -38,40 +39,30 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     // Transmitting channel
     input  logic                tx_valid_i,
     output logic                tx_ready_o,
-    input  hyper_tx_t           tx_i,
+    input  logic [15:0]         tx_data_i,
+    input  logic [1:0]          tx_strb_i,
+    input  logic                tx_last_i,
     // Receiving channel
     output logic                rx_valid_o,
     input  logic                rx_ready_i,
-    output hyper_rx_t           rx_o,
+    output logic [15:0]         rx_data_o,
+    output logic                rx_error_o,
+    output logic                rx_last_o,
     // B response
     output logic                b_valid_o,
     input  logic                b_ready_i,
     output logic                b_error_o,
     // Physical interface
-
-    // Physical interace: facing HyperBus
-    output logic [NumChips-1:0]    hyper0_cs_no,
-    output logic                   hyper0_ck_o,
-    output logic                   hyper0_ck_no,
-    output logic                   hyper0_rwds_o,
-    input  logic                   hyper0_rwds_i,
-    output logic                   hyper0_rwds_oe_o,
-    input  logic [7:0]             hyper0_dq_i,
-    output logic [7:0]             hyper0_dq_o,
-    output logic                   hyper0_dq_oe_o,
-    output logic                   hyper0_reset_no,
-
-    output logic [NumChips-1:0]    hyper1_cs_no,
-    output logic                   hyper1_ck_o,
-    output logic                   hyper1_ck_no,
-    output logic                   hyper1_rwds_o,
-    input  logic                   hyper1_rwds_i,
-    output logic                   hyper1_rwds_oe_o,
-    input  logic [7:0]             hyper1_dq_i,
-    output logic [7:0]             hyper1_dq_o,
-    output logic                   hyper1_dq_oe_o,
-    output logic                   hyper1_reset_no
-
+    output logic [NumChips-1:0] hyper_cs_no,
+    output logic                hyper_ck_o,
+    output logic                hyper_ck_no,
+    output logic                hyper_rwds_o,
+    input  logic                hyper_rwds_i,
+    output logic                hyper_rwds_oe_o,
+    input  logic [7:0]          hyper_dq_i,
+    output logic [7:0]          hyper_dq_o,
+    output logic                hyper_dq_oe_o,
+    output logic                hyper_reset_no
 );
 
     // PHY state
@@ -111,13 +102,13 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     logic           trx_cs_ena;
     logic           trx_rwds_sample;
     logic           trx_rwds_sample_ena;
-    logic [31:0]    trx_tx_data;
+    logic [15:0]    trx_tx_data;
     logic           trx_tx_data_oe;
-    logic [3:0]     trx_tx_rwds;
+    logic [1:0]     trx_tx_rwds;
     logic           trx_tx_rwds_oe;
     logic           trx_rx_clk_set;
     logic           trx_rx_clk_reset;
-    logic [31:0]    trx_rx_data;
+    logic [15:0]    trx_rx_data;
     logic           trx_rx_valid;
     logic           trx_rx_ready;
 
@@ -150,26 +141,16 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         .rx_data_o          ( trx_rx_data           ),
         .rx_valid_o         ( trx_rx_valid          ),
         .rx_ready_i         ( trx_rx_ready          ),
-        .hyper0_cs_no,
-        .hyper0_ck_o,
-        .hyper0_ck_no,
-        .hyper0_rwds_o,
-        .hyper0_rwds_i,
-        .hyper0_rwds_oe_o,
-        .hyper0_dq_i,
-        .hyper0_dq_o,
-        .hyper0_dq_oe_o,
-        .hyper0_reset_no,
-        .hyper1_cs_no,
-        .hyper1_ck_o,
-        .hyper1_ck_no,
-        .hyper1_rwds_o,
-        .hyper1_rwds_i,
-        .hyper1_rwds_oe_o,
-        .hyper1_dq_i,
-        .hyper1_dq_o,
-        .hyper1_dq_oe_o,
-        .hyper1_reset_no
+        .hyper_cs_no,
+        .hyper_ck_o,
+        .hyper_ck_no,
+        .hyper_rwds_o,
+        .hyper_rwds_i,
+        .hyper_rwds_oe_o,
+        .hyper_dq_i,
+        .hyper_dq_o,
+        .hyper_dq_oe_o,
+        .hyper_reset_no
     );
 
     // ==============
@@ -196,13 +177,12 @@ module hyperbus_phy import hyperbus_pkg::*; #(
         ctl_wclk_ena    = 1'b0;
         if (state_q == SendCA) begin
             // In CA phase: use timer to select word
-            trx_tx_data[15:0]  = ca[(8'(timer_q) << 4) +: 16];
-            trx_tx_data[31:16] = ca[(8'(timer_q) << 4) +: 16];
-            trx_tx_data_oe    = 1'b1;
-        end else if (state_q == Write) begin
-            trx_tx_data     = tx_i.data;
+            trx_tx_data     = ca[(8'(timer_q) << 4) +: 16];
             trx_tx_data_oe  = 1'b1;
-            trx_tx_rwds     = ~tx_i.strb;
+        end else if (state_q == Write) begin
+            trx_tx_data     = tx_data_i;
+            trx_tx_data_oe  = 1'b1;
+            trx_tx_rwds     = ~tx_strb_i;
             trx_tx_rwds_oe  = 1'b1;
             tx_ready_o      = 1'b1;     // Memory always ready within HyperBus burst
             ctl_wclk_ena   = tx_valid_i;
@@ -222,12 +202,10 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     end
 
     // Read response dataflow
-    assign rx_o = hyper_rx_t'{
-        data:   trx_rx_data,
-        // Nonzero roundtrip --> last outstanding word always handled outside Read state
-        last:   (state_q != Read) & ctl_tf_burst_done & (r_outstand_q == 1),
-        error:  1'b0    // TODO
-    };
+    assign rx_data_o = trx_rx_data;
+    assign rx_error_o = 1'b0;
+    assign rx_last_o = (state_q != Read) & ctl_tf_burst_done & (r_outstand_q == 1);
+   
     assign trx_rx_ready     = rx_ready_i;
     assign rx_valid_o       = trx_rx_valid & (r_outstand_q != '0);
     // Suspend clock one cycle for every stall caused by upstream.
@@ -252,8 +230,8 @@ module hyperbus_phy import hyperbus_pkg::*; #(
     assign ctl_write_zero_lat   = tf_q.address_space & tf_q.write;
     // cfg_i.latency_addentional overwrites the trx_rwds_sample. Be careful.
     assign ctl_add_latency      = trx_rwds_sample | cfg_i.en_latency_additional;
-// not exiting from write
-    assign ctl_tf_burst_last    = (tf_q.burst == 2) || (tf_q.burst == 1);  
+
+    assign ctl_tf_burst_last    = (tf_q.burst == 1) || (tf_q.burst == NumPhys);
     assign ctl_tf_burst_done    = (tf_q.burst == 0);
 
     assign ctl_timer_rwr_done   = (timer_q <= 3);
@@ -326,7 +304,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 if (ctl_rclk_ena) begin
                     trx_clk_ena     = 1'b1;
                     r_outstand_inc  = 1'b1;
-                    tf_d.burst      = tf_q.burst - 2;
+                    tf_d.burst      = tf_q.burst - NumPhys;
                     tf_d.address    = tf_q.address + 1;
                     if (ctl_tf_burst_last) begin
                         state_d = WaitXfer;
@@ -341,7 +319,7 @@ module hyperbus_phy import hyperbus_pkg::*; #(
                 // Dataflow handled outside FSM
                 if (ctl_wclk_ena) begin
                     trx_clk_ena = 1'b1;
-                    tf_d.burst  = tf_q.burst - 2;
+                    tf_d.burst  = tf_q.burst - NumPhys;
                     tf_d.address    = tf_q.address + 1;
                     if (ctl_tf_burst_last) begin
                         b_pending_set   = 1'b1;
