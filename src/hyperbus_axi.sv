@@ -113,7 +113,7 @@ module hyperbus_axi #(
     logic           endbeat;
    
     // R channel
-    axi_r_t         r_buf_d, r_buf_q;
+    axi_r_t         s_r_split, r_buf_d, r_buf_q;
     logic           r_buf_ready;
     logic           endword_r;
     logic           splitted_r_valid;
@@ -315,27 +315,39 @@ module hyperbus_axi #(
     // ============================
 
     // R channel pops beat (or two for bytes) from coalescing buffer as soon as it is valid
-    assign ser_out_rsp.r.data   = r_buf_q.data;
-    assign ser_out_rsp.r.last   = s_last ; //r_buf_q.last & endword_r & !s_mask_last;
-    assign ser_out_rsp.r.resp   = r_buf_q.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
+//    assign ser_out_rsp.r.data   = r_buf_q.data;
+//    assign ser_out_rsp.r.last   = s_last ; //r_buf_q.last & endword_r & !s_mask_last;
+//    assign ser_out_rsp.r.resp   = r_buf_q.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
+//    assign ser_out_rsp.r.id     = '0;
+//    assign ser_out_rsp.r.user   = '0;
+//   // assign ser_out_rsp.r_valid  = splitted_r_valid;
+
+    assign ser_out_rsp.r.data   = s_r_split.data;
+    assign ser_out_rsp.r.last   = s_r_split.last ; 
+    assign ser_out_rsp.r.resp   = s_r_split.error ? axi_pkg::RESP_SLVERR : axi_pkg::RESP_OKAY;
     assign ser_out_rsp.r.id     = '0;
     assign ser_out_rsp.r.user   = '0;
-    assign ser_out_rsp.r_valid  = splitted_r_valid;
-
-    hyperbus_splitter i_hyperbus_splitter (
+   
+    hyperbus_splitter #(
+        .AxiDataWidth  ( AxiDataWidth                  ),
+        .BurstLength   ( hyperbus_pkg::HyperBurstWidth ),
+        .T             ( axi_r_t                       )
+    ) i_hyperbus_splitter (
         .clk_i,
         .rst_ni,
         .size            ( ax_size_d               ),
         .trans_handshake ( trans_handshake         ),
-        .start_addr      ( rr_out_req_ax.addr[1:0] ),
-        .first_rx        ( first_rx_q              ),
+        .start_addr      ( rr_out_req_ax.addr[3:0] ),
+        .burst_len       ( ax_blen_postinc         ),
         .is_a_read       ( !rr_out_req_write       ),
-        .len             ( ax_blen_postinc[1:0]    ),
-        .last_i          ( r_buf_q.last            ),
-        .valid_i         ( r_buf_q.valid           ),
-        .valid_o         ( splitted_r_valid        ),
-        .last_o          ( s_last                  ),
-        .ready_i         ( ser_out_req.r_ready     )
+        .phy_valid_i     ( rx_valid_i              ),
+        .phy_ready_o     ( rx_ready_o              ),
+        .data_i          ( rx_i.data               ),
+        .last_i          ( rx_i.last               ),
+        .error_i         ( rx_i.error              ),
+        .axi_valid_o     ( ser_out_rsp.r_valid     ),
+        .axi_ready_i     ( ser_out_req.r_ready     ),
+        .data_o          ( s_r_split               )
     );
 
     // Complete RX word if not byte-size transfer OR at every odd byte OR at last byte (if it has even index)
@@ -343,7 +355,7 @@ module hyperbus_axi #(
 
    assign r_buf_ready  = ser_out_req.r_ready;
  //endword_r & ser_out_req.r_ready ;
-    assign rx_ready_o   = ( ~r_buf_q.valid | r_buf_ready ) ;
+  //  assign rx_ready_o   = ( ~r_buf_q.valid | r_buf_ready ) ;
 
     // Read-coalescing beat buffer: is marked valid once a beat is pushed on completion
     always_comb begin : proc_comb_r_buf
