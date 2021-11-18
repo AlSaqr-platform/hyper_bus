@@ -7,7 +7,7 @@
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 // Contributor: Luca Valente <luca.valente@unibo.it>
 
-module hyperbus #(
+module hyperbus import hyperbus_pkg::NumPhys; #(
     parameter int unsigned  NumChips        = -1,
     parameter int unsigned  IsClockODelayed = -1,
     parameter int unsigned  L2_AWIDTH_NOAL  = 12,
@@ -84,16 +84,16 @@ module hyperbus #(
     // PHY interface
 
     // Physical interace: facing HyperBus
-    output logic [1:0][NumChips-1:0] hyper_cs_no,
-    output logic [1:0]               hyper_ck_o,
-    output logic [1:0]               hyper_ck_no,
-    output logic [1:0]               hyper_rwds_o,
-    input  logic [1:0]               hyper_rwds_i,
-    output logic [1:0]               hyper_rwds_oe_o,
-    input  logic [1:0][7:0]          hyper_dq_i,
-    output logic [1:0][7:0]          hyper_dq_o,
-    output logic [1:0]               hyper_dq_oe_o,
-    output logic [1:0]               hyper_reset_no
+    output logic [NumPhys-1:0][NumChips-1:0] hyper_cs_no,
+    output logic [NumPhys-1:0]               hyper_ck_o,
+    output logic [NumPhys-1:0]               hyper_ck_no,
+    output logic [NumPhys-1:0]               hyper_rwds_o,
+    input  logic [NumPhys-1:0]               hyper_rwds_i,
+    output logic [NumPhys-1:0]               hyper_rwds_oe_o,
+    input  logic [NumPhys-1:0][7:0]          hyper_dq_i,
+    output logic [NumPhys-1:0][7:0]          hyper_dq_o,
+    output logic [NumPhys-1:0]               hyper_dq_oe_o,
+    output logic [NumPhys-1:0]               hyper_reset_no
 
 );
 

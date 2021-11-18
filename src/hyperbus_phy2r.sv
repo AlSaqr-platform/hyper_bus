@@ -3,12 +3,11 @@
 // this code is unstable and most likely buggy
 // it should not be used by anyone
 
-module hyperbus_phy2r #(
+module hyperbus_phy2r import hyperbus_pkg::NumPhys; #(
   parameter int unsigned AxiDataWidth = -1,
   parameter type T = logic,
   parameter int unsigned BurstLength = -1,
-  parameter int unsigned AddrWidth = $clog2(AxiDataWidth/8),
-  parameter NumPhys = 2
+  parameter int unsigned AddrWidth = $clog2(AxiDataWidth/8)
 ) (
   input logic                   clk_i,
   input logic                   rst_ni,
@@ -52,7 +51,7 @@ module hyperbus_phy2r #(
    logic                        sent_available_data;
    logic [BurstLength-1:0]      next_axi_addr;
    
-   assign word_cnt = byte_phy_cnt_q[3:2];
+   assign word_cnt = byte_phy_cnt_q[AddrWidth-1:NumPhys];
    assign next_axi_addr = ((byte_axi_addr_q>>size_d)<< size_d) + (1<<size_d);
    assign enough_data = byte_phy_cnt_d >= next_axi_addr;
    assign sent_available_data = byte_axi_addr_d >= byte_phy_cnt_q;
@@ -88,7 +87,7 @@ module hyperbus_phy2r #(
          data_buffer_d.last = 1'b0;
          data_buffer_d.data = '0; // for debug
       end else if (phy_ready_o && phy_valid_i) begin
-         data_buffer_d.data[word_cnt*32 +: 32] = data_i;
+         data_buffer_d.data[word_cnt*(16*NumPhys) +: (16*NumPhys)] = data_i;
          data_buffer_d.error = error_i;
          data_buffer_d.last = last_i;
       end

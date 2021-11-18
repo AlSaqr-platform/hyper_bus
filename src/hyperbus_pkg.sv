@@ -1,6 +1,7 @@
 package hyperbus_pkg;
 
     // Maximal burst size: 2^8 1024-bit words as 16-bit words (plus one as not decremented)
+    localparam NumPhys = 1;
     localparam unsigned HyperBurstWidth = 8 + $clog2(1024/16) + 1;
     typedef logic [HyperBurstWidth-1:0] hyper_blen_t;
 
@@ -17,15 +18,15 @@ package hyperbus_pkg;
     } hyper_cfg_t;
 
     typedef struct packed {
-        logic [31:0]    data;
-        logic           last;
-        logic [3:0]     strb;   // mask data
+        logic [(16*NumPhys)-1:0]    data;
+        logic                       last;
+        logic [(2*NumPhys)-1:0]     strb;   // mask data
     } hyper_tx_t;
 
     typedef struct packed {
-        logic [31:0]    data;
-        logic           last;
-        logic           error;
+        logic [(16*NumPhys)-1:0]    data;
+        logic                       last;
+        logic                       error;
     } hyper_rx_t;
 
     typedef struct packed {

@@ -7,8 +7,9 @@
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 
 // TODO: Cut path somewhere?
+// Improve NumPhys propagation
 
-module hyperbus_axi #(
+module hyperbus_axi import hyperbus_pkg::NumPhys; #(
     parameter int unsigned AxiDataWidth  = -1,
     parameter int unsigned AxiAddrWidth  = -1,
     parameter int unsigned AxiIdWidth    = -1,
@@ -47,10 +48,10 @@ module hyperbus_axi #(
     output logic                    trans_active_o
 );
 
-    localparam NumPhys = 2;
-    localparam AxiDataBytes = AxiDataWidth/8;
-    localparam ChipSelWidth = cf_math_pkg::idx_width(NumChips);
-    localparam ByteCntWidth = cf_math_pkg::idx_width(AxiDataBytes);
+    localparam AxiDataBytes    = AxiDataWidth/8;
+    localparam AxiBusAddrWidth = $clog2(AxiDataBytes);
+    localparam ChipSelWidth    = cf_math_pkg::idx_width(NumChips);
+    localparam ByteCntWidth    = cf_math_pkg::idx_width(AxiDataBytes);
 
     typedef logic [AxiAddrWidth-1:0] axi_addr_t;
     typedef logic [ByteCntWidth-1:0] byte_cnt_t;
@@ -209,7 +210,7 @@ module hyperbus_axi #(
     assign trans_o.write            = rr_out_req_write;
     assign trans_o.burst_type       = 1'b1;             // Wrapping bursts not (yet) supported
     assign trans_o.address_space    = addr_space_i;
-    assign trans_o.address          = (rr_out_req_ax.addr & ~32'(32'hFFFF_FFFF << addr_mask_msb_i)) >> ( 1 + 1 );
+    assign trans_o.address          = (rr_out_req_ax.addr & ~32'(32'hFFFF_FFFF << addr_mask_msb_i)) >> ( NumPhys );
 
     // Convert burst length from decremented, unaligned beats to non-decremented, aligned 16-bit words
     always_comb begin
@@ -219,9 +220,9 @@ module hyperbus_axi #(
               if (rr_out_req_ax.size==2) begin
                  trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1)) - 1;
               end else if (rr_out_req_ax.size==3) begin
-                 trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1)) - (rr_out_req_ax.addr[2]<<1);
+                 trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1)) - (rr_out_req_ax.addr[2]<<1) - (rr_out_req_ax.addr[1] && (NumPhys==1));
               end else if (rr_out_req_ax.size==4) begin
-                 trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1)) - (rr_out_req_ax.addr[3:2]<<1);
+                   trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1)) - (rr_out_req_ax.addr[3:2]<<1) - (rr_out_req_ax.addr[1] && (NumPhys==1));
               end
            end else begin
               trans_o.burst = (ax_blen_postinc << (rr_out_req_ax.size-1));
@@ -231,9 +232,9 @@ module hyperbus_axi #(
         end else begin
            ax_blen_inc = 1'b1; 
            if (ax_blen_postinc==1) begin
-              trans_o.burst= 'h2;
+              trans_o.burst= NumPhys;
            end else begin
-              trans_o.burst = ( ( ( rr_out_req_ax.addr[1:0] + (ax_blen_postinc<<rr_out_req_ax.size) - 1 ) >> 2 ) + 1 ) << 1;
+              trans_o.burst = ( ( ( rr_out_req_ax.addr[NumPhys-1:0] + (ax_blen_postinc<<rr_out_req_ax.size) - 1 ) >> NumPhys ) + 1 ) << (NumPhys-1);
            end
         end
     end
@@ -284,19 +285,19 @@ module hyperbus_axi #(
         ) i_hyperbus_w2phy (
         .clk_i,
         .rst_ni,
-        .size            ( rr_out_req_ax.size  ),
-        .len             ( ax_blen_postinc     ),
-        .is_a_write      ( rr_out_req_write    ),
-        .trans_handshake ( trans_handshake     ),
-        .start_addr      ( rr_out_req_ax.addr  ),
-        .data_i          ( ser_out_req.w       ),
-        .axi_valid_i     ( ser_out_req.w_valid ),
-        .axi_ready_o     ( ser_out_rsp.w_ready ),
-        .data_o          ( tx_o.data           ),
-        .last_o          ( tx_o.last           ),
-        .strb_o          ( tx_o.strb           ),
-        .phy_valid_o     ( tx_valid_o          ),
-        .phy_ready_i     ( tx_ready_i          )
+        .size            ( rr_out_req_ax.size                      ),
+        .len             ( ax_blen_postinc                         ),
+        .is_a_write      ( rr_out_req_write                        ),
+        .trans_handshake ( trans_handshake                         ),
+        .start_addr      ( rr_out_req_ax.addr[AxiBusAddrWidth-1:0] ),
+        .data_i          ( ser_out_req.w                           ),
+        .axi_valid_i     ( ser_out_req.w_valid                     ),
+        .axi_ready_o     ( ser_out_rsp.w_ready                     ),
+        .data_o          ( tx_o.data                               ),
+        .last_o          ( tx_o.last                               ),
+        .strb_o          ( tx_o.strb                               ),
+        .phy_valid_o     ( tx_valid_o                              ),
+        .phy_ready_i     ( tx_ready_i                              )
     );
 
 

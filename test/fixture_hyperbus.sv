@@ -10,10 +10,11 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-module fixture_hyperbus #(
+module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     parameter int unsigned NumChips = 2
 );
 
+   
     int unsigned            k, j;
     localparam time SYS_TCK  = 2.78ns;
     localparam time SYS_TA   = 1ns;
@@ -135,53 +136,59 @@ module fixture_hyperbus #(
     assign i_rbus.error = reg_rsp.error;
 
     // -------------------------- DUT --------------------------
-    wire  [1:0][1:0] hyper_cs_n_wire;
-    wire  [1:0]      hyper_ck_wire;
-    wire  [1:0]      hyper_ck_n_wire;
-    wire  [1:0]      hyper_rwds_o;
-    wire  [1:0]      hyper_rwds_i;
-    wire  [1:0]      hyper_rwds_oe;
-    wire  [1:0]      hyper_rwds_wire;
-    wire  [1:0][7:0] hyper_dq_i;
-    wire  [1:0][7:0] hyper_dq_o;
-    wire  [1:0]      hyper_dq_oe;
-    wire  [1:0][7:0] hyper_dq_wire;
-    wire [1:0]        hyper_reset_n_wire;
+    wire  [NumPhys-1:0][1:0] hyper_cs_n_wire;
+    wire  [NumPhys-1:0]      hyper_ck_wire;
+    wire  [NumPhys-1:0]      hyper_ck_n_wire;
+    wire  [NumPhys-1:0]      hyper_rwds_o;
+    wire  [NumPhys-1:0]      hyper_rwds_i;
+    wire  [NumPhys-1:0]      hyper_rwds_oe;
+    wire  [NumPhys-1:0]      hyper_rwds_wire;
+    wire  [NumPhys-1:0][7:0] hyper_dq_i;
+    wire  [NumPhys-1:0][7:0] hyper_dq_o;
+    wire  [NumPhys-1:0]      hyper_dq_oe;
+    wire  [NumPhys-1:0][7:0] hyper_dq_wire;
+    wire  [NumPhys-1:0]      hyper_reset_n_wire;
              
 
-    tristate_shim i_tristate_shim_rwds0 (
-        .out_ena_i  ( hyper_rwds_oe[0]   ),
-        .out_i      ( hyper_rwds_o[0]    ),
-        .in_o       ( hyper_rwds_i[0]    ),
-        .line_io    ( hyper_rwds_wire[0] )
-    );
+    generate
+       for (genvar i=0; i<NumPhys; i++) begin : hyperrams
+          tristate_shim i_tristate_shim_rwdsi (
+              .out_ena_i  ( hyper_rwds_oe[i]   ),
+              .out_i      ( hyper_rwds_o[i]    ),
+              .in_o       ( hyper_rwds_i[i]    ),
+              .line_io    ( hyper_rwds_wire[i] )
+          );
+          
+          for (genvar m = 0; m < 8; m++) begin
+              tristate_shim i_tristate_shim_dqi (
+                  .out_ena_i  ( hyper_dq_oe[i]       ),
+                  .out_i      ( hyper_dq_o[i]    [m] ),
+                  .in_o       ( hyper_dq_i[i]    [m] ),
+                  .line_io    ( hyper_dq_wire[i] [m] )
+              );
+          end
 
-    for (genvar i = 0; i < 8; i++) begin
-        tristate_shim i_tristate_shim_dq0 (
-            .out_ena_i  ( hyper_dq_oe[0]       ),
-            .out_i      ( hyper_dq_o[0]    [i] ),
-            .in_o       ( hyper_dq_i[0]    [i] ),
-            .line_io    ( hyper_dq_wire[0] [i] )
-        );
-    end
-
-
-    tristate_shim i_tristate_shim_rwds1 (
-        .out_ena_i  ( hyper_rwds_oe[1]   ),
-        .out_i      ( hyper_rwds_o[1]    ),
-        .in_o       ( hyper_rwds_i[1]    ),
-        .line_io    ( hyper_rwds_wire[1] )
-    );
-
-    for (genvar i = 0; i < 8; i++) begin
-        tristate_shim i_tristate_shim_dq1 (
-            .out_ena_i  ( hyper_dq_oe[1]       ),
-            .out_i      ( hyper_dq_o[1]    [i] ),
-            .in_o       ( hyper_dq_i[1]    [i] ),
-            .line_io    ( hyper_dq_wire[1] [i] )
-        );
-    end
-
+          s27ks0641 #(
+            /*.mem_file_name ( "s27ks0641.mem"    ),*/
+            .TimingModel   ( "S27KS0641DPBHI020"    )
+          ) i_s27ks0641 (
+            .DQ7           ( hyper_dq_wire[i][7]      ),
+            .DQ6           ( hyper_dq_wire[i][6]      ),
+            .DQ5           ( hyper_dq_wire[i][5]      ),
+            .DQ4           ( hyper_dq_wire[i][4]      ),
+            .DQ3           ( hyper_dq_wire[i][3]      ),
+            .DQ2           ( hyper_dq_wire[i][2]      ),
+            .DQ1           ( hyper_dq_wire[i][1]      ),
+            .DQ0           ( hyper_dq_wire[i][0]      ),
+            .RWDS          ( hyper_rwds_wire[i]       ),
+            .CSNeg         ( hyper_cs_n_wire[i][0]    ),
+            .CK            ( hyper_ck_wire[i]         ),
+            .CKNeg         ( hyper_ck_n_wire[i]       ),
+            .RESETNeg      ( hyper_reset_n_wire[i]    )
+          );
+       end // block: hyperrams
+    endgenerate
+ 
    
     // DUT
     hyperbus #(
@@ -221,50 +228,16 @@ module fixture_hyperbus #(
         .hyper_reset_no         ( hyper_reset_n_wire    )
     );
 
-    // modell
-      s27ks0641 #(
-        /*.mem_file_name ( "s27ks0641.mem"    ),*/
-        .TimingModel   ( "S27KS0641DPBHI020"    )
-    ) i0_s27ks0641 (
-      .DQ7           ( hyper_dq_wire[0][7]      ),
-      .DQ6           ( hyper_dq_wire[0][6]      ),
-      .DQ5           ( hyper_dq_wire[0][5]      ),
-      .DQ4           ( hyper_dq_wire[0][4]      ),
-      .DQ3           ( hyper_dq_wire[0][3]      ),
-      .DQ2           ( hyper_dq_wire[0][2]      ),
-      .DQ1           ( hyper_dq_wire[0][1]      ),
-      .DQ0           ( hyper_dq_wire[0][0]      ),
-      .RWDS          ( hyper_rwds_wire[0]       ),
-      .CSNeg         ( hyper_cs_n_wire[0][0]    ),
-      .CK            ( hyper_ck_wire[0]         ),
-      .CKNeg         ( hyper_ck_n_wire[0]       ),
-      .RESETNeg      ( hyper_reset_n_wire[0]    )
-    );
-   // modell
-      s27ks0641 #(
-        /*.mem_file_name ( "s27ks0641.mem"    ),*/
-        .TimingModel   ( "S27KS0641DPBHI020"    )
-    ) i1_s27ks0641 (
-      .DQ7           ( hyper_dq_wire[1][7]      ),
-      .DQ6           ( hyper_dq_wire[1][6]      ),
-      .DQ5           ( hyper_dq_wire[1][5]      ),
-      .DQ4           ( hyper_dq_wire[1][4]      ),
-      .DQ3           ( hyper_dq_wire[1][3]      ),
-      .DQ2           ( hyper_dq_wire[1][2]      ),
-      .DQ1           ( hyper_dq_wire[1][1]      ),
-      .DQ0           ( hyper_dq_wire[1][0]      ),
-      .RWDS          ( hyper_rwds_wire[1]       ),
-      .CSNeg         ( hyper_cs_n_wire[1][0]    ),
-      .CK            ( hyper_ck_wire[1]         ),
-      .CKNeg         ( hyper_ck_n_wire[1]       ),
-      .RESETNeg      ( hyper_reset_n_wire[1]    )
-    );
-
-    initial begin
-        automatic string sdf_file_path = "/scratch/lvalente/hyperwork/cva6/hardware/working_dir/hyperbus/models/s27ks0641/s27ks0641.sdf";
-        $sdf_annotate(sdf_file_path, i0_s27ks0641);
-        $sdf_annotate(sdf_file_path, i1_s27ks0641);
-    end
+    generate
+       for (genvar p=0; p<NumPhys; p++) begin : sdf_annotation
+         initial begin
+             automatic string sdf_file_path = "/scratch/lvalente/hyperwork/cva6/hardware/working_dir/hyperbus/models/s27ks0641/s27ks0641.sdf";
+             $sdf_annotate(sdf_file_path, hyperrams[p].i_s27ks0641);
+             $display("NumPhys:%d",NumPhys);
+         end
+       end
+    endgenerate
+   
 
     // -------------------------- TB TASKS --------------------------
 

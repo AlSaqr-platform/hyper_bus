@@ -3,12 +3,11 @@
 // this code is unstable and most likely buggy
 // it should not be used by anyone
 
-module hyperbus_w2phy  #(
+module hyperbus_w2phy  import hyperbus_pkg::NumPhys; #(
   parameter int unsigned AxiDataWidth = -1, 
   parameter int unsigned BurstLength = -1,
   parameter type T = logic,
-  parameter int unsigned AddrWidth = $clog2(AxiDataWidth/8),
-  parameter NumPhys = 2
+  parameter int unsigned AddrWidth = $clog2(AxiDataWidth/8)
 ) (
   input logic                   clk_i,
   input logic                   rst_ni,
@@ -53,15 +52,15 @@ module hyperbus_w2phy  #(
 
    assign is_8_bw = (size_d == 0);
    assign is_16_bw = (size_d == 1) ;
-   assign upsize = is_16_bw | is_8_bw ;
+   assign upsize = (is_16_bw && (NumPhys==2)) | is_8_bw ;
    assign enough_data = !upsize;
    assign keep_sampling = (size_d<NumPhys) && (byte_idx_d[NumPhys-1:0]!='0);
    assign keep_sending = (size_d>NumPhys) && (cnt_data_phy_d != byte_idx_q);
    assign word_cnt = cnt_data_phy_q>>NumPhys;
    
 
-   assign data_o = data_buffer_q.data[32*word_cnt +:32];
-   assign strb_o = data_buffer_q.strb[ 4*word_cnt +: 4] & mask_strobe_q;
+   assign data_o = data_buffer_q.data[(16*NumPhys)*word_cnt +:(16*NumPhys)];
+   assign strb_o = data_buffer_q.strb[ (2*NumPhys)*word_cnt +: (2*NumPhys)] & mask_strobe_q;
    assign last_o = data_buffer_q.last && !keep_sending;
                         
    always_comb begin : counter
@@ -99,8 +98,8 @@ module hyperbus_w2phy  #(
                  data_buffer_d.strb[i]='0;
             end
          end else begin
-            data_buffer_d.data[byte_idx_q*8 +: 16] = data_i.data[byte_idx_q*8 +: 16];
-            data_buffer_d.strb[byte_idx_q +: 4] = data_i.strb[byte_idx_q +: 4];
+            data_buffer_d.data[byte_idx_q*8 +: (8*NumPhys)] = data_i.data[byte_idx_q*8 +: (8*NumPhys)];
+            data_buffer_d.strb[byte_idx_q +: (2*NumPhys)] = data_i.strb[byte_idx_q +: (2*NumPhys)];
             data_buffer_d.last = data_i.last;
             if(first_tx_q) begin
                for (int j=0; j<byte_idx_q; j++)
