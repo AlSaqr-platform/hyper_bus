@@ -56,36 +56,4 @@ package hyperbus_pkg;
         logic [2:0]     addr_lower;
     } hyper_phy_ca_t;
 
-   
-	  typedef struct packed {
-	  	logic cs0n_o;
-	  	logic cs1n_o;
-	  	logic ck_o;
-	  	logic ckn_o;
-	  	logic rwds_o;
-	  	logic rwds_oe_o;
-	  	logic resetn_o;
-	  	logic dq0_o;
-	  	logic dq1_o;
-	  	logic dq2_o;
-	  	logic dq3_o;
-	  	logic dq4_o;
-	  	logic dq5_o;
-	  	logic dq6_o;
-	  	logic dq7_o;
-	  	logic dq_oe_o;
-	  } hyper_to_pad_t;
-    
-	  typedef struct packed {
-	  	logic rwds_i;
-	  	logic dq0_i;
-	  	logic dq1_i;
-	  	logic dq2_i;
-	  	logic dq3_i;
-	  	logic dq4_i;
-	  	logic dq5_i;
-	  	logic dq6_i;
-	  	logic dq7_i;
-	  } pad_to_hyper_t;
-
 endpackage

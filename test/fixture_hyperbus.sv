@@ -135,68 +135,53 @@ module fixture_hyperbus #(
     assign i_rbus.error = reg_rsp.error;
 
     // -------------------------- DUT --------------------------
-
-    wire  [1:0] hyper0_cs_n_wire;
-    wire        hyper0_ck_wire;
-    wire        hyper0_ck_n_wire;
-    wire        hyper0_rwds_o;
-    wire        hyper0_rwds_i;
-    wire        hyper0_rwds_oe;
-    wire        hyper0_rwds_wire;
-                     
-    wire  [7:0] hyper0_dq_i;
-    wire  [7:0] hyper0_dq_o;
-    wire        hyper0_dq_oe;
-    wire  [7:0] hyper0_dq_wire;
-                     
-    wire        hyper0_reset_n_wire;
-
-    wire  [1:0] hyper1_cs_n_wire;
-    wire        hyper1_ck_wire;
-    wire        hyper1_ck_n_wire;
-    wire        hyper1_rwds_o;
-    wire        hyper1_rwds_i;
-    wire        hyper1_rwds_oe;
-    wire        hyper1_rwds_wire;
-    wire  [7:0] hyper1_dq_i;
-    wire  [7:0] hyper1_dq_o;
-    wire        hyper1_dq_oe;
-    wire  [7:0] hyper1_dq_wire;
-                     
-    wire        hyper1_reset_n_wire;
+    wire  [1:0][1:0] hyper_cs_n_wire;
+    wire  [1:0]      hyper_ck_wire;
+    wire  [1:0]      hyper_ck_n_wire;
+    wire  [1:0]      hyper_rwds_o;
+    wire  [1:0]      hyper_rwds_i;
+    wire  [1:0]      hyper_rwds_oe;
+    wire  [1:0]      hyper_rwds_wire;
+    wire  [1:0][7:0] hyper_dq_i;
+    wire  [1:0][7:0] hyper_dq_o;
+    wire  [1:0]      hyper_dq_oe;
+    wire  [1:0][7:0] hyper_dq_wire;
+    wire [1:0]        hyper_reset_n_wire;
+             
 
     tristate_shim i_tristate_shim_rwds0 (
-        .out_ena_i  ( hyper0_rwds_oe   ),
-        .out_i      ( hyper0_rwds_o    ),
-        .in_o       ( hyper0_rwds_i    ),
-        .line_io    ( hyper0_rwds_wire )
+        .out_ena_i  ( hyper_rwds_oe[0]   ),
+        .out_i      ( hyper_rwds_o[0]    ),
+        .in_o       ( hyper_rwds_i[0]    ),
+        .line_io    ( hyper_rwds_wire[0] )
     );
 
     for (genvar i = 0; i < 8; i++) begin
         tristate_shim i_tristate_shim_dq0 (
-            .out_ena_i  ( hyper0_dq_oe       ),
-            .out_i      ( hyper0_dq_o    [i] ),
-            .in_o       ( hyper0_dq_i    [i] ),
-            .line_io    ( hyper0_dq_wire [i] )
+            .out_ena_i  ( hyper_dq_oe[0]       ),
+            .out_i      ( hyper_dq_o[0]    [i] ),
+            .in_o       ( hyper_dq_i[0]    [i] ),
+            .line_io    ( hyper_dq_wire[0] [i] )
         );
     end
 
 
     tristate_shim i_tristate_shim_rwds1 (
-        .out_ena_i  ( hyper1_rwds_oe   ),
-        .out_i      ( hyper1_rwds_o    ),
-        .in_o       ( hyper1_rwds_i    ),
-        .line_io    ( hyper1_rwds_wire )
+        .out_ena_i  ( hyper_rwds_oe[1]   ),
+        .out_i      ( hyper_rwds_o[1]    ),
+        .in_o       ( hyper_rwds_i[1]    ),
+        .line_io    ( hyper_rwds_wire[1] )
     );
 
     for (genvar i = 0; i < 8; i++) begin
         tristate_shim i_tristate_shim_dq1 (
-            .out_ena_i  ( hyper1_dq_oe       ),
-            .out_i      ( hyper1_dq_o    [i] ),
-            .in_o       ( hyper1_dq_i    [i] ),
-            .line_io    ( hyper1_dq_wire [i] )
+            .out_ena_i  ( hyper_dq_oe[1]       ),
+            .out_i      ( hyper_dq_o[1]    [i] ),
+            .in_o       ( hyper_dq_i[1]    [i] ),
+            .line_io    ( hyper_dq_wire[1] [i] )
         );
     end
+
    
     // DUT
     hyperbus #(
@@ -224,26 +209,16 @@ module fixture_hyperbus #(
         .axi_rsp_o              ( axi_master_rsp        ),
         .reg_req_i              ( reg_req               ),
         .reg_rsp_o              ( reg_rsp               ),
-        .hyper1_cs_no            ( hyper1_cs_n_wire       ),
-        .hyper1_ck_o             ( hyper1_ck_wire         ),
-        .hyper1_ck_no            ( hyper1_ck_n_wire       ),
-        .hyper1_rwds_o           ( hyper1_rwds_o          ),
-        .hyper1_rwds_i           ( hyper1_rwds_i          ),
-        .hyper1_rwds_oe_o        ( hyper1_rwds_oe         ),
-        .hyper1_dq_i             ( hyper1_dq_i            ),
-        .hyper1_dq_o             ( hyper1_dq_o            ),
-        .hyper1_dq_oe_o          ( hyper1_dq_oe           ),
-        .hyper1_reset_no         ( hyper1_reset_n_wire    ),
-        .hyper0_cs_no            ( hyper0_cs_n_wire       ),
-        .hyper0_ck_o             ( hyper0_ck_wire         ),
-        .hyper0_ck_no            ( hyper0_ck_n_wire       ),
-        .hyper0_rwds_o           ( hyper0_rwds_o          ),
-        .hyper0_rwds_i           ( hyper0_rwds_i          ),
-        .hyper0_rwds_oe_o        ( hyper0_rwds_oe         ),
-        .hyper0_dq_i             ( hyper0_dq_i            ),
-        .hyper0_dq_o             ( hyper0_dq_o            ),
-        .hyper0_dq_oe_o          ( hyper0_dq_oe           ),
-        .hyper0_reset_no         ( hyper0_reset_n_wire    )
+        .hyper_cs_no            ( hyper_cs_n_wire       ),
+        .hyper_ck_o             ( hyper_ck_wire         ),
+        .hyper_ck_no            ( hyper_ck_n_wire       ),
+        .hyper_rwds_o           ( hyper_rwds_o          ),
+        .hyper_rwds_i           ( hyper_rwds_i          ),
+        .hyper_rwds_oe_o        ( hyper_rwds_oe         ),
+        .hyper_dq_i             ( hyper_dq_i            ),
+        .hyper_dq_o             ( hyper_dq_o            ),
+        .hyper_dq_oe_o          ( hyper_dq_oe           ),
+        .hyper_reset_no         ( hyper_reset_n_wire    )
     );
 
     // modell
@@ -251,38 +226,38 @@ module fixture_hyperbus #(
         /*.mem_file_name ( "s27ks0641.mem"    ),*/
         .TimingModel   ( "S27KS0641DPBHI020"    )
     ) i0_s27ks0641 (
-      .DQ7           ( hyper0_dq_wire[7]      ),
-      .DQ6           ( hyper0_dq_wire[6]      ),
-      .DQ5           ( hyper0_dq_wire[5]      ),
-      .DQ4           ( hyper0_dq_wire[4]      ),
-      .DQ3           ( hyper0_dq_wire[3]      ),
-      .DQ2           ( hyper0_dq_wire[2]      ),
-      .DQ1           ( hyper0_dq_wire[1]      ),
-      .DQ0           ( hyper0_dq_wire[0]      ),
-      .RWDS          ( hyper0_rwds_wire       ),
-      .CSNeg         ( hyper0_cs_n_wire[0]    ),
-      .CK            ( hyper0_ck_wire         ),
-      .CKNeg         ( hyper0_ck_n_wire       ),
-      .RESETNeg      ( hyper0_reset_n_wire    )
+      .DQ7           ( hyper_dq_wire[0][7]      ),
+      .DQ6           ( hyper_dq_wire[0][6]      ),
+      .DQ5           ( hyper_dq_wire[0][5]      ),
+      .DQ4           ( hyper_dq_wire[0][4]      ),
+      .DQ3           ( hyper_dq_wire[0][3]      ),
+      .DQ2           ( hyper_dq_wire[0][2]      ),
+      .DQ1           ( hyper_dq_wire[0][1]      ),
+      .DQ0           ( hyper_dq_wire[0][0]      ),
+      .RWDS          ( hyper_rwds_wire[0]       ),
+      .CSNeg         ( hyper_cs_n_wire[0][0]    ),
+      .CK            ( hyper_ck_wire[0]         ),
+      .CKNeg         ( hyper_ck_n_wire[0]       ),
+      .RESETNeg      ( hyper_reset_n_wire[0]    )
     );
    // modell
       s27ks0641 #(
         /*.mem_file_name ( "s27ks0641.mem"    ),*/
         .TimingModel   ( "S27KS0641DPBHI020"    )
     ) i1_s27ks0641 (
-      .DQ7           ( hyper1_dq_wire[7]      ),
-      .DQ6           ( hyper1_dq_wire[6]      ),
-      .DQ5           ( hyper1_dq_wire[5]      ),
-      .DQ4           ( hyper1_dq_wire[4]      ),
-      .DQ3           ( hyper1_dq_wire[3]      ),
-      .DQ2           ( hyper1_dq_wire[2]      ),
-      .DQ1           ( hyper1_dq_wire[1]      ),
-      .DQ0           ( hyper1_dq_wire[0]      ),
-      .RWDS          ( hyper1_rwds_wire       ),
-      .CSNeg         ( hyper1_cs_n_wire[0]    ),
-      .CK            ( hyper1_ck_wire         ),
-      .CKNeg         ( hyper1_ck_n_wire       ),
-      .RESETNeg      ( hyper1_reset_n_wire    )
+      .DQ7           ( hyper_dq_wire[1][7]      ),
+      .DQ6           ( hyper_dq_wire[1][6]      ),
+      .DQ5           ( hyper_dq_wire[1][5]      ),
+      .DQ4           ( hyper_dq_wire[1][4]      ),
+      .DQ3           ( hyper_dq_wire[1][3]      ),
+      .DQ2           ( hyper_dq_wire[1][2]      ),
+      .DQ1           ( hyper_dq_wire[1][1]      ),
+      .DQ0           ( hyper_dq_wire[1][0]      ),
+      .RWDS          ( hyper_rwds_wire[1]       ),
+      .CSNeg         ( hyper_cs_n_wire[1][0]    ),
+      .CK            ( hyper_ck_wire[1]         ),
+      .CKNeg         ( hyper_ck_n_wire[1]       ),
+      .RESETNeg      ( hyper_reset_n_wire[1]    )
     );
 
     initial begin
