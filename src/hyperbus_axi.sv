@@ -258,19 +258,19 @@ module hyperbus_axi import hyperbus_pkg::NumPhys; #(
     ) i_hyperbus_phy2r (
         .clk_i,
         .rst_ni,
-        .size            ( rr_out_req_ax.size      ),
-        .trans_handshake ( trans_handshake         ),
-        .start_addr      ( rr_out_req_ax.addr[3:0] ),
-        .burst_len       ( ax_blen_postinc         ),
-        .is_a_read       ( !rr_out_req_write       ),
-        .phy_valid_i     ( rx_valid_i              ),
-        .phy_ready_o     ( rx_ready_o              ),
-        .data_i          ( rx_i.data               ),
-        .last_i          ( rx_i.last               ),
-        .error_i         ( rx_i.error              ),
-        .axi_valid_o     ( ser_out_rsp.r_valid     ),
-        .axi_ready_i     ( ser_out_req.r_ready     ),
-        .data_o          ( s_r_split               )
+        .size            ( rr_out_req_ax.size                      ),
+        .trans_handshake ( trans_handshake                         ),
+        .start_addr      ( rr_out_req_ax.addr[AxiBusAddrWidth-1:0] ),
+        .burst_len       ( ax_blen_postinc                         ),
+        .is_a_read       ( !rr_out_req_write                       ),
+        .phy_valid_i     ( rx_valid_i                              ),
+        .phy_ready_o     ( rx_ready_o                              ),
+        .data_i          ( rx_i.data                               ),
+        .last_i          ( rx_i.last                               ),
+        .error_i         ( rx_i.error                              ),
+        .axi_valid_o     ( ser_out_rsp.r_valid                     ),
+        .axi_ready_i     ( ser_out_req.r_ready                     ),
+        .data_o          ( s_r_split                               )
     );
 
 

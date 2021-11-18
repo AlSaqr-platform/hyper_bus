@@ -36,7 +36,10 @@ module hyperbus_phy2r import hyperbus_pkg::NumPhys; #(
 
    hyper_splitter_state_t state_d, state_q;
    
-   localparam  int unsigned NumBytes = $clog2(AxiDataWidth);
+   localparam  int unsigned NumAxiBytes = AxiDataWidth/8;
+   localparam  int unsigned NumPhyBytes = NumPhys*2;
+   localparam  int unsigned AxiBytesInPhyBeat = NumAxiBytes/NumPhyBytes;
+   localparam  int unsigned WordCntWidth = (AxiBytesInPhyBeat==1) ? 1 : $clog2(AxiBytesInPhyBeat);
    
    logic [BurstLength-1:0] byte_axi_addr_d, byte_axi_addr_q;
    logic [BurstLength-1:0] byte_phy_cnt_d, byte_phy_cnt_q;
@@ -46,12 +49,12 @@ module hyperbus_phy2r import hyperbus_pkg::NumPhys; #(
    T data_buffer_d, data_buffer_q;
 
    logic                        is_16_bw, is_8_bw;
-   logic [AddrWidth-NumPhys :0] word_cnt;
+   logic [WordCntWidth-1:0]     word_cnt;
    logic                        enough_data;
    logic                        sent_available_data;
    logic [BurstLength-1:0]      next_axi_addr;
    
-   assign word_cnt = byte_phy_cnt_q[AddrWidth-1:NumPhys];
+   assign word_cnt = byte_phy_cnt_q[NumPhys +:WordCntWidth];
    assign next_axi_addr = ((byte_axi_addr_q>>size_d)<< size_d) + (1<<size_d);
    assign enough_data = byte_phy_cnt_d >= next_axi_addr;
    assign sent_available_data = byte_axi_addr_d >= byte_phy_cnt_q;

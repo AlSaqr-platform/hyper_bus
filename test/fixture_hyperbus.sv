@@ -33,8 +33,8 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
 
     localparam AxiAw  = 32;
     localparam AxiDw  = 128;
+    localparam AxiMaxSize = $clog2(AxiDw/8);
     localparam AxiIw  = 6;
-
     localparam RegAw  = 32;
     localparam RegDw  = 32;
 
@@ -303,35 +303,41 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         ar_beat.ax_burst = axi_pkg::BURST_INCR;
         ar_beat.ax_size  = size;
 
-        axi_master_drv.send_ar(ar_beat);
-
-        temp_raddr = raddr;
-        last_raddr = '0;
-              
-        for(int unsigned i = 0; i < burst_len + 1; i++) begin
-            axi_master_drv.recv_r(r_beat);
-            $display("%p", r_beat);
-            $display("%x", r_beat.r_data);
-            trans_rdata = '0;
-            if (i==0) begin
-               for(k =temp_raddr[3:0]; k<((temp_raddr[3:0]>>size)<<size) + (2**size) ; k++) begin 
-                 trans_rdata[k*8 +:8] = r_beat.r_data[(k*8) +: 8];
-               end
-            end else begin
-               for(j=temp_raddr[3:0]; j<temp_raddr[3:0]+(2**size); j++) begin
-                  trans_rdata[j*8 +:8] = r_beat.r_data[(j*8) +: 8];
-               end
-            end
-            $fwrite(fr, "%x %x %d\n", trans_rdata, temp_raddr, (((temp_raddr[3:0]>>size)<<size) + (2**size)));
-            if(memory[read_index]!=trans_rdata) begin
-               $fatal(1,"Error @%x\n", temp_raddr);
-            end            read_index++;
-            if(i==0)
-              temp_raddr = ((temp_raddr>>size)<<size) + (2**size);
-            else
-              temp_raddr = temp_raddr + (2**size);    
-            last_raddr = temp_raddr[3:0] + (2**size);       
+        if(ar_beat.ax_size>AxiMaxSize) begin
+          $display("Not supported");
+        end else begin
+                     
+          axi_master_drv.send_ar(ar_beat);
+          
+          temp_raddr = raddr;
+          last_raddr = '0;
+                
+          for(int unsigned i = 0; i < burst_len + 1; i++) begin
+              axi_master_drv.recv_r(r_beat);
+              $display("%p", r_beat);
+              $display("%x", r_beat.r_data);
+              trans_rdata = '0;
+              if (i==0) begin
+                 for(k =temp_raddr[3:0]; k<((temp_raddr[3:0]>>size)<<size) + (2**size) ; k++) begin 
+                   trans_rdata[k*8 +:8] = r_beat.r_data[(k*8) +: 8];
+                 end
+              end else begin
+                 for(j=temp_raddr[3:0]; j<temp_raddr[3:0]+(2**size); j++) begin
+                    trans_rdata[j*8 +:8] = r_beat.r_data[(j*8) +: 8];
+                 end
+              end
+              $fwrite(fr, "%x %x %d\n", trans_rdata, temp_raddr, (((temp_raddr[3:0]>>size)<<size) + (2**size)));
+              if(memory[read_index]!=trans_rdata) begin
+                 $fatal(1,"Error @%x\n", temp_raddr);
+              end            read_index++;
+              if(i==0)
+                temp_raddr = ((temp_raddr>>size)<<size) + (2**size);
+              else
+                temp_raddr = temp_raddr + (2**size);    
+              last_raddr = temp_raddr[3:0] + (2**size);       
+          end // for (int unsigned i = 0; i < burst_len + 1; i++)
         end
+       
     endtask
 
     // axi write task
@@ -354,38 +360,43 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         w_beat.w_last   = 1'b0;
         last_waddr = '0;
 
-        axi_master_drv.send_aw(aw_beat);
+        if(aw_beat.ax_size>AxiMaxSize) begin
+          $display("Not supported");
+        end else begin
 
+          axi_master_drv.send_aw(aw_beat);
+          
+          
+          for(int unsigned i = 0; i < burst_len + 1; i++) begin
+              if (i == burst_len) begin
+                  w_beat.w_last = 1'b1;
+              end
+              axi_master_drv.send_w(w_beat);
+              trans_wdata = '0;
+              $display("%p", w_beat);
+              $display("%x", w_beat.w_data);
+              if (i==0) begin
+                 for (k = temp_waddr[3:0]; k<((temp_waddr[3:0]>>size)<<size) + (2**size) ; k++)  begin
+                   trans_wdata[k*8 +:8] = (wstrb[k]) ? w_beat.w_data[(k*8) +: 8] : '0;
+                 end
+              end else begin
+                 for(j=temp_waddr[3:0]; j<temp_waddr[3:0]+(2**size); j++) begin
+                    trans_wdata[j*8 +:8] = (wstrb[j]) ? w_beat.w_data[(j*8) +: 8] : '0;
+                 end
+              end
+              $fwrite(fw, "%x %x %d\n",trans_wdata, temp_waddr, (((temp_waddr[3:0]>>size)<<size) + (2**size)));
+              memory[write_index]=trans_wdata;
+              write_index++;
+              if(i==0)
+                temp_waddr = ((temp_waddr>>size)<<size) + (2**size);
+              else
+                temp_waddr = temp_waddr + (2**size);
+              last_waddr = temp_waddr[3:0] + (2**size);
+          end // for (int unsigned i = 0; i < burst_len + 1; i++)
+          
+          axi_master_drv.recv_b(b_beat);
+        end 
        
-        for(int unsigned i = 0; i < burst_len + 1; i++) begin
-            if (i == burst_len) begin
-                w_beat.w_last = 1'b1;
-            end
-            axi_master_drv.send_w(w_beat);
-            trans_wdata = '0;
-            $display("%p", w_beat);
-            $display("%x", w_beat.w_data);
-            if (i==0) begin
-               for (k = temp_waddr[3:0]; k<((temp_waddr[3:0]>>size)<<size) + (2**size) ; k++)  begin
-                 trans_wdata[k*8 +:8] = (wstrb[k]) ? w_beat.w_data[(k*8) +: 8] : '0;
-               end
-            end else begin
-               for(j=temp_waddr[3:0]; j<temp_waddr[3:0]+(2**size); j++) begin
-                  trans_wdata[j*8 +:8] = (wstrb[j]) ? w_beat.w_data[(j*8) +: 8] : '0;
-               end
-            end
-            $fwrite(fw, "%x %x %d\n",trans_wdata, temp_waddr, (((temp_waddr[3:0]>>size)<<size) + (2**size)));
-            memory[write_index]=trans_wdata;
-            write_index++;
-            if(i==0)
-              temp_waddr = ((temp_waddr>>size)<<size) + (2**size);
-            else
-              temp_waddr = temp_waddr + (2**size);
-            last_waddr = temp_waddr[3:0] + (2**size);
-        end // for (int unsigned i = 0; i < burst_len + 1; i++)
-
-        axi_master_drv.recv_b(b_beat);
-        //$display("%x", b_beat);
     endtask
 
 
