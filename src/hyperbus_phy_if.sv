@@ -234,5 +234,11 @@ module hyperbus_phy_if import hyperbus_pkg::*; #(
       end // block: single_phy
     endgenerate
    
+// pragma translate_off
+`ifndef VERILATOR
+  initial begin: p_assertions
+    assert (NumPhys==1 || NumPhys==2) else $fatal(1, "NumPhys can only be 1 or 2!");
+  end
+`endif
  
 endmodule 
