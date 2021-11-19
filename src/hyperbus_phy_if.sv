@@ -58,7 +58,7 @@ module hyperbus_phy_if import hyperbus_pkg::*; #(
   
 
    generate
-      if (NumPhys==2) begin: double_phys
+      if ((NumPhys==2) || (NumPhys==4)) begin: double_phys
  
       typedef struct packed {
            logic [15:0]    data;
@@ -66,49 +66,55 @@ module hyperbus_phy_if import hyperbus_pkg::*; #(
            logic           error;
        } phy_rx_t;
       
-      phy_rx_t [1:0]       phy_fifo_rx;
-      phy_rx_t [1:0]       fifo_axi_rx;
-      logic [1:0]          phy_fifo_valid;
-      logic [1:0]          phy_fifo_ready;
-      logic [1:0]          fifo_axi_valid;
-      logic                fifo_axi_ready;
+      phy_rx_t [NumPhys-1:0]       phy_fifo_rx;
+      phy_rx_t [NumPhys-1:0]       fifo_axi_rx;
+      logic [NumPhys-1:0]          phy_fifo_valid;
+      logic [NumPhys-1:0]          phy_fifo_ready;
+      logic [NumPhys-1:0]          fifo_axi_valid;
+      logic                        fifo_axi_ready;
          
-      logic                tx_both_ready, ts_both_ready;
-      logic                rx_both_valid, b_both_valid;
+      logic                        tx_both_ready, ts_both_ready;
+      logic                        rx_both_valid, b_both_valid;
       
-      logic [1:0]          phy_tx_ready;
-      logic                phy_tx_valid;
+      logic [NumPhys-1:0]          phy_tx_ready;
+      logic                        phy_tx_valid;
       
-      logic [1:0]          phy_trans_ready;
-      logic                phy_trans_valid;
+      logic [NumPhys-1:0]          phy_trans_ready;
+      logic                        phy_trans_valid;
       
-      logic [1:0]          phy_b_valid;
-      logic [1:0]          phy_b_error;
+      logic [NumPhys-1:0]          phy_b_valid;
+      logic [NumPhys-1:0]          phy_b_error;
       
-      assign rx_both_valid = fifo_axi_valid[0] && fifo_axi_valid[1];
+      assign rx_both_valid = & fifo_axi_valid;
       assign rx_valid_o = rx_both_valid;
       assign fifo_axi_ready = rx_ready_i && rx_both_valid;
-      assign rx_o.data[31:16] = fifo_axi_rx[1].data;
-      assign rx_o.data[15:0] = fifo_axi_rx[0].data;
-      assign rx_o.error = fifo_axi_rx[0].error || fifo_axi_rx[1].error;
-      assign rx_o.last = fifo_axi_rx[0].last && fifo_axi_rx[1].last;   
-      
-      assign tx_both_ready = phy_tx_ready[0] && phy_tx_ready[1];
+
+      if(NumPhys==2) begin
+         assign rx_o.error = fifo_axi_rx[0].error || fifo_axi_rx[1].error;
+         assign rx_o.last = fifo_axi_rx[0].last && fifo_axi_rx[1].last;   
+      end else if (NumPhys==4) begin
+         assign rx_o.error = fifo_axi_rx[0].error || fifo_axi_rx[1].error || fifo_axi_rx[2].error || fifo_axi_rx[3].error;
+         assign rx_o.last = fifo_axi_rx[0].last && fifo_axi_rx[1].last  && fifo_axi_rx[2].last  && fifo_axi_rx[3].last;   
+      end
+      assign tx_both_ready = & phy_tx_ready;
       assign tx_ready_o = tx_both_ready;
       assign phy_tx_valid = tx_both_ready && tx_valid_i;
       
-      assign b_both_valid = phy_b_valid[0] && phy_b_valid[1];
+      assign b_both_valid = & phy_b_valid;
       assign b_valid_o = b_both_valid;
       assign phy_b_ready = b_ready_i && b_both_valid;
-      assign b_error_o = phy_b_error[0] || phy_b_error[1];
+      assign b_error_o = | phy_b_error;
       
-      assign ts_both_ready = phy_trans_ready[0] && phy_trans_ready[1];
+      assign ts_both_ready = & phy_trans_ready;
       assign trans_ready_o = ts_both_ready;
       assign phy_trans_valid = ts_both_ready && trans_valid_i;
       
       
       for (genvar i=0; i<NumPhys;i++) begin : i_phy_gen
-        stream_fifo #(
+
+         assign rx_o.data[i*16 +:16] = fifo_axi_rx[i].data;
+
+         stream_fifo #(
             .FALL_THROUGH ( 1'b0        ),
             .DEPTH        ( 4           ),
             .T            ( phy_rx_t    )

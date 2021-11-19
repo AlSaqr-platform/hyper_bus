@@ -26,7 +26,10 @@ module hyperbus_w2phy  import hyperbus_pkg::NumPhys; #(
   output logic [2*NumPhys-1:0]  strb_o
 );
 
-   localparam NumBitStrb = AxiDataWidth/8;
+   localparam  int unsigned NumAxiBytes = AxiDataWidth/8;
+   localparam  int unsigned NumPhyBytes = NumPhys*2;
+   localparam  int unsigned AxiBytesInPhyBeat = NumAxiBytes/NumPhyBytes;
+   localparam  int unsigned WordCntWidth = (AxiBytesInPhyBeat==1) ? 1 : $clog2(AxiBytesInPhyBeat);
    // Cutting the combinatorial path between AXI master and cdc fifo
    typedef enum logic [2:0] {
        Idle,
@@ -45,7 +48,7 @@ module hyperbus_w2phy  import hyperbus_pkg::NumPhys; #(
    
 
    logic [NumPhys*2-1:0]         mask_strobe_d, mask_strobe_q;
-   logic [AddrWidth-NumPhys-1:0] word_cnt;   
+   logic [WordCntWidth-1:0]      word_cnt;   
    logic [AddrWidth-1:0]         byte_idx_d, byte_idx_q;
    logic [3:0]                   size_d, size_q;
    logic [AddrWidth-1:0]         cnt_data_phy_d, cnt_data_phy_q;
@@ -54,9 +57,9 @@ module hyperbus_w2phy  import hyperbus_pkg::NumPhys; #(
    assign is_16_bw = (size_d == 1) ;
    assign upsize = (is_16_bw && (NumPhys==2)) | is_8_bw ;
    assign enough_data = !upsize;
-   assign keep_sampling = (size_d<NumPhys) && (byte_idx_d[NumPhys-1:0]!='0);
-   assign keep_sending = (size_d>NumPhys) && (cnt_data_phy_d != byte_idx_q);
-   assign word_cnt = cnt_data_phy_q>>NumPhys;
+   assign keep_sampling = (size_d<($clog2(NumPhys)+1)) && (byte_idx_d[NumPhys-1:0]!='0);
+   assign keep_sending =  (size_d>($clog2(NumPhys)+1)) && (cnt_data_phy_d != byte_idx_q);
+   assign word_cnt = cnt_data_phy_q>>($clog2(NumPhys)+1);
    
 
    assign data_o = data_buffer_q.data[(16*NumPhys)*word_cnt +:(16*NumPhys)];
