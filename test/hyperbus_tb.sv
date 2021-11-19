@@ -258,8 +258,16 @@ module hyperbus_tb;
         fix.read_axi('h1c02, 4, 4);
 
         // 128 bit access (burst, extrawide --> will be split)
-        fix.write_axi('ha00, 4090, 4, 'h1234_5678_9abc_def0_7766_5544_3322_1100, 'hffff);
+        fix.write_axi('ha00, 4090, 4, 'ha5a5_8951_5263_dead_2bad_0000_7891_4269, 'hffff);
         fix.read_axi('ha00, 4090, 4);
+
+        // 128 bit access (burst, extrawide --> will be split)
+        fix.write_axi('ha00, 4090, 3, 'h8e25_0c26_5b04_f2e5_d947_d987_3631_c34e, 'hffff);
+        fix.read_axi('ha00, 4090, 3);
+
+        // 128 bit access (burst, extrawide --> will be split)
+        fix.write_axi('ha00, 4090, 2, 'ha02e_3273_aca3_b2bf_d20a_684c_2da1_0103, 'hffff);
+        fix.read_axi('ha00, 4090, 2);
 
         $display("==================");
         $display("DONE WITH SUCCESS!");
