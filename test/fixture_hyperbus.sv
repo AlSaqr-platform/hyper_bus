@@ -5,6 +5,35 @@
 
 /// Author: Thomas Benz <tbenz@iis.ee.ethz.ch>
 `timescale 1 ns/1 ps
+// Configuration register for Hyper bus CHANNEl
+`define REG_RX_SADDR            5'b00000 //BASEADDR+0x00 L2 address for RX
+`define REG_RX_SIZE             5'b00001 //BASEADDR+0x04 size of the software buffer in L2
+`define REG_UDMA_RXCFG          5'b00010 //BASEADDR+0x08 UDMA configuration setup (RX)
+`define REG_TX_SADDR            5'b00011 //BASEADDR+0x0C address of the data being transferred 
+`define REG_TX_SIZE             5'b00100 //BASEADDR+0x10 size of the data being transferred
+`define REG_UDMA_TXCFG          5'b00101 //BASEADDR+0x14 UDMA configuration setup (TX)
+`define HYPER_CA_SETUP          5'b00110 //BASEADDR+0x18 set read/write, address space, and burst type 
+`define REG_HYPER_ADDR          5'b00111 //BASEADDR+0x1C set address in a hyper ram.
+`define REG_HYPER_CFG           5'b01000 //BASEADDR+0x20 set the configuration data for HyperRAM
+`define STATUS                  5'b01001 //BASEADDR+0x24 status register
+`define TWD_ACT_EXT             5'b01010 //BASEADDR+0x28 set 2D transfer activation
+`define TWD_COUNT_EXT           5'b01011 //BASEADDR+0x2C set 2D transfer count
+`define TWD_STRIDE_EXT          5'b01100 //BASEADDR+0x30 set 2D transfer stride
+`define TWD_ACT_L2              5'b01101 //BASEADDR+0x28 set 2D transfer activation
+`define TWD_COUNT_L2            5'b01110 //BASEADDR+0x2C set 2D transfer count
+`define TWD_STRIDE_L2           5'b01111 //BASEADDR+0x30 set 2D transfer stride
+
+// Configuration register for Hyper bus CHANNEl
+`define REG_PAGE_BOUND          5'b00000 //BASEADDR+0x00 set the page boundary.
+`define REG_T_LATENCY_ACCESS    5'b00001 //BASEADDR+0x04 set t_latency_access
+`define REG_EN_LATENCY_ADD      5'b00010 //BASEADDR+0x08 set en_latency_additional
+`define REG_T_CS_MAX            5'b00011 //BASEADDR+0x0C set t_cs_max
+`define REG_T_RW_RECOVERY       5'b00100 //BASEADDR+0x10 set t_read_write_recovery
+`define REG_T_RWDS_DELAY_LINE   5'b00101 //BASEADDR+0x14 set t_rwds_delay_line
+`define REG_T_VARI_LATENCY      5'b00110 //BASEADDR+0x18 set t_variable_latency_check
+`define N_HYPER_DEVICE          5'b00111 //BASEADDR+0x1C set the number of connected devices
+`define MEM_SEL                 5'b01000 //BASEADDR+0x20 set Memory select: HyperRAM, Hyperflash, or PSRAM 00:Hyper RAM, 01: Hyper Flash, 10:PSRAM
+`define TRANS_ID_ALLOC          5'b01001 //BASEADDR+0x30 set 2D transfer stride
 
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
@@ -135,6 +164,186 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     assign i_rbus.ready = reg_rsp.ready;
     assign i_rbus.error = reg_rsp.error;
 
+    // -------------------------- UDMA test --------------------
+
+    localparam L2_AWIDTH_NOAL = 12;
+    localparam TRANS_SIZE = 16;
+    localparam BYTE_WIDTH = 8;
+    localparam MEM_DEPTH = 4096;
+    localparam NB_CH=1;
+     
+    logic [31:0]            rx_data_udma_o;
+    logic                   rx_valid_udma_o;
+    logic                   rx_ready_udma_i;
+    
+    logic [31:0]            tx_data_udma_i;
+    logic                   tx_valid_udma_i;
+    logic                   tx_valid_udma_d;
+    logic                   tx_valid_udma2_i;
+    logic                   tx_ready_udma_o;
+    
+    logic [31:0]            cfg_data_i;
+    logic [4:0]             cfg_addr_i;
+    logic [NB_CH:0]         cfg_valid_i;
+    logic                   cfg_rwn_i;
+    logic [NB_CH:0][31:0]   cfg_data_o;
+    logic [NB_CH:0]         cfg_ready_o;
+    
+    logic [L2_AWIDTH_NOAL-1:0] cfg_rx_startaddr_o;
+    logic [TRANS_SIZE-1:0]     cfg_rx_size_o;
+    logic [1:0]                cfg_rx_datasize_o;
+    logic                      cfg_rx_continuous_o;
+    logic                      cfg_rx_en_o;
+    logic                      cfg_rx_clr_o;
+    logic                      cfg_rx_en_i;
+    logic                      cfg_rx_pending_i;
+    logic [L2_AWIDTH_NOAL-1:0] cfg_rx_curr_addr_i;
+    logic [TRANS_SIZE-1:0]     cfg_rx_bytes_left_i;
+    
+    logic [L2_AWIDTH_NOAL-1:0] cfg_tx_startaddr_o;
+    logic [TRANS_SIZE-1:0]     cfg_tx_size_o;
+    logic [1:0]                cfg_tx_datasize_o;
+    logic                      cfg_tx_continuous_o;
+    logic                      cfg_tx_en_o;
+    logic                      cfg_tx_clr_o;
+    logic                      cfg_tx_en_i;
+    logic                      cfg_tx_pending_i;
+    logic [L2_AWIDTH_NOAL-1:0] cfg_tx_curr_addr_i;
+    logic [TRANS_SIZE-1:0]     cfg_tx_bytes_left_i;
+    logic [31:0]               count;
+    
+    logic [BYTE_WIDTH-1:0]     data_mem [0:MEM_DEPTH-1]; // 4KB data mem
+    logic [L2_AWIDTH_NOAL-1:0] data_mem_addr;
+    logic [L2_AWIDTH_NOAL-1:0] r_tx_addr;
+    logic [31:0]               mem_data_out;
+    logic [31:0]               mem_data_out_d;
+    logic [31:0]               data_count;
+    logic [31:0]               rx_data_count;
+    logic [31:0]               tran_size;
+    logic [31:0]               tran_size32;
+    logic [TRANS_SIZE-1:0]     r_tx_size;
+    logic                      r_write_tran_en;
+    logic                      r_rx_en;
+
+  // Data memory for test
+   /////////////////////////////////////////////////
+   //                    MEMORY                   //
+   /////////////////////////////////////////////////
+    assign mem_data_out = { data_mem[data_mem_addr+3], data_mem[data_mem_addr+2], data_mem[data_mem_addr+1], data_mem[data_mem_addr]};
+    
+    always @(posedge sys_clk or negedge rst_n)
+      begin
+        if(!rst_n)
+          begin
+            r_write_tran_en <= 0;
+            r_tx_size <=0;
+          end
+        else
+          begin
+            if( cfg_tx_en_o & (data_count == 0))
+              begin
+                r_write_tran_en <= cfg_tx_en_o;
+                r_tx_size <= cfg_tx_size_o;
+              end
+            else
+              begin
+                if(data_count >= r_tx_size) r_write_tran_en <= 0;
+              end
+          end
+      end
+    
+     assign cfg_tx_bytes_left_i = (r_write_tran_en)? r_tx_size - data_count: 0;
+     always  @(posedge sys_clk or negedge rst_n)
+       begin
+         if(!rst_n)
+           begin
+              data_count <=0;
+              tx_valid_udma_i <= 1'b0;
+           end
+         else
+           begin
+             if(r_write_tran_en)
+                 if(tx_ready_udma_o)
+                   begin
+                     if(tx_valid_udma_i == 1'b1 & (data_count < r_tx_size))
+                       begin
+                        data_count <= data_count +4;
+                       end
+                     else
+                        if((data_count < r_tx_size))tx_valid_udma_i <= 1'b1;
+                        else tx_valid_udma_i <= 1'b0;
+                   end
+                 else
+                   begin
+                     //tx_valid_udma_i <= 1'b0;
+                   end
+             else
+               begin
+                 data_count <=0;
+                 tx_valid_udma_i <= 1'b0;
+               end
+           end
+       end
+    
+     always @(posedge sys_clk or negedge rst_n)
+       begin
+         if(!rst_n)
+           begin
+             data_mem_addr <= 0;
+           end
+         else
+           begin
+             if( cfg_tx_en_o & data_count ==0) 
+               begin
+                  data_mem_addr <= cfg_tx_startaddr_o;
+               end 
+             else
+               begin
+                 if(r_write_tran_en & tx_ready_udma_o & tx_valid_udma_i)
+                    data_mem_addr <= data_mem_addr +4;
+               end
+           end
+       end
+    
+    assign cfg_rx_en_i = cfg_rx_en_o | r_rx_en;
+    always @(posedge sys_clk or negedge rst_n)
+      begin
+        if(!rst_n)
+          begin
+            r_rx_en <= 1'b0;
+          end
+        else
+          begin
+            if(cfg_rx_en_o & (cfg_rx_size_o!=0)) r_rx_en <= 1'b1;
+            else if((r_rx_en==1'b1) & (cfg_rx_bytes_left_i==0)) r_rx_en <=0;
+          end
+    end
+
+    // Data check;
+    assign tran_size32 = (tran_size%4==0)? tran_size/4 : tran_size/4+1;
+    always @(posedge sys_clk or negedge rst_n)
+      begin
+        if(!rst_n)
+          begin
+            rx_data_count <= 0;
+          end
+        else
+          begin
+            if(rx_valid_udma_o)
+              begin
+                if(rx_data_udma_o != (32'hffff0000+rx_data_count))
+                  begin
+                    $fatal("@ %g Error at %d th data=%h",$time, rx_data_count, rx_data_udma_o);
+                  end
+                if(rx_data_count == tran_size32 -1) rx_data_count <=0;
+                else rx_data_count <= rx_data_count +1;
+              end
+          end
+    end
+   
+  assign #(SYS_TCK/6) mem_data_out_d  =  mem_data_out;
+  assign #(SYS_TCK/6) tx_valid_udma_d = tx_valid_udma_i;
+   
     // -------------------------- DUT --------------------------
     wire  [NumPhys-1:0][1:0] hyper_cs_n_wire;
     wire  [NumPhys-1:0]      hyper_ck_wire;
@@ -204,6 +413,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         .reg_req_t      ( reg_req_t   ),
         .reg_rsp_t      ( reg_rsp_t   ),
         .IsClockODelayed( 1           ),
+        .NB_CH          ( NB_CH       ),
         .axi_rule_t     ( rule_t      )
     ) i_dut (
         .clk_phy_i              ( phy_clk               ),
@@ -216,6 +426,48 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         .axi_rsp_o              ( axi_master_rsp        ),
         .reg_req_i              ( reg_req               ),
         .reg_rsp_o              ( reg_rsp               ),
+
+        .data_rx_o              ( rx_data_udma_o        ),
+        .data_rx_valid_o        ( rx_valid_udma_o       ),
+        .data_rx_ready_i        ( 1'b1                  ),
+        
+        .data_tx_i              ( mem_data_out_d        ),
+        .data_tx_valid_i        ( tx_valid_udma_d       ),
+        .data_tx_ready_o        ( tx_ready_udma_o       ),
+        .data_tx_gnt_i          ( '1                    ),
+        .data_tx_req_o          (                       ),
+        
+        .cfg_data_i             ( cfg_data_i            ),
+        .cfg_addr_i             ( cfg_addr_i            ),
+        .cfg_valid_i            ( cfg_valid_i           ),
+        .cfg_rwn_i              ( cfg_rwn_i             ),
+        .cfg_data_o             ( cfg_data_o            ),
+        .cfg_ready_o            ( cfg_ready_o           ),
+        
+        .cfg_rx_startaddr_o     ( cfg_rx_startaddr_o    ),
+        .cfg_rx_size_o          ( cfg_rx_size_o         ),
+        .data_rx_datasize_o     ( cfg_rx_datasize_o     ),
+        .cfg_rx_continuous_o    ( cfg_rx_continuous_o   ),
+        .cfg_rx_en_o            ( cfg_rx_en_o           ),
+        .cfg_rx_clr_o           ( cfg_rx_clr_o          ),
+        .cfg_rx_en_i            ( cfg_rx_en_i           ),
+        .cfg_rx_pending_i       ( cfg_rx_pending_i      ),
+        .cfg_rx_curr_addr_i     ( cfg_rx_curr_addr_i    ),
+        .cfg_rx_bytes_left_i    ( cfg_rx_bytes_left_i   ),
+        
+        .cfg_tx_startaddr_o     ( cfg_tx_startaddr_o    ),
+        .cfg_tx_size_o          ( cfg_tx_size_o         ),
+        .data_tx_datasize_o     ( cfg_tx_datasize_o     ),
+        .cfg_tx_continuous_o    ( cfg_tx_continuous_o   ),
+        .cfg_tx_en_o            ( cfg_tx_en_o           ),
+        .cfg_tx_clr_o           ( cfg_tx_clr_o          ),
+        .cfg_tx_en_i            ( r_write_tran_en       ),
+        .cfg_tx_pending_i       ( cfg_tx_pending_i      ),
+        .cfg_tx_curr_addr_i     ( cfg_tx_curr_addr_i    ),
+        .cfg_tx_bytes_left_i    ( cfg_tx_bytes_left_i   ),
+
+        .evt_eot_hyper_o        (                       ),
+             
         .hyper_cs_no            ( hyper_cs_n_wire       ),
         .hyper_ck_o             ( hyper_ck_wire         ),
         .hyper_ck_no            ( hyper_ck_n_wire       ),
@@ -241,9 +493,72 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
 
     // -------------------------- TB TASKS --------------------------
 
+   
+     class SetConfig;
+        int cfg_address;
+        int cfg_data;
+        int cfg_valid = 0;
+        int cfg_rwn = 1;
+
+     function new (int cfg_address, int cfg_data);
+        this.cfg_address = cfg_address;
+        this.cfg_data = cfg_data;
+     endfunction
+
+     task write;
+        this.cfg_valid = 1;
+        this.cfg_rwn = 0;
+     endtask : write
+
+     endclass: SetConfig
+
+
+
+    // SystemVerilog "clocking block"
+    // Clocking outputs are DUT inputs and vice versa
+    default clocking cb_udma_hyper @(posedge sys_clk);
+      default input #1step output #1ns;
+
+       
+      output cfg_data_i, cfg_addr_i, cfg_valid_i, cfg_rwn_i,  cfg_rx_pending_i, cfg_rx_curr_addr_i,cfg_tx_en_i, cfg_tx_pending_i, cfg_tx_curr_addr_i, cfg_rx_bytes_left_i;
+      output tx_data_udma_i, tx_valid_udma_i;
+      input cfg_data_o, cfg_ready_o, cfg_rx_startaddr_o, cfg_rx_size_o, cfg_rx_datasize_o, cfg_rx_continuous_o, cfg_rx_en_o, cfg_rx_clr_o;
+      input cfg_tx_startaddr_o, cfg_tx_size_o, cfg_tx_continuous_o, cfg_tx_en_o, cfg_tx_clr_o;
+
+    endclocking
+
+    clocking cb_hyper_phy @(posedge phy_clk);
+      default input #1step output #1ns;
+      output negedge rst_n;
+
+    endclocking
+
+    SetConfig sconfig;
+
     // Initial reset
     initial begin
         rst_n = 0;
+        $readmemh("./../test/test_mem.dat",data_mem); 
+
+        // Set all inputs at the beginning    
+
+        // Will be applied on negedge of clock!
+        cb_udma_hyper.cfg_addr_i <=0;
+        cb_udma_hyper.cfg_valid_i <= '0;
+        cb_udma_hyper.cfg_data_i <= 0;
+
+        // Will be applied 4ns after the clock!
+
+        cb_udma_hyper.cfg_rwn_i<=0;
+        cb_udma_hyper.cfg_valid_i<=0;
+        cfg_rx_bytes_left_i <= 0;
+        cfg_rx_pending_i<=0;
+        cfg_rx_curr_addr_i<=0;
+        cfg_tx_pending_i<=0;
+        cfg_tx_en_i<=0;
+        cfg_tx_curr_addr_i<=0;
+
+        tran_size <= 'h200;
         axi_master_drv.reset_master();
         fr = $fopen ("axireadvalues.txt","w");
         fw = $fopen ("axiwrotevalues.txt","w");
@@ -406,7 +721,188 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
        
     endtask
 
+    task WriteConfig(SetConfig sconfig, int id);
 
+        cb_udma_hyper.cfg_addr_i <= sconfig.cfg_address;
+        cb_udma_hyper.cfg_data_i <= sconfig.cfg_data;
+        cb_udma_hyper.cfg_valid_i[id] <= 1;
+        cb_udma_hyper.cfg_rwn_i <= 0;
+        #SYS_TCK;
+        cb_udma_hyper.cfg_valid_i[id] <= 0;
+        #SYS_TCK;
+     endtask : WriteConfig
+
+
+    task LongWriteTransactionTest(int mem_address, int l2_address, int length, int id);
+        automatic int count2=0;
+        automatic int burst_size_32=0;
+        if((length%4)==0) burst_size_32 = length/4;
+        else burst_size_32 = length/4 +1;
+
+        sconfig = new(`REG_T_RWDS_DELAY_LINE,32'h00000004);
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_EN_LATENCY_ADD,32'h00000001);
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
+        WriteConfig(sconfig,1);
+        sconfig = new(`TWD_ACT_L2, 32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_COUNT_L2, 32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_STRIDE_L2,32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_ACT_EXT, 32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_COUNT_EXT, 32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_STRIDE_EXT,32'h000000);
+        WriteConfig(sconfig,id);
+
+        sconfig = new(`REG_T_CS_MAX, 32'hffffffff); // un_limit burst length
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_TX_SADDR, l2_address); // TX Start address
+        WriteConfig(sconfig,id);
+        sconfig = new(`REG_TX_SIZE, length); // TX size in byte
+        WriteConfig(sconfig,id);
+        sconfig = new(`REG_HYPER_ADDR, mem_address); // Mem address
+        WriteConfig(sconfig,id);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000001); // Write is declared.
+        WriteConfig(sconfig,id);
+        sconfig = new(`REG_UDMA_TXCFG, 32'h0000014); // Write transaction is kicked 
+        WriteConfig(sconfig,id);
+
+        #(SYS_TCK*burst_size_32);
+        #(SYS_TCK*burst_size_32);
+
+        sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_UDMA_TXCFG, 32'h0000000); // Write transaction ends
+        WriteConfig(sconfig,id);
+        ReadTransaction(mem_address,l2_address,length, id);
+        cb_udma_hyper.cfg_rx_bytes_left_i <= length;
+        wait(rx_valid_udma_o);
+        count2 = 0;
+       #(SYS_TCK*burst_size_32*2);
+
+    endtask : LongWriteTransactionTest
+
+    task ReadTransaction(int mem_address, int l2_address, int length, int id);
+        sconfig = new(`TWD_ACT_L2, 32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_COUNT_L2, 32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_STRIDE_L2,32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_ACT_EXT, 32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_COUNT_EXT, 32'h000000);
+        WriteConfig(sconfig,id);
+        sconfig = new(`TWD_STRIDE_EXT,32'h000000);
+        WriteConfig(sconfig,id);
+
+        sconfig = new(`REG_RX_SADDR, l2_address); // RX Start address
+        WriteConfig(sconfig,id);
+        sconfig = new(`REG_RX_SIZE, length); // TX size in byte
+        WriteConfig(sconfig,id);
+        sconfig = new(`REG_HYPER_ADDR, mem_address); // Mem address
+        WriteConfig(sconfig,id);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000005); // Read is declared
+        WriteConfig(sconfig,id);
+
+        sconfig = new(`REG_UDMA_RXCFG, 32'h000014); // Read transaction is kicked
+        WriteConfig(sconfig,id);
+
+    endtask : ReadTransaction
+
+    task RegTransaction();
+ 
+        sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_HYPER_ADDR, 32'h000000); // ID0 reg
+        WriteConfig(sconfig,1);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000006); // Reg read is declared
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_RX_SIZE, 2); // Read size in byte
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_UDMA_RXCFG, 32'h000014); // Read transaction is kicked
+        WriteConfig(sconfig,1);
+        cb_udma_hyper.cfg_rx_bytes_left_i <= 2;
+        wait(rx_valid_udma_o);
+        cb_udma_hyper.cfg_rx_bytes_left_i <= 0;
+        #(SYS_TCK*10);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000000); // configration is cleared
+        WriteConfig(sconfig,1);
+  
+    
+        sconfig = new(`REG_HYPER_ADDR, 32'h000001); // ID1 reg
+        WriteConfig(sconfig,1);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000006); // Reg read
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_RX_SIZE, 2); // Read size in byte
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_UDMA_RXCFG, 32'h000014); // Read transaction is kicked
+        WriteConfig(sconfig,1);
+        cb_udma_hyper.cfg_rx_bytes_left_i <= 2;
+        wait(rx_valid_udma_o);
+        cb_udma_hyper.cfg_rx_bytes_left_i <= 0;
+        #(SYS_TCK*5);
+        sconfig = new(`REG_UDMA_RXCFG, 32'h000000); // Read transaction is finished
+        WriteConfig(sconfig,1);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000000); // configration is cleared
+        WriteConfig(sconfig,1);
+
+
+
+        sconfig = new(`REG_HYPER_ADDR, 32'h000801); // Config1 reg
+        WriteConfig(sconfig,0);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000006); // Reg read
+        WriteConfig(sconfig,0);
+        sconfig = new(`REG_RX_SIZE, 2); // Read size in byte
+        WriteConfig(sconfig,0);
+        sconfig = new(`REG_UDMA_RXCFG, 32'h000014); // Read transaction is kicked
+        WriteConfig(sconfig,0);
+        cb_udma_hyper.cfg_rx_bytes_left_i <= 2;
+        wait(rx_valid_udma_o);
+        cb_udma_hyper.cfg_rx_bytes_left_i <= 0;
+        #(SYS_TCK*5);
+        sconfig = new(`REG_UDMA_RXCFG, 32'h000000); // Read transaction is finished
+        WriteConfig(sconfig,1);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000000); // configration is cleared
+        WriteConfig(sconfig,1);
+
+
+        sconfig = new(`REG_HYPER_ADDR, 32'h000800); // Config0 reg
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_HYPER_CFG, 16'b1011111100010100); // Write data setup
+        WriteConfig(sconfig,1);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000002); // Reg Write is declared
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_UDMA_TXCFG, 32'h0000014); // Write transaction is kicked 
+        WriteConfig(sconfig,1);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000000); // Reg Write finished
+        WriteConfig(sconfig,1);
+        #(SYS_TCK*5);
+
+        sconfig = new(`REG_HYPER_ADDR, 32'h000800); // Config0 reg
+        WriteConfig(sconfig,1);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000006); // Reg read
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_RX_SIZE, 2); // Read size in byte
+        WriteConfig(sconfig,1);
+        sconfig = new(`REG_UDMA_RXCFG, 32'h000014); // Read transaction is kicked
+        WriteConfig(sconfig,1);
+        cb_udma_hyper.cfg_rx_bytes_left_i <= 2;
+        wait(rx_valid_udma_o);
+        cb_udma_hyper.cfg_rx_bytes_left_i <= 0;
+        #(SYS_TCK*5);
+        sconfig = new(`REG_UDMA_RXCFG, 32'h000000); // Read transaction is finished
+        WriteConfig(sconfig,1);
+        sconfig = new(`HYPER_CA_SETUP, 32'h000000); // configration is cleared
+        WriteConfig(sconfig,1);
+        #(SYS_TCK*2000);
+    endtask: RegTransaction
+
+   
 endmodule : fixture_hyperbus
 
 

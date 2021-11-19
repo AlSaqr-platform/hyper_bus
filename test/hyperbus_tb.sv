@@ -269,11 +269,18 @@ module hyperbus_tb;
         fix.write_axi('ha00, 4090, 2, 'ha02e_3273_aca3_b2bf_d20a_684c_2da1_0103, 'hffff);
         fix.read_axi('ha00, 4090, 2);
 
-        $display("==================");
-        $display("DONE WITH SUCCESS!");
-        $display("==================");
+        $display("======================");
+        $display("AXI DONE WITH SUCCESS!");
+        $display("======================");
 
+        fix.LongWriteTransactionTest('h1, 0,'h200,0); // Burst length = multiple of 16bits
 
+        #8us;
+
+        $display("======================");
+        $display("UDMA DONE!");
+        $display("======================");
+        
         #5us;
         $stop();
     end
