@@ -192,7 +192,7 @@ module hyperbus_tb;
         $display("COMBINED");
         $display("=================");
 
-        fix.write_axi('h800, 0, 4, 'h0000_0000_0000_0000_0000_0000_0000_0000, 'hffff);
+        fix.write_axi('h800, 0, 4, '1, 'hffff);
         fix.read_axi('h800, 0, 4);
         fix.write_axi('h800, 0, 4, 'hcaca_abba_abba_abba_abba_3214_00aa_ca00, 'hc03f);
         fix.read_axi('h800, 0, 4);
@@ -207,7 +207,7 @@ module hyperbus_tb;
         $display("UNALIGNED");
         $display("=================");
 
-        fix.write_axi('h900, 10, 4, 'h0000_0000_0000_0000_0000_0000_0000_0000, 'hffff);
+        fix.write_axi('h900, 10, 4, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hffff);
         fix.read_axi('h900, 10, 4);
 
         // 32b inner 3-burst on 16b boundary
@@ -219,11 +219,13 @@ module hyperbus_tb;
         fix.read_axi('h90a, 9, 2);
 
         // 64b inner single on 16b boundary
+        fix.write_axi('h910, 10, 3, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hffff);
+        fix.read_axi('h910, 10, 3);
         fix.write_axi('h91C, 0, 3, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFF0F);
         fix.read_axi('h91C, 0, 3);
 
         // 64b inner 5-burst on 16b boundary
-        fix.write_axi('h990, 5, 3, 'h0000_0000_0000_0000_0000_0000_0000_0000, 'hFFFF);
+        fix.write_axi('h990, 5, 3, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hFFFF);
         fix.read_axi('h990, 5, 3);
         fix.write_axi('h992, 4, 3, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFF0F);
         fix.read_axi('h992, 4, 3);
@@ -236,7 +238,7 @@ module hyperbus_tb;
         fix.write_axi('h930, 0, 4, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFFFF);
         fix.read_axi('h930, 0, 4);
 
-        fix.write_axi('h954, 0, 4, 'h0000_0000_0000_0000_0000_0000_0000_0000, 'hFFFF);
+        fix.write_axi('h954, 0, 4, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hFFFF);
         fix.read_axi('h954, 0, 4);  
      
         // 128 outer single on 32b boundary (read back in aligned fasion)
@@ -245,7 +247,7 @@ module hyperbus_tb;
 
        
         // 128 outer single on 64b boundary (read back in aligned fasion)
-        fix.write_axi('h978, 0, 4, 'h0000_0000_0000_0000_0000_0000_0000_0000, 'hFFFF);
+        fix.write_axi('h978, 0, 4, 'hffff_ffff_ffff_ffff_ffff_ffff_ffff_ffff, 'hFFFF);
         fix.read_axi('h978, 0, 4); //siamo qua
         // 128 outer single on 64b boundary (read back in aligned fasion)
         fix.write_axi('h978, 0, 4, 'h11ee_ccdd_bbaa_9988_7766_5544_3322_1100, 'hFFFF);

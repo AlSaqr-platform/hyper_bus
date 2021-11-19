@@ -54,7 +54,7 @@ module hyperbus_phy2r import hyperbus_pkg::NumPhys; #(
    logic                        sent_available_data;
    logic [BurstLength-1:0]      next_axi_addr;
    
-   assign word_cnt = byte_phy_cnt_q[NumPhys +:WordCntWidth];
+   assign word_cnt = (AxiBytesInPhyBeat==1) ? '0 : byte_phy_cnt_q[NumPhys +:WordCntWidth];
    assign next_axi_addr = ((byte_axi_addr_q>>size_d)<< size_d) + (1<<size_d);
    assign enough_data = byte_phy_cnt_d >= next_axi_addr;
    assign sent_available_data = byte_axi_addr_d >= byte_phy_cnt_q;
