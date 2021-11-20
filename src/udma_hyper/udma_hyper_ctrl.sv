@@ -12,6 +12,7 @@
 //// Hayate Okuhara <hayate.okuhara@unibo.it>
 
 module udma_hyper_ctrl
+  import hyperbus_pkg::NumPhys;
 #(
     parameter L2_AWIDTH_NOAL = 12,
     parameter TRANS_SIZE = 16,
@@ -265,16 +266,16 @@ module udma_hyper_ctrl
                          if(phy_trans_valid_o & phy_trans_ready_i) control_state <= WRITETRANSACTION;
                          if(additional_data) // if the burst length is not a multiple of 16 bits
                            begin
-                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_tx_size >> 2)+1 ; // # of 32 bit data at phy
+                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_tx_size >> 1)+1 ; // # of 32 bit data at phy
                              else trans_burst_o <= (r_tx_size >> 1)+1 ;
-                             if(r_mem_sel == 2'b11) remained_data_o <= (r_tx_size >> 2)+1 ; 
+                             if(r_mem_sel == 2'b11) remained_data_o <= (r_tx_size >> 1)+1 ; 
                              else remained_data_o <= (r_tx_size >> 1)+1 ;
                            end
                          else
                            begin 
-                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_tx_size >> 2);
+                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_tx_size >> 1);
                              else trans_burst_o <= (r_tx_size >> 1);
-                             if(r_mem_sel == 2'b11) remained_data_o <= (r_tx_size >> 2);
+                             if(r_mem_sel == 2'b11) remained_data_o <= (r_tx_size >> 1);
                              else remained_data_o <= (r_tx_size >> 1);
                            end
 
@@ -296,7 +297,7 @@ module udma_hyper_ctrl
                  phy_trans_valid_o <= 1'b0;
                  if(remained_data_o!=0)
                    begin
-                      if(rx_valid_phy_i&rx_ready_phy_i) remained_data_o <= remained_data_o -1;
+                      if(rx_valid_phy_i&rx_ready_phy_i) remained_data_o <= remained_data_o - NumPhys;
                    end
                  else
                    begin
@@ -308,7 +309,7 @@ module udma_hyper_ctrl
                  phy_trans_valid_o <= 1'b0;
                  if(remained_data_o != 0)
                    begin
-                      if( tx_valid_phy_i&tx_ready_phy_i ) remained_data_o <= remained_data_o -1;
+                      if( tx_valid_phy_i&tx_ready_phy_i ) remained_data_o <= remained_data_o - NumPhys;
                    end
                  else
                    begin

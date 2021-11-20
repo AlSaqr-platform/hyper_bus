@@ -819,13 +819,20 @@ module udma_hyperbus
 
    assign tx_valid_o                      =tx_valid_phy;
    assign tx_ready_phy                    =tx_ready_i;
-   assign udma_phy_tx.data                =tx_data_phy[15:0];
-   assign udma_phy_tx.strb                =~tx_data_lower_mask;
-   assign udma_phy_tx.last                =(remained_data==1)&tx_valid_phy&tx_ready_phy;
+   assign udma_phy_tx.data                =tx_data_phy[(NumPhys*16)-1:0];
+
+   if(NumPhys==1) begin
+     assign udma_phy_tx.strb              =~tx_data_lower_mask;
+     assign rx_data_phy                   ={16'h0,udma_phy_rx.data};
+   end else begin
+     assign udma_phy_tx.strb              ={~tx_data_upper_mask,~tx_data_lower_mask};
+     assign rx_data_phy                   =udma_phy_rx.data;
+   end
+                                           
+   assign udma_phy_tx.last                =((remained_data==NumPhys)||(remained_data==1))&tx_valid_phy&tx_ready_phy;
 
    assign rx_valid_phy                    =rx_valid_i;
    assign rx_ready_o                      =rx_ready_phy;
-   assign rx_data_phy                     ={16'h0,udma_phy_rx.data};
    assign mem_sel_o                       =ctrl_mem_sel;
 
     // =========================

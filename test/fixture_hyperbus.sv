@@ -24,8 +24,11 @@
 `define TWD_STRIDE_L2           5'b01111 //BASEADDR+0x30 set 2D transfer stride
 
 // Configuration register for Hyper bus CHANNEl
+// set by the axi cfg regs
 `define REG_PAGE_BOUND          5'b00000 //BASEADDR+0x00 set the page boundary.
+// set by the axi cfg regs
 `define REG_T_LATENCY_ACCESS    5'b00001 //BASEADDR+0x04 set t_latency_access
+// set by the axi cfg regs
 `define REG_EN_LATENCY_ADD      5'b00010 //BASEADDR+0x08 set en_latency_additional
 `define REG_T_CS_MAX            5'b00011 //BASEADDR+0x0C set t_cs_max
 `define REG_T_RW_RECOVERY       5'b00100 //BASEADDR+0x10 set t_read_write_recovery
@@ -213,6 +216,8 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     logic [31:0]               count;
     
     logic [BYTE_WIDTH-1:0]     data_mem [0:MEM_DEPTH-1]; // 4KB data mem
+    logic [31:0]               udma_sent_word[0:MEM_DEPTH-1];
+   
     logic [L2_AWIDTH_NOAL-1:0] data_mem_addr;
     logic [L2_AWIDTH_NOAL-1:0] r_tx_addr;
     logic [31:0]               mem_data_out;
@@ -224,13 +229,14 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     logic [TRANS_SIZE-1:0]     r_tx_size;
     logic                      r_write_tran_en;
     logic                      r_rx_en;
-
-  // Data memory for test
+    logic                      s_req_o;
+   
+   // Data memory for test
    /////////////////////////////////////////////////
    //                    MEMORY                   //
    /////////////////////////////////////////////////
     assign mem_data_out = { data_mem[data_mem_addr+3], data_mem[data_mem_addr+2], data_mem[data_mem_addr+1], data_mem[data_mem_addr]};
-    
+ 
     always @(posedge sys_clk or negedge rst_n)
       begin
         if(!rst_n)
@@ -253,6 +259,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
       end
     
      assign cfg_tx_bytes_left_i = (r_write_tran_en)? r_tx_size - data_count: 0;
+
      always  @(posedge sys_clk or negedge rst_n)
        begin
          if(!rst_n)
@@ -331,9 +338,9 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
           begin
             if(rx_valid_udma_o)
               begin
-                if(rx_data_udma_o != (32'hffff0000+rx_data_count))
+                if(rx_data_udma_o !=  {data_mem[(rx_data_count*4)+3], data_mem[(rx_data_count*4)+2], data_mem[(rx_data_count*4)+1], data_mem[rx_data_count*4]})
                   begin
-                    $fatal("@ %g Error at %d th data=%h",$time, rx_data_count, rx_data_udma_o);
+                    $fatal(1,"t=%g. Error at %d. %h instead of %h",$time, rx_data_count, rx_data_udma_o, {data_mem[(rx_data_count*4)+3], data_mem[(rx_data_count*4)+2], data_mem[(rx_data_count*4)+1], data_mem[rx_data_count*4]});
                   end
                 if(rx_data_count == tran_size32 -1) rx_data_count <=0;
                 else rx_data_count <= rx_data_count +1;
@@ -434,8 +441,8 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         .data_tx_i              ( mem_data_out_d        ),
         .data_tx_valid_i        ( tx_valid_udma_d       ),
         .data_tx_ready_o        ( tx_ready_udma_o       ),
-        .data_tx_gnt_i          ( '1                    ),
-        .data_tx_req_o          (                       ),
+        .data_tx_gnt_i          ( s_req_o               ),
+        .data_tx_req_o          ( s_req_o               ),
         
         .cfg_data_i             ( cfg_data_i            ),
         .cfg_addr_i             ( cfg_addr_i            ),
@@ -516,7 +523,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
 
     // SystemVerilog "clocking block"
     // Clocking outputs are DUT inputs and vice versa
-    default clocking cb_udma_hyper @(posedge sys_clk);
+    default clocking cb_udma_hyper @(negedge sys_clk);
       default input #1step output #1ns;
 
        
@@ -745,6 +752,10 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         WriteConfig(sconfig,1);
         sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
         WriteConfig(sconfig,1);
+        if(NumPhys==2) begin
+           sconfig = new(`MEM_SEL, 32'h00000003);
+           WriteConfig(sconfig,1);
+        end
         sconfig = new(`TWD_ACT_L2, 32'h000000);
         WriteConfig(sconfig,id);
         sconfig = new(`TWD_COUNT_L2, 32'h000000);
@@ -778,6 +789,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         WriteConfig(sconfig,1);
         sconfig = new(`REG_UDMA_TXCFG, 32'h0000000); // Write transaction ends
         WriteConfig(sconfig,id);
+        #3us;
         ReadTransaction(mem_address,l2_address,length, id);
         cb_udma_hyper.cfg_rx_bytes_left_i <= length;
         wait(rx_valid_udma_o);
