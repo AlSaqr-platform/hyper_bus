@@ -114,6 +114,16 @@ module hyperbus_tb;
 
         #2557ns;
 
+        for(int p; p<100; p++) begin
+          fix.write_axi(p*8, 0, 3, 'h8888_7777_6666_5555_4444_3333_2222_1111, 'hffff);
+          fix.read_axi(p*8, 0, 3);
+        end
+
+        // clean up
+        fix.write_axi('h00, 100, 3, '1, 'hffff);
+        fix.read_axi('h0, 100, 3);
+       
+
         $display("=================");
         $display("32 BIT ALIGNED ACCESSES");
         $display("=================");
@@ -261,11 +271,11 @@ module hyperbus_tb;
         fix.write_axi('ha00, 4090, 4, 'ha5a5_8951_5263_dead_2bad_0000_7891_4269, 'hffff);
         fix.read_axi('ha00, 4090, 4);
 
-        // 128 bit access (burst, extrawide --> will be split)
+        // 64 bit access (burst, extrawide --> will be split)
         fix.write_axi('ha00, 4090, 3, 'h8e25_0c26_5b04_f2e5_d947_d987_3631_c34e, 'hffff);
         fix.read_axi('ha00, 4090, 3);
 
-        // 128 bit access (burst, extrawide --> will be split)
+        // 32 bit access (burst, extrawide --> will be split)
         fix.write_axi('ha00, 4090, 2, 'ha02e_3273_aca3_b2bf_d20a_684c_2da1_0103, 'hffff);
         fix.read_axi('ha00, 4090, 2);
 
@@ -273,12 +283,28 @@ module hyperbus_tb;
         $display("AXI DONE WITH SUCCESS!");
         $display("======================");
 
-        fix.LongWriteTransactionTest('h1, 0,'h200,0); // Burst length = multiple of 16bits
+        $display("L3 addr: 1, l2_addr 0, length 64");
+        fix.LongWriteTransactionTest(1, 0,'h100,0);
+        #8us;
 
+        $display("L3 addr: 2, l2_addr 0, length 64");
+        fix.LongWriteTransactionTest(2, 0,'h100,0);
+        #8us;
+
+        $display("L3 addr: 0, l2_addr 64, length 64");
+        fix.LongWriteTransactionTest(0, 64,'h200,0);
         #8us;
 
         $display("======================");
-        $display("UDMA DONE!");
+        $display("UDMA DONE...");
+        $display("======================");
+
+        // 32 bit access
+        fix.write_axi('ha00, 2, 2, 'ha02e_3273_aca3_b2bf_d20a_684c_2da1_0103, 'hffff);
+        fix.read_axi('ha00, 2, 2);
+
+        $display("======================");
+        $display("AND WITH NO TIME OUTS!");
         $display("======================");
         
         #5us;

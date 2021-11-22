@@ -152,7 +152,7 @@ module udma_hyper_ctrl
               begin
                 r_tx_size <= tx_size_i;
                 r_rx_size <= rx_size_i;
-                r_hyper_addr <= hyper_addr_i;
+                r_hyper_addr <= hyper_addr_i >> (NumPhys-1);
                 r_hyper_intreg <= hyper_intreg_i;
                 r_rw_hyper <= rw_hyper_i;
                 r_addr_space <= addr_space_i;
@@ -248,9 +248,9 @@ module udma_hyper_ctrl
                          if(phy_trans_valid_o & phy_trans_ready_i) control_state <= READTRANSACTION;
                          if(additional_data) 
                            begin                             
-                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_rx_size >>2)+1; // # of 32 bit data received by phy
+                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_rx_size >>1)+2; // # of 32 bit data received by phy
                              else trans_burst_o <= (r_rx_size >> 1)+1;  // # of 16 bit data received by phy
-                             if(r_mem_sel == 2'b11) remained_data_o <= (r_rx_size >> 2)+1; // # of 32 bit data sent to 16b32b module
+                             if(r_mem_sel == 2'b11) remained_data_o <= (r_rx_size >>1)+2; // # of 32 bit data sent to 16b32b module
                              else remained_data_o <= (r_rx_size >> 1)+1; // # of 16 bit data 
                            end
                          else
@@ -266,9 +266,9 @@ module udma_hyper_ctrl
                          if(phy_trans_valid_o & phy_trans_ready_i) control_state <= WRITETRANSACTION;
                          if(additional_data) // if the burst length is not a multiple of 16 bits
                            begin
-                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_tx_size >> 1)+1 ; // # of 32 bit data at phy
+                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_tx_size >> 1) + 2; // # of 32 bit data at phy
                              else trans_burst_o <= (r_tx_size >> 1)+1 ;
-                             if(r_mem_sel == 2'b11) remained_data_o <= (r_tx_size >> 1)+1 ; 
+                             if(r_mem_sel == 2'b11) remained_data_o <= (r_tx_size >> 1) + 2; 
                              else remained_data_o <= (r_tx_size >> 1)+1 ;
                            end
                          else
@@ -341,7 +341,7 @@ module udma_hyper_ctrl
                                     (r_tx_size == 1)   ? 2'b10 : 2'b00;
     assign lower_mask_head_spi8  =  hyper_odd_saaddr_o ? 2'b10 :
                                     (r_tx_size == 1)   ? 2'b01 : 2'b00;
-    assign lower_mask_head_spi16 =  hyper_odd_saaddr_o && (r_tx_size == 1) ? 2'b11 :
+    assign lower_mask_head_spi16 =  hyper_odd_saaddr_o && ((r_tx_size == 1) || (mem_sel_i==2'b11)) ? 2'b11 :
                                     hyper_odd_saaddr_o ? 2'b10 :
                                     (!hyper_odd_saaddr_o && (r_tx_size <= 2)) ? 2'b01 :  2'b00;
     assign upper_mask_head_spi16 =  (r_tx_size <= 3) && (tail == 2'b01) ? 2'b11 :

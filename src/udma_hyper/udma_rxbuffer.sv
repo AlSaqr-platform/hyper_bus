@@ -198,7 +198,7 @@ module udma_rxbuffer
          end
      end
 
-   assign data_rot = hyper_odd_saaddr_i  ?  {data_buff[7:0], prev_data[31:8]} : data_buff;
+   assign data_rot = hyper_odd_saaddr_i  ?  ( mem_sel_i == 2'b11 ? {data_buff[15:0], prev_data[31:16]} : {data_buff[7:0], prev_data[31:8]} ) : data_buff;
    assign dst_valid_o = hyper_odd_saaddr_i ? int_valid_buff : int_valid;
    assign last_mux = hyper_odd_saaddr_i ? last_buff : last;
    assign data_o = (last_mux) && (cfg_rx_size_i[1:0]==2'b11) ? {{8{1'b0}} , data_rot[23:0]}:

@@ -336,14 +336,17 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
           end
         else
           begin
+            if (cfg_rx_en_o) begin
+              rx_data_count <= cfg_rx_startaddr_o;
+             end
             if(rx_valid_udma_o)
               begin
-                if(rx_data_udma_o !=  {data_mem[(rx_data_count*4)+3], data_mem[(rx_data_count*4)+2], data_mem[(rx_data_count*4)+1], data_mem[rx_data_count*4]})
+                if(rx_data_udma_o !=  {data_mem[rx_data_count+3], data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]})
                   begin
-                    $fatal(1,"t=%g. Error at %d. %h instead of %h",$time, rx_data_count, rx_data_udma_o, {data_mem[(rx_data_count*4)+3], data_mem[(rx_data_count*4)+2], data_mem[(rx_data_count*4)+1], data_mem[rx_data_count*4]});
+                    $fatal(1,"Error at %d. %h instead of %h", rx_data_count, rx_data_udma_o, {data_mem[rx_data_count+3], data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]});
                   end
                 if(rx_data_count == tran_size32 -1) rx_data_count <=0;
-                else rx_data_count <= rx_data_count +1;
+                else rx_data_count <= rx_data_count +4;
               end
           end
     end
@@ -702,7 +705,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
               $display("%p", w_beat);
               $display("%x", w_beat.w_data);
               if (i==0) begin
-                 for (k = temp_waddr[AxiMaxSize-1:0]; k<((temp_waddr[AxiMaxSize-1:0]>>size)<<size) + (2**size) ; k++)  begin
+                 for (k = temp_waddr[AxiMaxSize-1:0]; k<(((temp_waddr[AxiMaxSize-1:0]>>size)<<size) + (2**size)) ; k++)  begin
                    trans_wdata[k*8 +:8] = (wstrb[k]) ? w_beat.w_data[(k*8) +: 8] : '1;
                  end
               end else begin
@@ -710,7 +713,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
                     trans_wdata[j*8 +:8] = (wstrb[j]) ? w_beat.w_data[(j*8) +: 8] : '1;
                  end
               end
-              $fwrite(fw, "%x %x %d %d \n",trans_wdata, temp_waddr, (((temp_waddr[AxiMaxSize-1:0]>>size)<<size) + (2**size)), write_index);
+              $fwrite(fw, "%x %x %x %d %d \n",  w_beat.w_data, trans_wdata, temp_waddr, (((temp_waddr[AxiMaxSize-1:0]>>size)<<size) + (2**size)), write_index);
               memory[write_index]=trans_wdata;
               if($isunknown(trans_wdata)) begin
                  $fatal(1,"Xs @%x\n",temp_waddr);
@@ -741,60 +744,67 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
 
 
     task LongWriteTransactionTest(int mem_address, int l2_address, int length, int id);
+       
         automatic int count2=0;
         automatic int burst_size_32=0;
         if((length%4)==0) burst_size_32 = length/4;
         else burst_size_32 = length/4 +1;
 
-        sconfig = new(`REG_T_RWDS_DELAY_LINE,32'h00000004);
-        WriteConfig(sconfig,1);
-        sconfig = new(`REG_EN_LATENCY_ADD,32'h00000001);
-        WriteConfig(sconfig,1);
-        sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
-        WriteConfig(sconfig,1);
-        if(NumPhys==2) begin
-           sconfig = new(`MEM_SEL, 32'h00000003);
-           WriteConfig(sconfig,1);
+       
+        if(NumPhys==2 && mem_address[0]!=0) begin
+          $warning("Writes/reads with udma need to be aligned to 16 bits");
+        end else begin
+
+          sconfig = new(`REG_T_RWDS_DELAY_LINE,32'h00000004);
+          WriteConfig(sconfig,1);
+          sconfig = new(`REG_EN_LATENCY_ADD,32'h00000001);
+          WriteConfig(sconfig,1);
+          sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
+          WriteConfig(sconfig,1);
+          if(NumPhys==2) begin
+             sconfig = new(`MEM_SEL, 32'h00000003);
+             WriteConfig(sconfig,1);
+          end
+          sconfig = new(`TWD_ACT_L2, 32'h000000);
+          WriteConfig(sconfig,id);
+          sconfig = new(`TWD_COUNT_L2, 32'h000000);
+          WriteConfig(sconfig,id);
+          sconfig = new(`TWD_STRIDE_L2,32'h000000);
+          WriteConfig(sconfig,id);
+          sconfig = new(`TWD_ACT_EXT, 32'h000000);
+          WriteConfig(sconfig,id);
+          sconfig = new(`TWD_COUNT_EXT, 32'h000000);
+          WriteConfig(sconfig,id);
+          sconfig = new(`TWD_STRIDE_EXT,32'h000000);
+          WriteConfig(sconfig,id);
+          
+          sconfig = new(`REG_T_CS_MAX, 32'hffffffff); // un_limit burst length
+          WriteConfig(sconfig,1);
+          sconfig = new(`REG_TX_SADDR, l2_address); // TX Start address
+          WriteConfig(sconfig,id);
+          sconfig = new(`REG_TX_SIZE, length); // TX size in byte
+          WriteConfig(sconfig,id);
+          sconfig = new(`REG_HYPER_ADDR, mem_address); // Mem address
+          WriteConfig(sconfig,id);
+          sconfig = new(`HYPER_CA_SETUP, 32'h000001); // Write is declared.
+          WriteConfig(sconfig,id);
+          sconfig = new(`REG_UDMA_TXCFG, 32'h0000014); // Write transaction is kicked 
+          WriteConfig(sconfig,id);
+          
+          #(SYS_TCK*burst_size_32);
+          #(SYS_TCK*burst_size_32);
+          
+          sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
+          WriteConfig(sconfig,1);
+          sconfig = new(`REG_UDMA_TXCFG, 32'h0000000); // Write transaction ends
+          WriteConfig(sconfig,id);
+          #3us;
+          ReadTransaction(mem_address,l2_address,length, id);
+          cb_udma_hyper.cfg_rx_bytes_left_i <= length;
+          wait(rx_valid_udma_o);
+          count2 = 0;
+          #(SYS_TCK*burst_size_32*2);
         end
-        sconfig = new(`TWD_ACT_L2, 32'h000000);
-        WriteConfig(sconfig,id);
-        sconfig = new(`TWD_COUNT_L2, 32'h000000);
-        WriteConfig(sconfig,id);
-        sconfig = new(`TWD_STRIDE_L2,32'h000000);
-        WriteConfig(sconfig,id);
-        sconfig = new(`TWD_ACT_EXT, 32'h000000);
-        WriteConfig(sconfig,id);
-        sconfig = new(`TWD_COUNT_EXT, 32'h000000);
-        WriteConfig(sconfig,id);
-        sconfig = new(`TWD_STRIDE_EXT,32'h000000);
-        WriteConfig(sconfig,id);
-
-        sconfig = new(`REG_T_CS_MAX, 32'hffffffff); // un_limit burst length
-        WriteConfig(sconfig,1);
-        sconfig = new(`REG_TX_SADDR, l2_address); // TX Start address
-        WriteConfig(sconfig,id);
-        sconfig = new(`REG_TX_SIZE, length); // TX size in byte
-        WriteConfig(sconfig,id);
-        sconfig = new(`REG_HYPER_ADDR, mem_address); // Mem address
-        WriteConfig(sconfig,id);
-        sconfig = new(`HYPER_CA_SETUP, 32'h000001); // Write is declared.
-        WriteConfig(sconfig,id);
-        sconfig = new(`REG_UDMA_TXCFG, 32'h0000014); // Write transaction is kicked 
-        WriteConfig(sconfig,id);
-
-        #(SYS_TCK*burst_size_32);
-        #(SYS_TCK*burst_size_32);
-
-        sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
-        WriteConfig(sconfig,1);
-        sconfig = new(`REG_UDMA_TXCFG, 32'h0000000); // Write transaction ends
-        WriteConfig(sconfig,id);
-        #3us;
-        ReadTransaction(mem_address,l2_address,length, id);
-        cb_udma_hyper.cfg_rx_bytes_left_i <= length;
-        wait(rx_valid_udma_o);
-        count2 = 0;
-       #(SYS_TCK*burst_size_32*2);
 
     endtask : LongWriteTransactionTest
 

@@ -104,17 +104,21 @@ module udma_txbuffer
          begin
            if(dst_ready_i)
              begin
-               if( src_valid_i & src_ready_o )  
+               if( src_valid_i & src_ready_o ) begin  
                  begin
                      if(mem_sel_i != 2'b11) src_ready_o <= 0; // 16 bit data transfer requires 2 cycles
                      else src_ready_o <= 1;
                      src_valid_d <=1;
                  end
-               else
+               end else if (remained_data_i == 2 && mem_sel_i==2'b11) begin
+                  src_valid_d <=1;
+                  src_ready_o <=0;
+               end else begin
                  begin
                      src_valid_d <=0;
                      src_ready_o <=1;
                  end
+               end
              end
            else
              begin
@@ -131,25 +135,20 @@ module udma_txbuffer
   assign dst_valid_o = (mem_sel_i == 2'b11) ? valid32 : valid16; 
   assign data_o = {mem_sel_i == 2'b11} ? data32 : {16'b0, data16};
 
+  always_comb begin
+     data_rotate = r_in_data;
+     if (hyper_odd_saaddr_i) begin
+        if (mem_sel_i==2'b11) begin
+           data_rotate = (remained_data_i<3) ? {r_in_data[15:0], r_in_data[31:16]} :  {r_in_data[15:0], r_prev_data[31:16]} ;
+        end else begin
+           data_rotate = (remained_data_i<3) ? {r_in_data[23:0], r_in_data[31:24]} :  {r_in_data[23:0], r_prev_data[31:24]} ;
+        end
+     end
+  end
+   
   // For 32 bit data transmission
-  assign data_rotate = hyper_odd_saaddr_i ? {r_in_data[23:0], r_prev_data[31:24]}: r_in_data;
   assign data32 = data_rotate;
   assign valid32 = src_valid_d;
-
-//  always @(posedge clk_i or negedge rst_ni)
-//    begin
-//       if(!rst_ni)
-//          begin
-//            prev_data_valid <= 1'b0;
-//          end
-//       else
-//          begin
-//             if( src_valid_d & dst_ready_i )
-//                 prev_data_valid <= 1'b1;
-//             else
-//                 prev_data_valid <= 1'b0;
-//          end
-//    end
 
   // For 16 bit data transmission
   assign upper_data = (mem_sel_i == 2'b11) | (mem_sel_i == 2'b10) ? {data_rotate[23:16], data_rotate[31:24]} : data_rotate[31:16];
