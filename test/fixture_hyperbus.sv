@@ -674,7 +674,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         input axi_addr_t      waddr;
         input axi_pkg::len_t  burst_len;
         input axi_pkg::size_t size;
-        input axi_data_t      wdata;
+        input logic           clear;
         input axi_strb_t      wstrb;
 
         @(posedge sys_clk);
@@ -684,7 +684,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         aw_beat.ax_len   = burst_len;
         aw_beat.ax_burst = axi_pkg::BURST_INCR;
         aw_beat.ax_size  = size;
-        w_beat.w_data   = wdata;
+       
         w_beat.w_strb   = wstrb;
         w_beat.w_last   = 1'b0;
         last_waddr = '0;
@@ -700,6 +700,10 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
               if (i == burst_len) begin
                   w_beat.w_last = 1'b1;
               end
+              if(clear)
+                w_beat.w_data = '1;
+              else
+                randomize(w_beat.w_data);
               axi_master_drv.send_w(w_beat);
               trans_wdata = '1; //the memory regions where we do not write are have all ones in the hyperram.
               $display("%p", w_beat);
@@ -749,11 +753,12 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         automatic int burst_size_32=0;
         if((length%4)==0) burst_size_32 = length/4;
         else burst_size_32 = length/4 +1;
-
        
         if(NumPhys==2 && mem_address[0]!=0) begin
-          $warning("Writes/reads with udma need to be aligned to 16 bits");
+          $display("Writes/reads with udma need to be aligned to 16 bits");
         end else begin
+
+          $display("L3 addr: %d, l2_addr %d, length %d", mem_address, l2_address, length);
 
           sconfig = new(`REG_T_RWDS_DELAY_LINE,32'h00000004);
           WriteConfig(sconfig,1);

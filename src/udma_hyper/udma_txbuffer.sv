@@ -139,7 +139,7 @@ module udma_txbuffer
      data_rotate = r_in_data;
      if (hyper_odd_saaddr_i) begin
         if (mem_sel_i==2'b11) begin
-           data_rotate = (remained_data_i<3) ? {r_in_data[15:0], r_in_data[31:16]} :  {r_in_data[15:0], r_prev_data[31:16]} ;
+           data_rotate = {r_in_data[15:0], r_prev_data[31:16]} ;
         end else begin
            data_rotate = (remained_data_i<3) ? {r_in_data[23:0], r_in_data[31:24]} :  {r_in_data[23:0], r_prev_data[31:24]} ;
         end
