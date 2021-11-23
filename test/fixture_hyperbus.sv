@@ -52,11 +52,10 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     localparam time SYS_TA   = 1ns;
     localparam time SYS_TT   = SYS_TCK - 1ns;
 
-    localparam time PHY_TCK  = 10ns;
+    localparam time PHY_TCK  = 6ns;
 
     logic sys_clk      = 0;
     logic phy_clk      = 0;
-    logic phy_clk90    = 0;
     logic test_mode    = 0;
     logic rst_n        = 1;
     logic eos          = 0; // end of sim
@@ -422,12 +421,11 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         .RegDataWidth   ( RegDw       ),
         .reg_req_t      ( reg_req_t   ),
         .reg_rsp_t      ( reg_rsp_t   ),
-        .IsClockODelayed( 1           ),
+        .IsClockODelayed( 0           ),
         .NB_CH          ( NB_CH       ),
         .axi_rule_t     ( rule_t      )
     ) i_dut (
         .clk_phy_i              ( phy_clk               ),
-        .clk_phy_i_90           ( phy_clk90             ),
         .rst_phy_ni             ( rst_n                 ),
         .clk_sys_i              ( sys_clk               ),
         .rst_sys_ni             ( rst_n                 ),
@@ -608,7 +606,6 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         #(PHY_TCK/2);
     end
  
-   always @(phy_clk) phy_clk90 <= #(PHY_TCK/4) phy_clk;
 
     task reset_end;
         @(posedge rst_n);

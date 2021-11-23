@@ -40,6 +40,7 @@ sources:
     - src/udma_hyper/udma_cfg_outbuff.sv
     - src/udma_hyper/udma_hyper_busy_phy.sv
     - src/udma_hyper/udma_hyper.sv
+    - src/hyperbus_clk_gen.sv
     - src/hyperbus_clock_diff_out.sv
     - src/hyperbus_w2phy.sv
     - src/hyperbus_phy2r.sv

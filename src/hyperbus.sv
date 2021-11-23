@@ -32,7 +32,6 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
     parameter int unsigned  PhyStartupCycles = 300 /*us*/ * 200 /*MHz*/ // Conservative maximum frequency estimate
 ) (
     input  logic                        clk_phy_i,
-    input  logic                        clk_phy_i_90,
     input  logic                        rst_phy_ni,
     input  logic                        clk_sys_i,
     input  logic                        rst_sys_ni,
@@ -212,9 +211,9 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
         .NumChips       ( NumChips          ),
         .StartupCycles  ( PhyStartupCycles  )
     ) i_phy (
-        .clk_i          ( clk_phy_i         ),
+        .clk_i          ( clk_phy_i_0       ),
         .clk_i_90       ( clk_phy_i_90      ),
-        .rst_ni         ( rst_phy_ni        ),
+        .rst_ni         ( rst_phy           ),
         .test_mode_i    ( test_mode_i       ),
 
         .cfg_i          ( cfg               ),
@@ -254,8 +253,8 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
         .src_valid_i    ( axi_trans_valid   ),
         .src_ready_o    ( axi_trans_ready   ),
 
-        .dst_rst_ni     ( rst_phy_ni        ),
-        .dst_clk_i      ( clk_phy_i         ),
+        .dst_rst_ni     ( rst_phy           ),
+        .dst_clk_i      ( clk_phy_i_0       ),
         .dst_data_o     ( axi_phy_tf_cdc        ),
         .dst_valid_o    ( axi_phy_trans_valid   ),
         .dst_ready_i    ( axi_phy_trans_ready   )
@@ -264,8 +263,8 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
     cdc_2phase #(
         .T  ( logic )
     ) i_cdc_2phase_b (
-        .src_rst_ni     ( rst_phy_ni    ),
-        .src_clk_i      ( clk_phy_i     ),
+        .src_rst_ni     ( rst_phy       ),
+        .src_clk_i      ( clk_phy_i_0   ),
         .src_data_i     ( axi_phy_b_error   ),
         .src_valid_i    ( axi_phy_b_valid   ),
         .src_ready_o    ( axi_phy_b_ready   ),
@@ -288,8 +287,8 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
         .src_valid_i    ( axi_tx_valid  ),
         .src_ready_o    ( axi_tx_ready  ),
 
-        .dst_rst_ni     ( rst_phy_ni    ),
-        .dst_clk_i      ( clk_phy_i     ),
+        .dst_rst_ni     ( rst_phy       ),
+        .dst_clk_i      ( clk_phy_i_0   ),
         .dst_data_o     ( axi_phy_tx       ),
         .dst_valid_o    ( axi_phy_tx_valid ),
         .dst_ready_i    ( axi_phy_tx_ready )
@@ -300,8 +299,8 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
         .T          ( hyperbus_pkg::hyper_rx_t  ),
         .LOG_DEPTH  ( RxFifoLogDepth            )
     ) i_cdc_fifo_rx (
-        .src_rst_ni     ( rst_phy_ni    ),
-        .src_clk_i      ( clk_phy_i     ),
+        .src_rst_ni     ( rst_phy       ),
+        .src_clk_i      ( clk_phy_i_0   ),
         .src_data_i     ( axi_phy_rx       ),
         .src_valid_i    ( axi_phy_rx_valid ),
         .src_ready_o    ( axi_phy_rx_ready ),
@@ -335,10 +334,9 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
     .NB_CH           (NB_CH)
    ) udma_hyper (    
         .sys_clk_i               ( clk_sys_i                    ),
-        .clk_phy_i               ( clk_phy_i                    ),
-        .clk_phy_i_90            ( clk_phy_i_90                 ),
+        .clk_phy_i               ( clk_phy_i_0                  ),
         .rst_ni                  ( rst_sys_ni                   ),
-        .phy_rst_ni              ( rst_phy_ni                   ),
+        .phy_rst_ni              ( rst_phy                      ),
 
         .cfg_data_i              ( cfg_data_i                   ),
         .cfg_addr_i              ( cfg_addr_i                   ),
@@ -408,8 +406,8 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
 
  hyperbus_arbiter i_hyperbus_arbiter
    (
-   .clk_i          ( clk_phy_i         ),
-   .rst_ni         ( rst_phy_ni        ),
+   .clk_i          ( clk_phy_i_0       ),
+   .rst_ni         ( rst_phy           ),
    .udma_phy_trans_valid(udma_phy_trans_valid),
    .udma_phy_trans_ready(udma_phy_trans_ready),
    .axi_phy_trans_valid(axi_phy_trans_valid),
@@ -473,5 +471,27 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
    assign axi_phy_b_valid = s_sel ? '0 : phy_b_valid;
    assign phy_b_ready     = s_sel ? 1'b1 : axi_phy_b_ready;
  
+    // Shift clock by 90 degrees
+   generate
+    if(IsClockODelayed==0)
+     hyperbus_clk_gen ddr_clk (
+         .clk_i    ( clk_phy_i                       ),
+         .rst_ni   ( rst_phy_ni                      ),
+         .clk0_o   ( clk_phy_i_0                     ),
+         .clk90_o  ( clk_phy_i_90                    ),
+         .clk180_o (                                 ),
+         .clk270_o (                                 ),
+         .rst_no   ( rst_phy                         )
+     );   
+    else if (IsClockODelayed==1) begin
+     assign clk_phy_i_0 = clk_phy_i;
+     assign rst_phy = rst_phy_ni;
+     hyperbus_delay i_delay_tx_clk_90 (
+         .in_i       ( clk_phy_i_0        ),
+         .delay_i    ( cfg.t_tx_clk_delay ),
+         .out_o      ( clk_phy_i_90       )
+         );
+       end
+    endgenerate
    
 endmodule : hyperbus

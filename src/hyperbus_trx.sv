@@ -81,17 +81,7 @@ module hyperbus_trx #(
     // =================
 
     // Shift clock by 90 degrees
-    generate
-       if(IsClockODelayed==1)
-         assign tx_clk_90 = clk_i_90;
-       else if (IsClockODelayed==0) begin      
-         hyperbus_delay i_delay_tx_clk_90 (
-          .in_i       ( clk_i          ),
-          .delay_i    ( tx_clk_delay_i ),
-          .out_o      ( tx_clk_90      )
-         );
-       end
-    endgenerate
+    assign tx_clk_90 = clk_i_90;
 
     // 90deg-shifted differential output clock, sampling output bytes centrally
     hyperbus_clock_diff_out i_clock_diff_out (

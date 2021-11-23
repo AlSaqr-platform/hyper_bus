@@ -25,7 +25,6 @@ module udma_hyperbus
 (
     input logic                        sys_clk_i,
     input logic                        clk_phy_i,
-    input logic                        clk_phy_i_90,
     input logic                        rst_ni,
     input logic                        phy_rst_ni,
 
@@ -293,7 +292,6 @@ module udma_hyperbus
    assign running_trans_phy = pack_trans_valid | (!pack_trans_ready) | unpack_trans_valid | (!unpack_trans_ready) | phy_trans_valid;
 
    assign clk0  =    clk_phy_i;
-   assign clk90 = clk_phy_i_90;
 
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////Control Path////////////////////////////////////
