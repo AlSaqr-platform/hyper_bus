@@ -43,14 +43,22 @@ define generate_synopsys
 	echo >> $1
 endef
 
-synth_all: tsmc65/synopsys/scripts/analyze.tcl
-synth_all: models/generic_delay_D4_O1_3P750_CG0_mid.db
+synth_tsmc65: tsmc65/synopsys/scripts/analyze.tcl
+synth_tsmc65: models/generic_delay_D4_O1_3P750_CG0_mid.db
 
 tsmc65/cockpit.log:
 	cd tsmc65 && icdesign tsmc65 -update all -nogui
 
 tsmc65/synopsys/scripts/analyze.tcl: Bender.yml | tsmc65/cockpit.log
 	$(call generate_synopsys, $@, -t rtl -t default -t synthesis -t tsmc65,..)
+
+synth_gf22: gf22/synopsys/scripts/analyze.tcl
+
+gf22/cockpit.log:
+	cd gf22 && icdesign gf22 -update all -nogui
+
+gf22/synopsys/scripts/analyze.tcl: Bender.yml | gf22/cockpit.log
+	$(call generate_synopsys, $@, -t rtl -t default -t asic -t gf22,..)
 
 # --------------
 # GENERIC-DELAY

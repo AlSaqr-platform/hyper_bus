@@ -10,13 +10,15 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-module hyperbus_synth_wrap #(
+module hyperbus_synth_wrap 
+  import hyperbus_pkg::NumPhys;
+#(
     // HyperBus parameters
-    parameter int unsigned  NumChips        = 3,
+    parameter int unsigned  NumChips        = 2,
     // AXI parameters
     parameter int unsigned  AxiIdWidth      = 6,
-    parameter int unsigned  AxiAddrWidth    = 48,
-    parameter int unsigned  AxiDataWidth    = 128,
+    parameter int unsigned  AxiAddrWidth    = 32,
+    parameter int unsigned  AxiDataWidth    = 64,
     parameter int unsigned  AxiUserWidth    = 1,
     // Regbus parameters
     parameter int unsigned  RegAddrWidth    = 32,
@@ -95,19 +97,40 @@ module hyperbus_synth_wrap #(
     output logic                        rbus_rsp_ready_o,
     output logic                        rbus_rsp_error_o,
 
-    // PHY interface
-    output logic [NumChips-1:0]         hyper_cs_no,
-    output logic                        hyper_ck_o,
-    output logic                        hyper_ck_no,
-    output logic                        hyper_rwds_o,
-    input  logic                        hyper_rwds_i,
-    output logic                        hyper_rwds_oe_o,
-    input  logic [7:0]                  hyper_dq_i,
-    output logic [7:0]                  hyper_dq_o,
-    output logic                        hyper_dq_oe_o,
-    output logic                        hyper_reset_no
+    // Physical interace: facing HyperBus
+    output logic [NumChips-1:0] hyper0_cs_no,
+    output logic                hyper0_ck_o,
+    output logic                hyper0_ck_no,
+    output logic                hyper0_rwds_o,
+    input  logic                hyper0_rwds_i,
+    output logic                hyper0_rwds_oe_o,
+    input  logic [7:0]          hyper0_dq_i,
+    output logic [7:0]          hyper0_dq_o,
+    output logic                hyper0_dq_oe_o,
+    output logic                hyper0_reset_no,
+    output logic [NumChips-1:0] hyper1_cs_no,
+    output logic                hyper1_ck_o,
+    output logic                hyper1_ck_no,
+    output logic                hyper1_rwds_o,
+    input  logic                hyper1_rwds_i,
+    output logic                hyper1_rwds_oe_o,
+    input  logic [7:0]          hyper1_dq_i,
+    output logic [7:0]          hyper1_dq_o,
+    output logic                hyper1_dq_oe_o,
+    output logic                hyper1_reset_no
 );
 
+    logic [NumPhys-1:0][NumChips-1:0] hyper_cs_no;
+    logic [NumPhys-1:0]               hyper_ck_o;
+    logic [NumPhys-1:0]               hyper_ck_no;
+    logic [NumPhys-1:0]               hyper_rwds_o;
+    logic [NumPhys-1:0]               hyper_rwds_i;
+    logic [NumPhys-1:0]               hyper_rwds_oe_o;
+    logic [NumPhys-1:0][7:0]          hyper_dq_i;
+    logic [NumPhys-1:0][7:0]          hyper_dq_o;
+    logic [NumPhys-1:0]               hyper_dq_oe_o;
+    logic [NumPhys-1:0]               hyper_reset_no;
+                                   
     // Types
     `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, axi_addr_t, axi_id_t, axi_user_t)
     `AXI_TYPEDEF_W_CHAN_T(w_chan_t, axi_data_t, axi_strb_t, axi_user_t)
@@ -130,18 +153,18 @@ module hyperbus_synth_wrap #(
 
     // Wrapped instance
     hyperbus #(
-        .NumChips      ( NumChips       ),
-        .AxiAddrWidth  ( AxiAddrWidth   ),
-        .AxiDataWidth  ( AxiDataWidth   ),
-        .AxiIdWidth    ( AxiIdWidth     ),
-        .axi_req_t     ( axi_req_t      ),
-        .axi_rsp_t     ( axi_rsp_t      ),
-        .axi_w_chan_t  ( w_chan_t       ),
-        .RegAddrWidth  ( RegAddrWidth   ),
-        .RegDataWidth  ( RegDataWidth   ),
-        .reg_req_t     ( reg_req_t      ),
-        .reg_rsp_t     ( reg_rsp_t      ),
-        .axi_rule_t    ( axi_rule_t     )
+        .NumChips        ( NumChips        ),
+        .AxiAddrWidth    ( AxiAddrWidth    ),
+        .AxiDataWidth    ( AxiDataWidth    ),
+        .AxiIdWidth      ( AxiIdWidth      ),
+        .axi_req_t       ( axi_req_t       ),
+        .axi_rsp_t       ( axi_rsp_t       ),
+        .axi_w_chan_t    ( w_chan_t        ),
+        .RegAddrWidth    ( RegAddrWidth    ),
+        .RegDataWidth    ( RegDataWidth    ),
+        .reg_req_t       ( reg_req_t       ),
+        .reg_rsp_t       ( reg_rsp_t       ),
+        .axi_rule_t      ( axi_rule_t      )
     ) i_hyperbus (
         .clk_phy_i,
         .rst_phy_ni,
@@ -220,5 +243,27 @@ module hyperbus_synth_wrap #(
     assign rbus_rsp_rdata_o     = reg_rsp.rdata;
     assign rbus_rsp_ready_o     = reg_rsp.ready;
     assign rbus_rsp_error_o     = reg_rsp.error;
+
+    assign hyper0_cs_no = hyper_cs_no[0];
+    assign hyper0_ck_o = hyper_ck_o[0];
+    assign hyper0_ck_no = hyper_ck_no[0];
+    assign hyper0_rwds_o = hyper_rwds_o[0];
+    assign hyper_rwds_i[0] = hyper0_rwds_i;
+    assign hyper0_rwds_oe_o = hyper_rwds_oe_o[0];
+    assign hyper_dq_i[0] = hyper0_dq_i;
+    assign hyper0_dq_o = hyper_dq_o[0];
+    assign hyper0_dq_oe_o = hyper_dq_oe_o[0];
+    assign hyper0_reset_no = hyper_reset_no[0];
+
+    assign hyper1_cs_no = hyper_cs_no[1];
+    assign hyper1_ck_o = hyper_ck_o[1];
+    assign hyper1_ck_no = hyper_ck_no[1];
+    assign hyper1_rwds_o = hyper_rwds_o[1];
+    assign hyper_rwds_i[1] = hyper1_rwds_i;
+    assign hyper1_rwds_oe_o = hyper_rwds_oe_o[1];
+    assign hyper_dq_i[1] = hyper1_dq_i;
+    assign hyper1_dq_o = hyper_dq_o[1];
+    assign hyper1_dq_oe_o = hyper_dq_oe_o[1];
+    assign hyper1_reset_no = hyper_reset_no[1];
 
 endmodule : hyperbus_synth_wrap

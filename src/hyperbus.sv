@@ -9,10 +9,10 @@
 
 module hyperbus import hyperbus_pkg::NumPhys; #(
     parameter int unsigned  NumChips        = -1,
-    parameter int unsigned  IsClockODelayed = -1,
+    parameter int unsigned  IsClockODelayed = 0,
     parameter int unsigned  L2_AWIDTH_NOAL  = 12,
     parameter int unsigned  TRANS_SIZE      = 16,
-    parameter int unsigned  NB_CH           = 8,
+    parameter int unsigned  NB_CH           = 1,
     parameter int unsigned  AxiAddrWidth    = -1,
     parameter int unsigned  AxiDataWidth    = -1,
     parameter int unsigned  AxiIdWidth      = -1,
@@ -102,6 +102,9 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
         logic [NumChips-1:0]        cs;
     } tf_cdc_t;
 
+   
+    logic                       clk_phy_i_0, clk_phy_i_90, rst_phy;
+    
     // Register file
     hyperbus_pkg::hyper_cfg_t   cfg;
     axi_rule_t [NumChips-1:0]   chip_rules;

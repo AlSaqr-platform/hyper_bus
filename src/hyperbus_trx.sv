@@ -193,13 +193,18 @@ module hyperbus_trx #(
         else                    rx_rwds_fifo_in[15:8] <= hyper_dq_i;
     end
 
+    tc_clk_inverter i_rwds_clk_inverter (
+       .clk_i ( rx_rwds_clk   ),
+       .clk_o ( rx_rwds_clk_n )
+    );
+   
     // Cross input data from RWDS domain into system domain
     cdc_fifo_gray  #(
         .T          ( logic [15:0]      ),
         .LOG_DEPTH  ( RxFifoLogDepth    )
     ) i_rx_rwds_cdc_fifo (
         // RWDS domain
-        .src_clk_i   ( ~rx_rwds_clk       ),
+        .src_clk_i   ( rx_rwds_clk_n      ),
         .src_rst_ni  ( rst_ni             ),
         .src_data_i  ( rx_rwds_fifo_in    ),
         .src_valid_i ( rx_rwds_fifo_valid ),

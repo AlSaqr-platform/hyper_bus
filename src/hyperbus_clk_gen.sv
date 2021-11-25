@@ -33,7 +33,7 @@ module hyperbus_clk_gen (
     assign clk180_o = r_clk180_o;
     assign clk270_o = r_clk270_o;
 
-    always_ff @(posedge clk0_o, rst_ni) begin
+    always_ff @(posedge clk0_o or negedge rst_ni) begin
        if(~rst_ni)
          rst_no <= '0;
        else

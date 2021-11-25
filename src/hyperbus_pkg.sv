@@ -37,6 +37,12 @@ package hyperbus_pkg;
         logic [31:0]    address;
     } hyper_tf_t;
 
+    typedef struct packed {
+           logic [15:0]    data;
+           logic           last;
+           logic           error;
+    } phy_rx_t;
+
     typedef enum logic[3:0] {
         Startup,
         Idle,

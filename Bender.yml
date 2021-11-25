@@ -27,6 +27,10 @@ sources:
     - target: test
       files:
         - models/generic_delay_D4_O1_3P750_CG0.behav.sv
+    - target: all(asic,gf22)
+      files:
+        - models/generic_delay_D4_O1_3P750_CG0.asic_gf22.sv
+        - models/techcells/tc_clk_gf22.sv
     - src/hyperbus_pkg.sv
     - src/udma_hyper/udma_hyper_busy.sv
     - src/udma_hyper/udma_cmd_queue.sv

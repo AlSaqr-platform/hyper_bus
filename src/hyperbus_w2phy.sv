@@ -52,7 +52,8 @@ module hyperbus_w2phy  import hyperbus_pkg::NumPhys; #(
    logic [AddrWidth-1:0]         byte_idx_d, byte_idx_q;
    logic [3:0]                   size_d, size_q;
    logic [AddrWidth-1:0]         cnt_data_phy_d, cnt_data_phy_q;
-
+   logic                         keep_sampling, keep_sending;
+   
    assign is_8_bw = (size_d == 0);
    assign is_16_bw = (size_d == 1) ;
    assign upsize = (is_16_bw && (NumPhys==2)) | is_8_bw ;

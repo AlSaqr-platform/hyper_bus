@@ -9,7 +9,9 @@
 // TODO: Cut path somewhere?
 // Improve NumPhys propagation
 
-module hyperbus_axi import hyperbus_pkg::NumPhys; #(
+module hyperbus_axi 
+import hyperbus_pkg::NumPhys; 
+#(
     parameter int unsigned AxiDataWidth  = -1,
     parameter int unsigned AxiAddrWidth  = -1,
     parameter int unsigned AxiIdWidth    = -1,
@@ -68,6 +70,11 @@ module hyperbus_axi import hyperbus_pkg::NumPhys; #(
     } axi_ax_t;
 
     typedef struct packed {
+       axi_ax_t ax_data;
+       logic    write;
+    } ax_channel_spill_t;
+   
+    typedef struct packed {
         logic               valid;
         axi_data_t          data;
         logic               error;
@@ -90,8 +97,12 @@ module hyperbus_axi import hyperbus_pkg::NumPhys; #(
     axi_ax_t        ser_out_req_ar;
 
     // AX arbiter downstream
-    axi_ax_t        rr_out_req_ax;
-    logic           rr_out_req_write;
+    axi_ax_t           rr_out_req_ax;
+    logic              rr_out_req_write;
+    logic              spill_ax_valid, spill_ax_ready;
+    axi_ax_t           spill_rr_out_req_ax;
+    logic              spill_rr_out_req_write;
+    ax_channel_spill_t spill_ax_channel_in, spill_ax_channel_out;
 
     // AX handling
     logic           trans_handshake;
@@ -169,12 +180,32 @@ module hyperbus_axi import hyperbus_pkg::NumPhys; #(
         .req_i      ( { ser_out_req.aw_valid, ser_out_req.ar_valid } ),
         .gnt_o      ( { ser_out_rsp.aw_ready, ser_out_rsp.ar_ready } ),
         .data_i     ( { ser_out_req_aw,       ser_out_req_ar       } ),
-        .req_o      ( ax_valid          ),
-        .gnt_i      ( ax_ready          ),
-        .data_o     ( rr_out_req_ax     ),
-        .idx_o      ( rr_out_req_write  )
+        .req_o      ( spill_ax_valid          ),
+        .gnt_i      ( spill_ax_ready          ),
+        .data_o     ( spill_rr_out_req_ax     ),
+        .idx_o      ( spill_rr_out_req_write  )
     );
-
+   
+    // Cut paths between serializer and rr arb tree
+    assign spill_ax_channel_in.ax_data = spill_rr_out_req_ax;
+    assign spill_ax_channel_in.write = spill_rr_out_req_write;
+    
+    spill_register #(
+         .T ( ax_channel_spill_t )
+         ) ax_spill_register (
+         .clk_i,
+         .rst_ni,
+         .valid_i (spill_ax_valid),
+         .ready_o (spill_ax_ready),
+         .data_i  (spill_ax_channel_in),
+         .valid_o (ax_valid),
+         .ready_i (ax_ready),
+         .data_o  (spill_ax_channel_out)
+         );
+    
+    assign rr_out_req_ax = spill_ax_channel_out.ax_data;
+    assign rr_out_req_write = spill_ax_channel_out.write;
+                                             
     assign trans_valid_o    = ax_valid & ~trans_active_q;
     assign ax_ready         = trans_ready_i & ~trans_active_q;
 

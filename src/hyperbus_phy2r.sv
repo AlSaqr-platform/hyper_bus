@@ -77,7 +77,7 @@ module hyperbus_phy2r import hyperbus_pkg::NumPhys; #(
          last_addr_d = ((start_addr>>size)<<size) + (burst_len<<size);
       end
       if ( axi_valid_o & axi_ready_i ) begin
-         byte_axi_addr_d = ((byte_axi_addr_q>>size_d)<< size_d) + (1<<size_d);
+         byte_axi_addr_d = ((byte_axi_addr_q>>size_q)<< size_q) + (1<<size_q);
       end
       if ( phy_valid_i & phy_ready_o ) begin
          byte_phy_cnt_d = byte_phy_cnt_q + NumPhys*2;
