@@ -37,6 +37,14 @@ module hyperbus_tb;
         fix.read_axi('h110, 3, 4);
 
         $display("=================");
+        $display("64 BIT MEGABURST ");
+        $display("=================");
+
+        // 128 bit access (burst, extrawide --> will be split)
+        fix.write_axi('ha00, 4090, 3, 0, 'hffff);
+        fix.read_axi('ha00, 4090, 3);
+
+        $display("=================");
         $display("64 BIT BURSTS");
         $display("=================");
 
@@ -49,6 +57,14 @@ module hyperbus_tb;
         fix.read_axi('h228, 3, 3);
 
         #1471ns;
+
+        $display("=================");
+        $display("32 BIT MEGABURST ");
+        $display("=================");
+
+        // 128 bit access (burst, extrawide --> will be split)
+        fix.write_axi('ha00, 4090, 2, 0, 'hffff);
+        fix.read_axi('ha00, 4090, 2);
 
         $display("=================");
         $display("32 BIT BURSTS");

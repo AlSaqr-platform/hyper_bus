@@ -2,7 +2,6 @@
 
 // this code is unstable and most likely buggy
 // it should not be used by anyone
-
 /// Author: Thomas Benz <tbenz@iis.ee.ethz.ch>
 `timescale 1 ns/1 ps
 // Configuration register for Hyper bus CHANNEl
@@ -48,12 +47,21 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
 
    
     int unsigned            k, j;
+
+`ifdef TARGET_POST_SYNTH_SIM
+    localparam time SYS_TCK  = 8.78ns;
+    localparam time SYS_TA   = 1ns;
+    localparam time SYS_TT   = SYS_TCK - 1ns;
+
+    localparam time PHY_TCK  = 20ns;
+`else
     localparam time SYS_TCK  = 2.78ns;
     localparam time SYS_TA   = 1ns;
     localparam time SYS_TT   = SYS_TCK - 1ns;
 
     localparam time PHY_TCK  = 6ns;
-
+`endif // !`ifdef POST_SYNTH
+   
     logic sys_clk      = 0;
     logic phy_clk      = 0;
     logic test_mode    = 0;
@@ -63,7 +71,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     // -------------------- AXI drivers --------------------
 
     localparam AxiAw  = 32;
-    localparam AxiDw  = 128;
+    localparam AxiDw  = 64;
     localparam AxiMaxSize = $clog2(AxiDw/8);
     localparam AxiIw  = 6;
     localparam RegAw  = 32;
@@ -154,6 +162,15 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         .TT ( SYS_TT )
     ) i_rmaster = new( i_rbus );
 
+`ifdef TARGET_POST_SYNTH_SIM
+    assign reg_req = reg_req_t'{
+        addr:   'h0,
+        write:  'h0,
+        wdata:  'h0,
+        wstrb:  'h0,
+        valid:  'h0
+    };
+`else 
     assign reg_req = reg_req_t'{
         addr:   i_rbus.addr,
         write:  i_rbus.write,
@@ -161,7 +178,8 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
         wstrb:  i_rbus.wstrb,
         valid:  i_rbus.valid
     };
-
+`endif
+   
     assign i_rbus.rdata = reg_rsp.rdata;
     assign i_rbus.ready = reg_rsp.ready;
     assign i_rbus.error = reg_rsp.error;
@@ -358,6 +376,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     wire  [NumPhys-1:0]      hyper_ck_wire;
     wire  [NumPhys-1:0]      hyper_ck_n_wire;
     wire  [NumPhys-1:0]      hyper_rwds_o;
+    wire  [NumPhys-1:0]      s_hyper_rwds_i;
     wire  [NumPhys-1:0]      hyper_rwds_i;
     wire  [NumPhys-1:0]      hyper_rwds_oe;
     wire  [NumPhys-1:0]      hyper_rwds_wire;
@@ -367,13 +386,19 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     wire  [NumPhys-1:0][7:0] hyper_dq_wire;
     wire  [NumPhys-1:0]      hyper_reset_n_wire;
              
-
+`ifdef TARGET_POST_SYNTH_SIM
+   assign #(1ns) hyper_rwds_i[0] = ($isunknown(s_hyper_rwds_i[0])) ? '0 : s_hyper_rwds_i[0];
+   assign #(1ns) hyper_rwds_i[1] = ($isunknown(s_hyper_rwds_i[1])) ? '0 : s_hyper_rwds_i[1];
+`else   
+   assign  hyper_rwds_i[0] = s_hyper_rwds_i[0];
+   assign  hyper_rwds_i[1] = s_hyper_rwds_i[1];
+`endif
     generate
        for (genvar i=0; i<NumPhys; i++) begin : hyperrams
           tristate_shim i_tristate_shim_rwdsi (
               .out_ena_i  ( hyper_rwds_oe[i]   ),
               .out_i      ( hyper_rwds_o[i]    ),
-              .in_o       ( hyper_rwds_i[i]    ),
+              .in_o       ( s_hyper_rwds_i[i]  ),
               .line_io    ( hyper_rwds_wire[i] )
           );
           
@@ -409,7 +434,11 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
  
    
     // DUT
+`ifdef TARGET_POST_SYNTH_SIM
+    hyperbus_chip_wrap #(
+`else
     hyperbus #(
+`endif
         .NumChips       ( NumChips    ),
         .AxiAddrWidth   ( AxiAw       ),
         .AxiDataWidth   ( AxiDw       ),

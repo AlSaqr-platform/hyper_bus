@@ -16,6 +16,9 @@ dependencies:
 
 sources:
   files:
+    - target: all(synthesis)
+      files:
+        - src/hyperbus_synth_wrap.sv
     - target: all(synthesis,tsmc65)
       files:
         - tsmc65/sourcecode/tc_clk.sv
@@ -57,7 +60,10 @@ sources:
     - src/hyperbus_axi.sv
     - src/hyperbus_arbiter.sv
     - src/hyperbus.sv
-    - src/hyperbus_synth_wrap.sv
+    - target: post_synth_sim
+      files:
+        - gf22/synopsys/trial1_25_11_2021/netlists/hyperbus_chip.v
+        - test/hyperbus_chip_wrap.sv
     - target: test
       files:
         # Device models. TODO: extend

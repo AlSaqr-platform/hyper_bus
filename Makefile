@@ -60,6 +60,10 @@ gf22/cockpit.log:
 gf22/synopsys/scripts/analyze.tcl: Bender.yml | gf22/cockpit.log
 	$(call generate_synopsys, $@, -t rtl -t default -t asic -t gf22,..)
 
+post_synth_compile:
+	echo 'set ROOT [file normalize [file dirname [info script]]/../]' > scripts/post_synth_compile.tcl
+	bender script $(VSIM) --vlog-arg="-work gate" -t post_synth_sim -t test | grep -v "set ROOT" >> scripts/post_synth_compile.tcl
+
 # --------------
 # GENERIC-DELAY
 # --------------

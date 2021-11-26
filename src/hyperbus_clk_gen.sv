@@ -22,30 +22,32 @@ module hyperbus_clk_gen (
     output logic rst_no
 );
 
-//`ifndef PULP_FPGA_EMUL
+
     logic r_clk0_o;
     logic r_clk90_o;
     logic r_clk180_o;
     logic r_clk270_o;
 
+    logic  s_clk0_n;
+   
     assign clk0_o = r_clk0_o;
     assign clk90_o = r_clk90_o;
     assign clk180_o = r_clk180_o;
     assign clk270_o = r_clk270_o;
+    assign rst_no = rst_ni;
 
-    always_ff @(posedge clk0_o or negedge rst_ni) begin
-       if(~rst_ni)
-         rst_no <= '0;
-       else
-         rst_no <= rst_ni;
-    end
+    tc_clk_inverter i_clk0_inverter (
+                     .clk_i (r_clk0_o),
+                     .clk_o (s_clk0_n)
+                     );
+   
    
     always_ff @(posedge clk_i or negedge rst_ni) begin
         if(~rst_ni) begin
             r_clk0_o   <= 0;
             r_clk180_o <= 1;
         end else begin
-            r_clk0_o <= ~r_clk0_o;
+            r_clk0_o <= s_clk0_n;
             r_clk180_o <= r_clk90_o;
         end
     end
@@ -59,11 +61,6 @@ module hyperbus_clk_gen (
             r_clk270_o <= r_clk180_o;
         end
     end
-/*`else
-   assign clk0_o = clk_i;
-   assign clk90_o = clk_i;
-   assign clk180_o = clk_i;
-   assign clk270_o = clk_i;
-`endif*/
+
 endmodule
 
