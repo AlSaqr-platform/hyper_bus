@@ -755,6 +755,8 @@ module udma_hyperbus
       .cfg_addr_space_i   ( ctrl_addr_space       ),
       .cfg_hyper_intreg_i ( ctrl_hyper_intreg     ),
 
+      .trans_handshake_i  ( trans_ready_i && phy_trans_valid ),
+
       .remained_data_i    ( remained_data         ),
       .src_valid_i        ( tx_valid_fifo         ),
       .src_ready_o        ( tx_ready_fifo         ),
@@ -763,7 +765,7 @@ module udma_hyperbus
 
       .dst_ready_i        ( tx_ready_phy          ),
       .dst_valid_o        ( tx_valid_phy          ),
-      .data_o           ( tx_data_phy           )
+      .data_o             ( tx_data_phy           )
      );
 
     logic [31:0] s_data_tx;
@@ -811,7 +813,7 @@ module udma_hyperbus
    assign config_t_variable_latency_check ={ 28'b0, ctrl_t_variable_latency_check };
    
    assign trans_valid_o                   =phy_trans_valid;
-   assign phy_trans_ready                 =trans_ready_i;
+   assign phy_trans_ready                 =trans_ready_i; 
    assign trans_cs_o                      =trans_cs;
    assign udma_phy_tf.address             =ctrl_hyper_addr;
    assign udma_phy_tf.write               =~ctrl_rw_hyper;

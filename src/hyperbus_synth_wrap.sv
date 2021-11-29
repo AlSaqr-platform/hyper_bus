@@ -13,7 +13,7 @@
 module hyperbus_synth_wrap #(
     // HyperBus parameters
     parameter int unsigned  NumChips        = 2,
-    parameter int unsigned  NumPhys        = 2,
+    parameter int unsigned  NumPhys         = 2,
     // AXI parameters
     parameter int unsigned  AxiIdWidth      = 6,
     parameter int unsigned  AxiAddrWidth    = 32,

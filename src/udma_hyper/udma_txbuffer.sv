@@ -29,6 +29,8 @@ module udma_txbuffer
   input  logic        dst_ready_i,
   output logic        dst_valid_o,
 
+  input  logic        trans_handshake_i,
+
   input  logic [1:0]  mem_sel_i,
   input  logic        cfg_addr_space_i,
   input  logic        burst_type_i,
@@ -60,9 +62,7 @@ module udma_txbuffer
 
   logic  [31:0]  r_prev_data;
 
-  logic         first_tx_d, first_tx_q;
-  logic [31:0]  remained_data_q;
-   
+  logic         first_tx_d, first_tx_q;   
 
   
 ///////////////////////////////////////
@@ -203,7 +203,7 @@ module udma_txbuffer
   always_comb begin : first_tx
    first_tx_d = first_tx_q;
    if(!first_tx_q) begin
-      if(remained_data_q==0 && remained_data_i!=0) begin
+      if(trans_handshake_i) begin
          first_tx_d = !first_tx_q;
       end
    end else begin
@@ -216,10 +216,8 @@ module udma_txbuffer
   always_ff @(posedge clk_i or negedge rst_ni) begin : first_tx_reg
        if (~rst_ni) begin
           first_tx_q <= '0;
-          remained_data_q <= '0;
        end else begin
           first_tx_q <= first_tx_d;
-          remained_data_q <= remained_data_i;
        end
    end            
 
