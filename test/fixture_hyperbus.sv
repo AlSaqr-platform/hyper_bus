@@ -366,13 +366,13 @@ module fixture_hyperbus #(
                 if(rx_data_udma_o !=  {data_mem[rx_data_count+3], data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]})
                   begin
                     if(rx_data_udma_o>udma_rx_last_addr) begin
-                       if(udma_rx_last_addr[1:0]==3)
+                       if(cfg_rx_size_o[1:0]==3)
                          if(rx_data_udma_o[23:0]!={data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]})
                             $fatal(1,"Error at %d. %h instead of %h", rx_data_count, rx_data_udma_o[23:0], {data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]});
-                       if(udma_rx_last_addr[1:0]==2)
+                       if(cfg_rx_size_o[1:0]==2)
                          if(rx_data_udma_o[15:0]!={data_mem[rx_data_count+1], data_mem[rx_data_count]})
                             $fatal(1,"Error at %d. %h instead of %h", rx_data_count, rx_data_udma_o[15:0], {data_mem[rx_data_count+1], data_mem[rx_data_count]});
-                       if(udma_rx_last_addr[1:0]==1)
+                       if(cfg_rx_size_o[1:0]==1)
                          if(rx_data_udma_o[7:0]!={data_mem[rx_data_count]})
                             $fatal(1,"Error at %d. %h instead of %h", rx_data_count, rx_data_udma_o[7:0], data_mem[rx_data_count]);
                     end else begin
@@ -820,14 +820,14 @@ module fixture_hyperbus #(
              `endif
              mem_address = (mem_address_i>>1)<<1;
           end                      
+          if(length_i%2!=0) begin
+             `ifdef UDMA_VERBOSE
+             $display("Not supported. Length of writes/reads with udma need to be aligned to 16 bits");
+             `endif
+             length = (length_i>>1)<<1;
+          end                       
         end 
                          
-        if(length_i%2!=0) begin
-           `ifdef UDMA_VERBOSE
-           $display("Not supported. Length of writes/reads with udma need to be aligned to 16 bits");
-           `endif
-           length = (length_i>>1)<<1;
-        end                       
         if(length_i<4) begin
            `ifdef UDMA_VERBOSE
            $display("Not supported. Length of writes/reads with udma need to be aligned to > 32 bits");
