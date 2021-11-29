@@ -9,7 +9,7 @@
 
 module hyperbus_tb;
 
-    localparam NumPhys=1;
+    localparam NumPhys=0;
    
     fixture_hyperbus #(.NumChips(2), .NumPhys(NumPhys) ) fix ();
 
@@ -307,12 +307,22 @@ module hyperbus_tb;
         fix.LongWriteTransactionTest(2, 76,'h10,0);
         #8us;
 
-        // TODO: improve fixture to check only the requested data. 
-        // The scoreboard only supports burst of size multiple of 4.
-        if(NumPhys==2)
-          fix.LongWriteTransactionTest(8, 5,'h11,0);
-        else
-          fix.LongWriteTransactionTest(8, 5,'h14,0);
+        fix.LongWriteTransactionTest(8, 5,'h11,0);
+        #8us;
+
+        fix.LongWriteTransactionTest(28, 32,'h22,0);
+        #8us;
+
+        fix.LongWriteTransactionTest(70, 5,'h3, 0);
+        #8us;
+  
+        fix.LongWriteTransactionTest(100, 8,'h4,0);
+        #8us;
+
+        fix.LongWriteTransactionTest(50, 65,'h14,0);
+        #8us;
+
+        fix.LongWriteTransactionTest(90, 16,'h7, 0);
         #8us;
 
         fix.LongWriteTransactionTest(0, 128,'h100,0);

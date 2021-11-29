@@ -247,16 +247,16 @@ module udma_hyper_ctrl #(
                          if(phy_trans_valid_o & phy_trans_ready_i) control_state <= READTRANSACTION;
                          if(additional_data) 
                            begin                             
-                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_rx_size >>1)+2; // # of 32 bit data received by phy
+                             if(r_mem_sel == 2'b11) trans_burst_o <= ((r_rx_size>>2)<<1)+2; // # of 32 bit data received by phy
                              else trans_burst_o <= (r_rx_size >> 1)+1;  // # of 16 bit data received by phy
-                             if(r_mem_sel == 2'b11) remained_data_o <= (r_rx_size >>1)+2; // # of 32 bit data sent to 16b32b module
+                             if(r_mem_sel == 2'b11) remained_data_o <= ((r_rx_size>>2)<<1)+2; // # of 32 bit data sent to 16b32b module
                              else remained_data_o <= (r_rx_size >> 1)+1; // # of 16 bit data 
                            end
                          else
                            begin
-                             if(r_mem_sel == 2'b11) trans_burst_o <= r_rx_size >>2; // # of 32 bit data received by phy
+                             if(r_mem_sel == 2'b11) trans_burst_o <= ((r_rx_size>>2)<<1); // # of 32 bit data received by phy
                              else trans_burst_o <= r_rx_size >> 1;  // # of 16 bit data received by phy
-                             if(r_mem_sel == 2'b11) remained_data_o <= r_rx_size >> 2; // # of 32 bit data sent to 16b32b module
+                             if(r_mem_sel == 2'b11) remained_data_o <= ((r_rx_size>>2)<<1); // # of 32 bit data sent to 16b32b module
                              else remained_data_o <= r_rx_size >> 1; // # of 16 bit data  
                            end
                        end
@@ -265,16 +265,16 @@ module udma_hyper_ctrl #(
                          if(phy_trans_valid_o & phy_trans_ready_i) control_state <= WRITETRANSACTION;
                          if(additional_data) // if the burst length is not a multiple of 16 bits
                            begin
-                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_tx_size >> 1) + 2; // # of 32 bit data at phy
-                             else trans_burst_o <= (r_tx_size >> 1)+1 ;
-                             if(r_mem_sel == 2'b11) remained_data_o <= (r_tx_size >> 1) + 2; 
-                             else remained_data_o <= (r_tx_size >> 1)+1 ;
+                             if(r_mem_sel == 2'b11) trans_burst_o <= ((r_tx_size>>2)<<1) + 2; // # of 32 bit data at phy
+                             else trans_burst_o <= (r_tx_size >> 1) + 1 ;
+                             if(r_mem_sel == 2'b11) remained_data_o <= ((r_tx_size>>2)<<1) + 2; 
+                             else remained_data_o <= (r_tx_size >> 1) + 1 ;
                            end
                          else
                            begin 
-                             if(r_mem_sel == 2'b11) trans_burst_o <= (r_tx_size >> 1);
+                             if(r_mem_sel == 2'b11) trans_burst_o <= ((r_tx_size>>2)<<1);
                              else trans_burst_o <= (r_tx_size >> 1);
-                             if(r_mem_sel == 2'b11) remained_data_o <= (r_tx_size >> 1);
+                             if(r_mem_sel == 2'b11) remained_data_o <= ((r_tx_size>>2)<<1);
                              else remained_data_o <= (r_tx_size >> 1);
                            end
 

@@ -37,6 +37,8 @@
 `define MEM_SEL                 5'b01000 //BASEADDR+0x20 set Memory select: HyperRAM, Hyperflash, or PSRAM 00:Hyper RAM, 01: Hyper Flash, 10:PSRAM
 `define TRANS_ID_ALLOC          5'b01001 //BASEADDR+0x30 set 2D transfer stride
 
+//`define AXI_VERBOSE
+
 `include "axi/assign.svh"
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
@@ -248,6 +250,7 @@ module fixture_hyperbus #(
     logic                      r_write_tran_en;
     logic                      r_rx_en;
     logic                      s_req_o;
+    logic [31:0]               udma_rx_last_addr;
    
    // Data memory for test
    /////////////////////////////////////////////////
@@ -355,13 +358,26 @@ module fixture_hyperbus #(
         else
           begin
             if (cfg_rx_en_o) begin
+              udma_rx_last_addr <= cfg_rx_startaddr_o + cfg_rx_size_o;
               rx_data_count <= cfg_rx_startaddr_o;
              end
             if(rx_valid_udma_o)
               begin
                 if(rx_data_udma_o !=  {data_mem[rx_data_count+3], data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]})
                   begin
-                    $fatal(1,"Error at %d. %h instead of %h", rx_data_count, rx_data_udma_o, {data_mem[rx_data_count+3], data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]});
+                    if(rx_data_udma_o>udma_rx_last_addr) begin
+                       if(udma_rx_last_addr[1:0]==3)
+                         if(rx_data_udma_o[23:0]!={data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]})
+                            $fatal(1,"Error at %d. %h instead of %h", rx_data_count, rx_data_udma_o[23:0], {data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]});
+                       if(udma_rx_last_addr[1:0]==2)
+                         if(rx_data_udma_o[15:0]!={data_mem[rx_data_count+1], data_mem[rx_data_count]})
+                            $fatal(1,"Error at %d. %h instead of %h", rx_data_count, rx_data_udma_o[15:0], {data_mem[rx_data_count+1], data_mem[rx_data_count]});
+                       if(udma_rx_last_addr[1:0]==1)
+                         if(rx_data_udma_o[7:0]!={data_mem[rx_data_count]})
+                            $fatal(1,"Error at %d. %h instead of %h", rx_data_count, rx_data_udma_o[7:0], data_mem[rx_data_count]);
+                    end else begin
+                       $fatal(1,"Error at %d. %h instead of %h", rx_data_count, rx_data_udma_o, {data_mem[rx_data_count+3], data_mem[rx_data_count+2], data_mem[rx_data_count+1], data_mem[rx_data_count]});
+                    end
                   end
                 if(rx_data_count == tran_size32 -1) rx_data_count <=0;
                 else rx_data_count <= rx_data_count +4;
@@ -661,14 +677,17 @@ module fixture_hyperbus #(
         end else begin
                      
           axi_master_drv.send_ar(ar_beat);
-          
+          $display("%p", ar_beat);
+
           temp_raddr = raddr;
           last_raddr = '0;
                 
           for(int unsigned i = 0; i < burst_len + 1; i++) begin
               axi_master_drv.recv_r(r_beat);
+              `ifdef AXI_VERBOSE
               $display("%p", r_beat);
               $display("%x", r_beat.r_data);
+              `endif
               trans_rdata = '1;
               if (i==0) begin
                  for(k =temp_raddr[AxiMaxSize-1:0]; k<((temp_raddr[AxiMaxSize-1:0]>>size)<<size) + (2**size) ; k++) begin 
@@ -720,6 +739,7 @@ module fixture_hyperbus #(
         if(aw_beat.ax_size>AxiMaxSize) begin
           $display("Not supported");
         end else begin
+          $display("%p", aw_beat);
 
           axi_master_drv.send_aw(aw_beat);
           
@@ -734,8 +754,10 @@ module fixture_hyperbus #(
                 randomize(w_beat.w_data);
               axi_master_drv.send_w(w_beat);
               trans_wdata = '1; //the memory regions where we do not write are have all ones in the hyperram.
+              `ifdef AXI_VERBOSE
               $display("%p", w_beat);
               $display("%x", w_beat.w_data);
+              `endif
               if (i==0) begin
                  for (k = temp_waddr[AxiMaxSize-1:0]; k<(((temp_waddr[AxiMaxSize-1:0]>>size)<<size) + (2**size)) ; k++)  begin
                    trans_wdata[k*8 +:8] = (wstrb[k]) ? w_beat.w_data[(k*8) +: 8] : '1;
@@ -775,18 +797,45 @@ module fixture_hyperbus #(
      endtask : WriteConfig
 
 
-    task LongWriteTransactionTest(int mem_address, int l2_address, int length, int id);
-       
+    task LongWriteTransactionTest(int mem_address_i, int l2_address, int length_i, int id);
+
+        automatic int mem_address;
+        automatic int length;
+                         
         automatic int count2=0;
         automatic int burst_size_32=0;
         if((length%4)==0) burst_size_32 = length/4;
         else burst_size_32 = length/4 +1;
-       
-        if(NumPhys==2 && mem_address[0]!=0) begin
-          $display("Writes/reads with udma need to be aligned to 16 bits");
-        end else begin
 
-          $display("L3 addr: %d, l2_addr %d, length %d", mem_address, l2_address, length);
+        mem_address = mem_address_i;
+        length = length_i;
+                 
+        $display("Request from tb: L3 addr: %d, l2_addr %d, length %d", mem_address_i, l2_address, length_i);
+                         
+        // Check the transaction is compliant
+        if(NumPhys==2) begin
+          if(mem_address_i%2!=0) begin
+             `ifdef UDMA_VERBOSE
+             $display("NumPhys=2. Start address of writes/reads with udma need to be aligned to 16 bits");
+             `endif
+             mem_address = (mem_address_i>>1)<<1;
+          end                      
+        end 
+                         
+        if(length_i%2!=0) begin
+           `ifdef UDMA_VERBOSE
+           $display("Not supported. Length of writes/reads with udma need to be aligned to 16 bits");
+           `endif
+           length = (length_i>>1)<<1;
+        end                       
+        if(length_i<4) begin
+           `ifdef UDMA_VERBOSE
+           $display("Not supported. Length of writes/reads with udma need to be aligned to > 32 bits");
+           `endif
+           length = 4;
+        end
+                         
+        $display("Issued         : L3 addr: %d, l2_addr %d, length %d", mem_address, l2_address, length);
 
           sconfig = new(`REG_T_RWDS_DELAY_LINE,32'h00000004);
           WriteConfig(sconfig,1);
@@ -837,7 +886,7 @@ module fixture_hyperbus #(
           wait(rx_valid_udma_o);
           count2 = 0;
           #(SYS_TCK*burst_size_32*2);
-        end
+        
 
     endtask : LongWriteTransactionTest
 

@@ -60,6 +60,9 @@ module udma_txbuffer
 
   logic  [31:0]  r_prev_data;
 
+  logic         first_tx_d, first_tx_q;
+  logic [31:0]  remained_data_q;
+   
 
   
 ///////////////////////////////////////
@@ -111,8 +114,13 @@ module udma_txbuffer
                      src_valid_d <=1;
                  end
                end else if (remained_data_i == 2 && mem_sel_i==2'b11) begin
-                  src_valid_d <=1;
-                  src_ready_o <=0;
+                  if (first_tx_d) begin
+                     src_valid_d <= 0;
+                     src_ready_o <= 1;
+                  end else begin
+                     src_valid_d <=1;
+                     src_ready_o <=0;
+                  end
                end else begin
                  begin
                      src_valid_d <=0;
@@ -191,5 +199,28 @@ module udma_txbuffer
           end
      end
 
+
+  always_comb begin : first_tx
+   first_tx_d = first_tx_q;
+   if(!first_tx_q) begin
+      if(remained_data_q==0 && remained_data_i!=0) begin
+         first_tx_d = !first_tx_q;
+      end
+   end else begin
+      if(src_valid_i && src_ready_o) begin
+         first_tx_d = !first_tx_q;
+      end
+   end
+  end // block: first_tx
+   
+  always_ff @(posedge clk_i or negedge rst_ni) begin : first_tx_reg
+       if (~rst_ni) begin
+          first_tx_q <= '0;
+          remained_data_q <= '0;
+       end else begin
+          first_tx_q <= first_tx_d;
+          remained_data_q <= remained_data_i;
+       end
+   end            
 
 endmodule
