@@ -20,6 +20,7 @@
 module hyperbus_phy import hyperbus_pkg::*; #(
     parameter int unsigned IsClockODelayed = -1,
     parameter int unsigned NumChips         = 2,
+    parameter int unsigned NumPhys          = -1,
     parameter int unsigned TimerWidth       = 16,
     parameter int unsigned RxFifoLogDepth   = 3,
     parameter int unsigned StartupCycles    = 300 /*us*/ * 200 /*MHz*/ // Conservative maximum frequency estimate

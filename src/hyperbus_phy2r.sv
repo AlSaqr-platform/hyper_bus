@@ -3,8 +3,9 @@
 // this code is unstable and most likely buggy
 // it should not be used by anyone
 
-module hyperbus_phy2r import hyperbus_pkg::NumPhys; #(
+module hyperbus_phy2r #(
   parameter int unsigned AxiDataWidth = -1,
+  parameter int unsigned NumPhys = -1,
   parameter type T = logic,
   parameter int unsigned BurstLength = -1,
   parameter int unsigned AddrWidth = $clog2(AxiDataWidth/8)

@@ -9,9 +9,7 @@
 // TODO: Cut path somewhere?
 // Improve NumPhys propagation
 
-module hyperbus_axi 
-import hyperbus_pkg::NumPhys; 
-#(
+module hyperbus_axi #(
     parameter int unsigned AxiDataWidth  = -1,
     parameter int unsigned AxiAddrWidth  = -1,
     parameter int unsigned AxiIdWidth    = -1,
@@ -19,6 +17,9 @@ import hyperbus_pkg::NumPhys;
     parameter type         axi_rsp_t     = logic,
     parameter type         axi_w_chan_t  = logic,
     parameter int unsigned NumChips    	 = -1,
+    parameter int unsigned NumPhys       = -1,
+    parameter type         hyper_tx_t    = logic,   
+    parameter type         hyper_rx_t    = logic,
     parameter type         rule_t        = logic
 ) (
     input  logic                    clk_i,
@@ -27,11 +28,11 @@ import hyperbus_pkg::NumPhys;
     input  axi_req_t                axi_req_i,
     output axi_rsp_t                axi_rsp_o,
     // PHI port
-    input  hyperbus_pkg::hyper_rx_t rx_i,
+    input  hyper_rx_t               rx_i,
     input  logic                    rx_valid_i,
     output logic                    rx_ready_o,
 
-    output hyperbus_pkg::hyper_tx_t tx_o,
+    output hyper_tx_t               tx_o,
     output logic                    tx_valid_o,
     input  logic                    tx_ready_i,
 
@@ -285,7 +286,8 @@ import hyperbus_pkg::NumPhys;
     hyperbus_phy2r #(
         .AxiDataWidth  ( AxiDataWidth                  ),
         .BurstLength   ( hyperbus_pkg::HyperBurstWidth ),
-        .T             ( axi_r_t                       )
+        .T             ( axi_r_t                       ),
+        .NumPhys       ( NumPhys                       )
     ) i_hyperbus_phy2r (
         .clk_i,
         .rst_ni,
@@ -312,7 +314,8 @@ import hyperbus_pkg::NumPhys;
     hyperbus_w2phy #(
         .AxiDataWidth ( AxiDataWidth                  ),
         .BurstLength  ( hyperbus_pkg::HyperBurstWidth ),
-        .T            ( axi_w_chan_t                  )
+        .T            ( axi_w_chan_t                  ),
+        .NumPhys      ( NumPhys                       )
         ) i_hyperbus_w2phy (
         .clk_i,
         .rst_ni,

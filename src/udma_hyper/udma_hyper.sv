@@ -20,7 +20,10 @@ module udma_hyperbus
     parameter TRANS_SIZE      = 16,
     parameter DELAY_BIT_WIDTH = 3,
     parameter NumChips        =2,
-    parameter NB_CH           =8
+    parameter NB_CH           =8,
+    parameter int unsigned NumPhys       = -1,
+    parameter type         hyper_tx_t    = logic,   
+    parameter type         hyper_rx_t    = logic
 ) 
 (
     input logic                        sys_clk_i,
@@ -84,11 +87,11 @@ module udma_hyperbus
     // transmitting
     output logic                       tx_valid_o,
     input logic                        tx_ready_i,
-    output hyperbus_pkg::hyper_tx_t    udma_phy_tx,
+    output hyper_tx_t                  udma_phy_tx,
     // receiving channel
     input logic                        rx_valid_i,
     output logic                       rx_ready_o,
-    input hyperbus_pkg::hyper_rx_t     udma_phy_rx,
+    input hyper_rx_t                   udma_phy_rx,
     // spram select
     output logic [1:0]                 mem_sel_o,
     output logic                       busy_o
@@ -628,7 +631,8 @@ module udma_hyperbus
       .TRANS_SIZE                  ( TRANS_SIZE                ),
       .DELAY_BIT_WIDTH             ( DELAY_BIT_WIDTH           ),
       .ID_WIDTH                    ( LOG_NB_CH                 ),
-      .NR_CS                       ( NumChips                  )
+      .NR_CS                       ( NumChips                  ),
+      .NumPhys                     ( NumPhys                   )
    )udma_hyper_ctrl_i
    (
       .clk_i                       ( clk0                      ),

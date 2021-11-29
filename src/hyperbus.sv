@@ -7,8 +7,9 @@
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 // Contributor: Luca Valente <luca.valente@unibo.it>
 
-module hyperbus import hyperbus_pkg::NumPhys; #(
+module hyperbus #(
     parameter int unsigned  NumChips        = -1,
+    parameter int unsigned  NumPhys         = 2,
     parameter int unsigned  IsClockODelayed = 0,
     parameter int unsigned  L2_AWIDTH_NOAL  = 12,
     parameter int unsigned  TRANS_SIZE      = 16,
@@ -96,6 +97,19 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
 
 );
 
+   
+    typedef struct packed {
+        logic [(16*NumPhys)-1:0]    data;
+        logic                       last;
+        logic [(2*NumPhys)-1:0]     strb;   // mask data
+    } hyper_tx_t;
+
+    typedef struct packed {
+        logic [(16*NumPhys)-1:0]    data;
+        logic                       last;
+        logic                       error;
+    } hyper_rx_t;
+
     // Combined transfer type for CDC
     typedef struct packed {
         hyperbus_pkg::hyper_tf_t    trans;
@@ -111,10 +125,10 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
     logic                       trans_active;
 
     // AXI slave
-    hyperbus_pkg::hyper_rx_t    axi_rx;
+    hyper_rx_t                  axi_rx;
     logic                       axi_rx_valid;
     logic                       axi_rx_ready;
-    hyperbus_pkg::hyper_tx_t    axi_tx;
+    hyper_tx_t                  axi_tx;
     logic                       axi_tx_valid;
     logic                       axi_tx_ready;
     logic                       axi_b_error;
@@ -125,10 +139,10 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
     logic                       axi_trans_ready;
 
     // PHY
-    hyperbus_pkg::hyper_rx_t    axi_phy_rx;
+    hyper_rx_t                  axi_phy_rx;
     logic                       axi_phy_rx_valid;
     logic                       axi_phy_rx_ready;
-    hyperbus_pkg::hyper_tx_t    axi_phy_tx;
+    hyper_tx_t                  axi_phy_tx;
     logic                       axi_phy_tx_valid;
     logic                       axi_phy_tx_ready;
     logic                       axi_phy_b_error;
@@ -139,10 +153,10 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
     logic                       axi_phy_trans_ready;
    
     // PHY
-    hyperbus_pkg::hyper_rx_t    phy_rx;
+    hyper_rx_t                  phy_rx;
     logic                       phy_rx_valid;
     logic                       phy_rx_ready;
-    hyperbus_pkg::hyper_tx_t    phy_tx;
+    hyper_tx_t                  phy_tx;
     logic                       phy_tx_valid;
     logic                       phy_tx_ready;
     logic                       phy_b_error;
@@ -181,6 +195,9 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
         .axi_rsp_t      ( axi_rsp_t         ),
         .axi_w_chan_t   ( axi_w_chan_t      ),
         .NumChips       ( NumChips          ),
+        .NumPhys        ( NumPhys           ),
+        .hyper_rx_t     ( hyper_rx_t        ),
+        .hyper_tx_t     ( hyper_tx_t        ),
         .rule_t         ( axi_rule_t        )
     ) i_axi_slave (
         .clk_i          ( clk_sys_i         ),
@@ -212,7 +229,10 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
     hyperbus_phy_if #(
         .IsClockODelayed( IsClockODelayed   ),
         .NumChips       ( NumChips          ),
-        .StartupCycles  ( PhyStartupCycles  )
+        .StartupCycles  ( PhyStartupCycles  ),
+        .NumPhys        ( NumPhys           ),
+        .hyper_rx_t     ( hyper_rx_t        ),
+        .hyper_tx_t     ( hyper_tx_t        )
     ) i_phy (
         .clk_i          ( clk_phy_i_0       ),
         .clk_i_90       ( clk_phy_i_90      ),
@@ -281,8 +301,8 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
 
     // Write data, TX CDC FIFO
     cdc_fifo_gray  #(
-        .T          ( hyperbus_pkg::hyper_tx_t  ),
-        .LOG_DEPTH  ( TxFifoLogDepth            )
+        .T          ( hyper_tx_t     ),
+        .LOG_DEPTH  ( TxFifoLogDepth )
     ) i_cdc_fifo_tx (
         .src_rst_ni     ( rst_sys_ni    ),
         .src_clk_i      ( clk_sys_i     ),
@@ -299,8 +319,8 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
 
     // Read data, RX CDC FIFO
     cdc_fifo_gray  #(
-        .T          ( hyperbus_pkg::hyper_rx_t  ),
-        .LOG_DEPTH  ( RxFifoLogDepth            )
+        .T          ( hyper_rx_t     ),
+        .LOG_DEPTH  ( RxFifoLogDepth )
     ) i_cdc_fifo_rx (
         .src_rst_ni     ( rst_phy       ),
         .src_clk_i      ( clk_phy_i_0   ),
@@ -319,10 +339,10 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
     logic                   s_sel; 
    
     // PHY
-    hyperbus_pkg::hyper_rx_t    udma_phy_rx;
+    hyper_rx_t                  udma_phy_rx;
     logic                       udma_phy_rx_valid;
     logic                       udma_phy_rx_ready;
-    hyperbus_pkg::hyper_tx_t    udma_phy_tx;
+    hyper_tx_t                  udma_phy_tx;
     logic                       udma_phy_tx_valid;
     logic                       udma_phy_tx_ready;
     tf_cdc_t                    udma_phy_tf_cdc;
@@ -334,7 +354,10 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
     .TRANS_SIZE      (TRANS_SIZE),
     .DELAY_BIT_WIDTH (4),
     .NumChips        (NumChips), 
-    .NB_CH           (NB_CH)
+    .NB_CH           (NB_CH),
+    .NumPhys         (NumPhys),
+    .hyper_rx_t      (hyper_rx_t),
+    .hyper_tx_t      (hyper_tx_t)
    ) udma_hyper (    
         .sys_clk_i               ( clk_sys_i                    ),
         .clk_phy_i               ( clk_phy_i_0                  ),
@@ -425,7 +448,7 @@ module hyperbus import hyperbus_pkg::NumPhys; #(
    );   
 
  stream_mux #(
-  .DATA_T(hyperbus_pkg::hyper_tx_t),
+  .DATA_T(hyper_tx_t),
   .N_INP(2)
  )tx_mux(
   .inp_data_i({udma_phy_tx,axi_phy_tx}),

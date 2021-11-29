@@ -8,9 +8,12 @@
 module hyperbus_phy_if import hyperbus_pkg::*; #(
     parameter int unsigned IsClockODelayed = 1,
     parameter int unsigned NumChips = 2,
+    parameter int unsigned NumPhys = 2,
     parameter int unsigned TimerWidth = 16,
     parameter int unsigned RxFifoLogDepth = 3,
-    parameter int unsigned StartupCycles = 60000 /*MHz*/ // Conservative maximum frequency estimate
+    parameter int unsigned StartupCycles = 60000, /*MHz*/ // Conservative maximum frequency estimate
+    parameter type hyper_tx_t = logic,   
+    parameter type hyper_rx_t = logic
 )(
     input  logic                clk_i,
     input  logic                clk_i_90,
@@ -118,7 +121,8 @@ module hyperbus_phy_if import hyperbus_pkg::*; #(
                hyperbus_phy #(
                    .IsClockODelayed( IsClockODelayed   ),
                    .NumChips       ( NumChips          ),
-                   .StartupCycles  ( StartupCycles     )
+                   .StartupCycles  ( StartupCycles     ),
+                   .NumPhys        ( NumPhys           )
                ) i_phy (
                    .clk_i          ( clk_i             ),
                    .clk_i_90       ( clk_i_90          ),
@@ -166,7 +170,8 @@ module hyperbus_phy_if import hyperbus_pkg::*; #(
             hyperbus_phy #(
                  .IsClockODelayed( IsClockODelayed   ),
                  .NumChips       ( NumChips          ),
-                 .StartupCycles  ( StartupCycles     )
+                 .StartupCycles  ( StartupCycles     ),
+                 .NumPhys        ( NumPhys           )
              ) i_phy (
                  .clk_i          ( clk_i           ),
                  .clk_i_90       ( clk_i_90        ),

@@ -11,14 +11,13 @@
 
 //// Hayate Okuhara <hayate.okuhara@unibo.it>
 
-module udma_hyper_ctrl
-  import hyperbus_pkg::NumPhys;
-#(
+module udma_hyper_ctrl #(
     parameter L2_AWIDTH_NOAL = 12,
     parameter TRANS_SIZE = 16,
     parameter DELAY_BIT_WIDTH = 3,
     parameter ID_WIDTH =1,
-    parameter NR_CS =2
+    parameter NR_CS =2,
+    parameter NumPhys = -1
 )
 (
     input  logic                    clk_i,

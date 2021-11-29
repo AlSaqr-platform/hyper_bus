@@ -41,8 +41,9 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
-    parameter int unsigned NumChips = 2
+module fixture_hyperbus #(
+    parameter int unsigned NumChips = 2,
+    parameter int unsigned NumPhys = 2
 );
 
    
@@ -386,15 +387,15 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     wire  [NumPhys-1:0][7:0] hyper_dq_wire;
     wire  [NumPhys-1:0]      hyper_reset_n_wire;
              
-`ifdef TARGET_POST_SYNTH_SIM
-   assign #(1ns) hyper_rwds_i[0] = ($isunknown(s_hyper_rwds_i[0])) ? '0 : s_hyper_rwds_i[0];
-   assign #(1ns) hyper_rwds_i[1] = ($isunknown(s_hyper_rwds_i[1])) ? '1 : s_hyper_rwds_i[1];
-`else   
-   assign  hyper_rwds_i[0] = s_hyper_rwds_i[0];
-   assign  hyper_rwds_i[1] = s_hyper_rwds_i[1];
-`endif
     generate
        for (genvar i=0; i<NumPhys; i++) begin : hyperrams
+
+         `ifdef TARGET_POST_SYNTH_SIM
+            assign #(1ns) hyper_rwds_i[i] = ($isunknown(s_hyper_rwds_i[i])) ? '0 : s_hyper_rwds_i[i];
+         `else   
+            assign  hyper_rwds_i[i] = s_hyper_rwds_i[i];
+         `endif
+
           tristate_shim i_tristate_shim_rwdsi (
               .out_ena_i  ( hyper_rwds_oe[i]   ),
               .out_i      ( hyper_rwds_o[i]    ),
@@ -440,6 +441,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
     hyperbus #(
 `endif
         .NumChips       ( NumChips    ),
+        .NumPhys        ( NumPhys     ),
         .AxiAddrWidth   ( AxiAw       ),
         .AxiDataWidth   ( AxiDw       ),
         .AxiIdWidth     ( AxiIw       ),
