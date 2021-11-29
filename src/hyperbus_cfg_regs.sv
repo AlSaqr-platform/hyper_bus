@@ -1,8 +1,7 @@
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 // Description: Configuration for Hyperbus, v2 (For fixed 32-bit address spaces!)
 
-module hyperbus_cfg_regs 
-  import hyperbus_pkg::NumPhys; #(
+module hyperbus_cfg_regs #(
     parameter int unsigned  NumChips        = -1,
     parameter int unsigned  RegAddrWidth    = -1,
     parameter int unsigned  RegDataWidth    = -1,
@@ -121,8 +120,8 @@ module hyperbus_cfg_regs
     assign cfg_o  = cfg_q;
     for (genvar i = 0; unsigned'(i) < NumChips; ++i) begin : gen_crange_out
         assign chip_rules_o[i].idx         = unsigned'(i);   // No overlap: keep indices sequential
-        assign chip_rules_o[i].start_addr  = crange_q[i][0]>>(NumPhys-1);
-        assign chip_rules_o[i].end_addr    = crange_q[i][1]>>(NumPhys-1);
+        assign chip_rules_o[i].start_addr  = crange_q[i][0];
+        assign chip_rules_o[i].end_addr    = crange_q[i][1];
     end
 
     // pragma translate_off

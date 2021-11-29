@@ -388,7 +388,7 @@ module fixture_hyperbus import hyperbus_pkg::NumPhys; #(
              
 `ifdef TARGET_POST_SYNTH_SIM
    assign #(1ns) hyper_rwds_i[0] = ($isunknown(s_hyper_rwds_i[0])) ? '0 : s_hyper_rwds_i[0];
-   assign #(1ns) hyper_rwds_i[1] = ($isunknown(s_hyper_rwds_i[1])) ? '0 : s_hyper_rwds_i[1];
+   assign #(1ns) hyper_rwds_i[1] = ($isunknown(s_hyper_rwds_i[1])) ? '1 : s_hyper_rwds_i[1];
 `else   
    assign  hyper_rwds_i[0] = s_hyper_rwds_i[0];
    assign  hyper_rwds_i[1] = s_hyper_rwds_i[1];
