@@ -9,7 +9,7 @@
 
 module hyperbus_tb;
 
-    localparam NumPhys=0;
+    localparam NumPhys=2;
    
     fixture_hyperbus #(.NumChips(2), .NumPhys(NumPhys) ) fix ();
 
@@ -307,7 +307,7 @@ module hyperbus_tb;
         fix.LongWriteTransactionTest(2, 76,'h10,0);
         #8us;
 
-        fix.LongWriteTransactionTest(8, 5,'h11,0);
+        fix.LongWriteTransactionTest(8, 6,'h11,0);
         #8us;
 
         fix.LongWriteTransactionTest(28, 32,'h22,0);
