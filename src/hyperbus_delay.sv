@@ -14,7 +14,9 @@ module hyperbus_delay (
 
     generic_delay_D4_O1_3P750_CG0 i_delay (
         .clk_i      ( in_i      ),
+        `ifndef GF22_DELAY_LINES
         .enable_i   ( 1'b1      ),
+        `endif
         .delay_i    ( delay_i   ),
         .clk_o      ( out_o     )
     );
