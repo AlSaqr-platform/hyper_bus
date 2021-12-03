@@ -407,7 +407,7 @@ module fixture_hyperbus #(
        for (genvar i=0; i<NumPhys; i++) begin : hyperrams
 
          `ifdef TARGET_POST_SYNTH_SIM
-            assign #(1ns) hyper_rwds_i[i] = ($isunknown(s_hyper_rwds_i[i])) ? '0 : s_hyper_rwds_i[i];
+            assign  hyper_rwds_i[i] = ($isunknown(s_hyper_rwds_i[i])) ? '0 : s_hyper_rwds_i[i];
          `else   
             assign  hyper_rwds_i[i] = s_hyper_rwds_i[i];
          `endif
