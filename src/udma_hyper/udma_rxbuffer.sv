@@ -59,7 +59,7 @@ module udma_rxbuffer
   logic  [TRANS_SIZE-1:0] nb_32data;
 
   assign  src_ready_o = dst_ready_i; // ready signal is given by a destination FIFO
-  assign  nb_32data = |(cfg_rx_size_i[1:0]) ? (cfg_rx_size_i >> 2)+1 : (cfg_rx_size_i >> 2); 
+  assign  nb_32data = (mem_sel_i == 2'b11) ? (cfg_rx_size_i>>1) : (|(cfg_rx_size_i[1:0]) ? (cfg_rx_size_i >> 2)+1 : (cfg_rx_size_i >> 2)); 
   assign data_psram_hyper = (mem_sel_i == 2'b11) ? { data_i } :
                             (mem_sel_i == 2'b10) ? { 16'b0, data_i[7:0], data_i[15:8]} : data_i;
 

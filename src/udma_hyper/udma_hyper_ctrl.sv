@@ -11,6 +11,10 @@
 
 //// Hayate Okuhara <hayate.okuhara@unibo.it>
 
+/// Disclaimer Hayate performed the shift of the address to convert it from byte to
+/// word inside the phy. It is not the case for the new phy. Hence, r_hyper_addr is
+/// in byte.
+
 module udma_hyper_ctrl #(
     parameter L2_AWIDTH_NOAL = 12,
     parameter TRANS_SIZE = 16,
@@ -86,6 +90,8 @@ module udma_hyper_ctrl #(
 
     logic        [TRANS_SIZE-1:0]   r_rx_size;
     logic        [TRANS_SIZE-1:0]   r_tx_size;
+    logic        [TRANS_SIZE-1:0]   last_addr_rx;
+    logic        [TRANS_SIZE-1:0]   last_addr_tx;
     logic        [31:0]             r_hyper_addr;
     logic        [15:0]             r_hyper_intreg;
     logic        [1:0]              r_mem_sel;
@@ -108,6 +114,7 @@ module udma_hyper_ctrl #(
     logic        [3:0]                 r_t_variable_latency_check;
 
 // mask signal for spi16
+    logic       r_odd_addr;
     logic [1:0] upper_mask_head_spi16;
     logic [1:0] upper_mask_tail_spi16;
     logic [1:0] lower_mask_head_spi16;
@@ -132,6 +139,7 @@ module udma_hyper_ctrl #(
             r_rx_size <= 0;
             r_tx_size <= 0;
             r_hyper_addr <= 0;
+            r_odd_addr <= 0;
             r_hyper_intreg <= 0;
             r_rw_hyper <= 0;
             r_addr_space <= 0;
@@ -151,7 +159,8 @@ module udma_hyper_ctrl #(
               begin
                 r_tx_size <= tx_size_i;
                 r_rx_size <= rx_size_i;
-                r_hyper_addr <= hyper_addr_i >> (NumPhys-1);
+                r_hyper_addr <= hyper_addr_i ;
+                r_odd_addr <= hyper_addr_i[1];
                 r_hyper_intreg <= hyper_intreg_i;
                 r_rw_hyper <= rw_hyper_i;
                 r_addr_space <= addr_space_i;
@@ -173,9 +182,9 @@ module udma_hyper_ctrl #(
 // Output control signals//
 ///////////////////////////
 
-    assign ctrl_rx_size_o = r_rx_size;
-    assign ctrl_tx_size_o = r_tx_size; 
-    assign ctrl_hyper_addr_o = r_hyper_addr;
+    assign ctrl_rx_size_o = (r_mem_sel == 2'b11) ? ((last_addr_rx[TRANS_SIZE-1:2]<<2)+((last_addr_rx[1:0]!=0)<<2))>>1 : r_rx_size;
+    assign ctrl_tx_size_o = (r_mem_sel == 2'b11) ? ((last_addr_tx[TRANS_SIZE-1:2]<<2)+((last_addr_tx[1:0]!=0)<<2))>>1 : r_tx_size; 
+    assign ctrl_hyper_addr_o = r_hyper_addr >> NumPhys;
     assign ctrl_hyper_intreg_o = r_hyper_intreg;
     assign ctrl_rw_hyper_o = r_rw_hyper;
     assign ctrl_addr_space_o = r_addr_space;
@@ -195,9 +204,11 @@ module udma_hyper_ctrl #(
 ////////////////////////////////////
 
 
-    assign additional_data = ((mem_sel_i==2'b11) & ( (r_tx_size[1:0] > 2'b00) | hyper_odd_saaddr_o)) |
-                             ((mem_sel_i==2'b11) & ( (r_rx_size[1:0] > 2'b00) | hyper_odd_saaddr_o)) |
-                             ((mem_sel_i!=2'b11) & ( (r_tx_size[0] == 1'b1) | hyper_odd_saaddr_o)) |
+    assign last_addr_tx = r_tx_size + r_hyper_addr[1:0] ;
+    assign last_addr_rx = r_rx_size + r_hyper_addr[1:0] ;
+
+
+    assign additional_data = ((mem_sel_i!=2'b11) & ( (r_tx_size[0] == 1'b1) | hyper_odd_saaddr_o)) |
                              ((mem_sel_i!=2'b11) & ( (r_rx_size[0] == 1'b1) | hyper_odd_saaddr_o)); 
 
 
@@ -245,40 +256,23 @@ module udma_hyper_ctrl #(
                      if(r_rw_hyper) // rw=1: read 0:write
                        begin
                          if(phy_trans_valid_o & phy_trans_ready_i) control_state <= READTRANSACTION;
-                         if(additional_data) 
-                           begin                             
-                             if(r_mem_sel == 2'b11) trans_burst_o <= ((r_rx_size>>2)<<1)+2; // # of 32 bit data received by phy
-                             else trans_burst_o <= (r_rx_size >> 1)+1;  // # of 16 bit data received by phy
-                             if(r_mem_sel == 2'b11) remained_data_o <= ((r_rx_size>>2)<<1)+2; // # of 32 bit data sent to 16b32b module
-                             else remained_data_o <= (r_rx_size >> 1)+1; // # of 16 bit data 
-                           end
-                         else
-                           begin
-                             if(r_mem_sel == 2'b11) trans_burst_o <= ((r_rx_size>>2)<<1); // # of 32 bit data received by phy
-                             else trans_burst_o <= r_rx_size >> 1;  // # of 16 bit data received by phy
-                             if(r_mem_sel == 2'b11) remained_data_o <= ((r_rx_size>>2)<<1); // # of 32 bit data sent to 16b32b module
-                             else remained_data_o <= r_rx_size >> 1; // # of 16 bit data  
-                           end
-                       end
-                     else 
-                       begin
-                         if(phy_trans_valid_o & phy_trans_ready_i) control_state <= WRITETRANSACTION;
-                         if(additional_data) // if the burst length is not a multiple of 16 bits
-                           begin
-                             if(r_mem_sel == 2'b11) trans_burst_o <= ((r_tx_size>>2)<<1) + 2; // # of 32 bit data at phy
-                             else trans_burst_o <= (r_tx_size >> 1) + 1 ;
-                             if(r_mem_sel == 2'b11) remained_data_o <= ((r_tx_size>>2)<<1) + 2; 
-                             else remained_data_o <= (r_tx_size >> 1) + 1 ;
-                           end
-                         else
-                           begin 
-                             if(r_mem_sel == 2'b11) trans_burst_o <= ((r_tx_size>>2)<<1);
-                             else trans_burst_o <= (r_tx_size >> 1);
-                             if(r_mem_sel == 2'b11) remained_data_o <= ((r_tx_size>>2)<<1);
-                             else remained_data_o <= (r_tx_size >> 1);
-                           end
-
-                       end
+                         if(r_mem_sel == 2'b11) begin
+                                trans_burst_o   <= ((last_addr_rx[TRANS_SIZE-1:2]<<2)+((last_addr_rx[1:0]!=0)<<2))>>1;
+                                remained_data_o <= ((last_addr_rx[TRANS_SIZE-1:2]<<2)+((last_addr_rx[1:0]!=0)<<2))>>1;
+                         end else begin
+                               trans_burst_o <= (r_rx_size >> 1)+additional_data;  // # of 16 bit data received by phy
+                               remained_data_o <= (r_rx_size >> 1)+additional_data; // # of 16 bit data
+                         end
+                       end else begin // if (r_rw_hyper)
+                          if(phy_trans_valid_o & phy_trans_ready_i) control_state <= WRITETRANSACTION;
+                          if(r_mem_sel == 2'b11) begin
+                             trans_burst_o   <= ((last_addr_tx[TRANS_SIZE-1:2]<<2)+((last_addr_tx[1:0]!=0)<<2))>>1;
+                             remained_data_o <= ((last_addr_tx[TRANS_SIZE-1:2]<<2)+((last_addr_tx[1:0]!=0)<<2))>>1;
+                          end else begin
+                             trans_burst_o <= (r_tx_size >> 1) + additional_data ;
+                             remained_data_o <= (r_tx_size >> 1) + additional_data;
+                          end
+                       end // else: !if(r_rw_hyper)
                    end
               end
               REG_W: begin
@@ -333,24 +327,22 @@ module udma_hyper_ctrl #(
 // Data mask generation//
 /////////////////////////
 
-    assign hyper_odd_saaddr_o = r_hyper_addr[0]==1'b1 ? 1 : 0; // transaction start at the odd address
-    assign tail = r_hyper_addr[1:0] + r_tx_size[1:0];
+    assign hyper_odd_saaddr_o = r_hyper_addr[NumPhys-1] ? 1 : 0; // transaction start at the odd address
+    assign tail = last_addr_tx[1:0];
 
+    // Put a 0 for the byte you want to transmit
     assign lower_mask_head_hyper =  hyper_odd_saaddr_o ? 2'b01 : 
                                     (r_tx_size == 1)   ? 2'b10 : 2'b00;
     assign lower_mask_head_spi8  =  hyper_odd_saaddr_o ? 2'b10 :
                                     (r_tx_size == 1)   ? 2'b01 : 2'b00;
-    assign lower_mask_head_spi16 =  hyper_odd_saaddr_o && ((r_tx_size == 1) || (mem_sel_i==2'b11)) ? 2'b11 :
-                                    hyper_odd_saaddr_o ? 2'b10 :
-                                    (!hyper_odd_saaddr_o && (r_tx_size <= 2)) ? 2'b01 :  2'b00;
-    assign upper_mask_head_spi16 =  (r_tx_size <= 3) && (tail == 2'b01) ? 2'b11 :
-                                    (r_tx_size <= 3) && ((tail == 2'b10)|(tail == 2'b11)) ? 2'b01 : 2'b00;
+    assign lower_mask_head_spi16 =  r_hyper_addr[1] ? 2'b11 : (r_hyper_addr[0] ? 2'b01 : 2'b00 );
+    assign upper_mask_head_spi16 =  r_hyper_addr[1:0]==2'h3 ? 2'b01 : 2'b00;
                                     
     assign lower_mask_tail_hyper = (remained_data_o<=2) && tail[0] ? 2'b10: 2'b00;
     assign lower_mask_tail_spi8  = (remained_data_o<=2) && tail[0] ? 2'b01: 2'b00;
-    assign lower_mask_tail_spi16 = (remained_data_o<=2) && ((tail == 2'b01)|(tail == 2'b10)) ? 2'b01 : 2'b00;
-    assign upper_mask_tail_spi16 = (remained_data_o<=2) && (tail == 2'b01) ? 2'b11:
-                                   (remained_data_o<=2) && ((tail == 2'b10)|(tail == 2'b11)) ? 2'b01 : 2'b00;
+
+    assign lower_mask_tail_spi16 = (remained_data_o>4) ? 2'b00 : ( (tail==1) ? 2'b10 :  2'b00 );
+    assign upper_mask_tail_spi16 = (remained_data_o>4) ? 2'b00 : ( (tail==0) ? 2'b00 : ( (tail==3) ? 2'b10 : 2'b11) );
    
     always_ff @(posedge clk_i or negedge rst_ni)
       begin

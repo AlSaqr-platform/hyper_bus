@@ -593,7 +593,7 @@ module fixture_hyperbus #(
     // Initial reset
     initial begin
         rst_n = 0;
-        $readmemh("./../test/test_mem.dat",data_mem); 
+        $readmemh("./test/test_mem.dat",data_mem); 
 
         // Set all inputs at the beginning    
 
@@ -814,12 +814,6 @@ module fixture_hyperbus #(
                          
         // Check the transaction is compliant
         if(NumPhys==2) begin
-          if(mem_address_i%2!=0) begin
-             `ifdef UDMA_VERBOSE
-             $display("NumPhys=2. Start address of writes/reads with udma need to be aligned to 16 bits");
-             `endif
-             mem_address = (mem_address_i>>1)<<1;
-          end                      
           if(length_i%2!=0) begin
              `ifdef UDMA_VERBOSE
              $display("Not supported. Length of writes/reads with udma need to be aligned to 16 bits");
