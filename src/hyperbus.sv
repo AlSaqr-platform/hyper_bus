@@ -60,6 +60,7 @@ module hyperbus #(
     input  logic                        cfg_rx_pending_i,
     input  logic [L2_AWIDTH_NOAL-1:0]   cfg_rx_curr_addr_i,
     input  logic     [TRANS_SIZE-1:0]   cfg_rx_bytes_left_i,
+    output logic                [1:0]   data_rx_datasize_o,
 
     output logic [L2_AWIDTH_NOAL-1:0]   cfg_tx_startaddr_o,
     output logic     [TRANS_SIZE-1:0]   cfg_tx_size_o,
@@ -70,17 +71,16 @@ module hyperbus #(
     input  logic                        cfg_tx_pending_i,
     input  logic [L2_AWIDTH_NOAL-1:0]   cfg_tx_curr_addr_i,
     input  logic     [TRANS_SIZE-1:0]   cfg_tx_bytes_left_i,
+    output logic                [1:0]   data_tx_datasize_o,
 
     output logic          [NB_CH-1:0]   evt_eot_hyper_o,
 
     output logic                        data_tx_req_o,
     input  logic                        data_tx_gnt_i,
-    output logic                [1:0]   data_tx_datasize_o,
     input  logic               [31:0]   data_tx_i,
     input  logic                        data_tx_valid_i,
     output logic                        data_tx_ready_o,
 
-    output logic                [1:0]   data_rx_datasize_o,
     output logic               [31:0]   data_rx_o,
     output logic                        data_rx_valid_o,
     input  logic                        data_rx_ready_i,
@@ -97,7 +97,22 @@ module hyperbus #(
 );
 
 
-   
+    typedef struct packed {
+       logic [L2_AWIDTH_NOAL-1:0]  s_startaddr;
+       logic     [TRANS_SIZE-1:0]  s_size;
+       logic                       s_continuous;
+       logic                       s_en;
+       logic                       s_clr;
+       logic                [1:0]  s_datasize;
+    } udma_cfg_o_t;
+
+    typedef struct packed {
+       logic                       s_en;
+       logic                       s_pending;
+       logic [L2_AWIDTH_NOAL-1:0]  s_curr_addr;
+       logic     [TRANS_SIZE-1:0]  s_bytes_left;   
+    } udma_cfg_i_t;
+
     logic [3:0]                 s_async_udma_tx_wptr;
     logic [3:0]                 s_async_udma_tx_rptr;
     logic [31:0][7:0]           s_async_udma_tx_data;
@@ -109,6 +124,18 @@ module hyperbus #(
     logic [3:0]                 s_async_udma_rx_wptr;
     logic [3:0]                 s_async_udma_rx_rptr;
     logic [31:0][7:0]           s_async_udma_rx_data;                                
+
+    udma_cfg_o_t         s_cfg_rx_o;
+    udma_cfg_o_t         s_cfg_tx_o;
+    udma_cfg_i_t         s_cfg_rx_i;
+    udma_cfg_i_t         s_cfg_tx_i;
+
+    udma_cfg_o_t         s_cfg_rx_o_sys;
+    udma_cfg_o_t         s_cfg_tx_o_sys;
+    udma_cfg_i_t         s_cfg_rx_i_sys;
+    udma_cfg_i_t         s_cfg_tx_i_sys;
+                                                        
+    logic          [NB_CH-1:0]  s_evt_eot_hyper;
 
     hyperbus_async_macro #(
         .NumChips         ( NumChips         ),
@@ -159,29 +186,29 @@ module hyperbus #(
         .cfg_data_o             ( cfg_data_o            ),
         .cfg_ready_o            ( cfg_ready_o           ),
         
-        .cfg_rx_startaddr_o     ( cfg_rx_startaddr_o    ),
-        .cfg_rx_size_o          ( cfg_rx_size_o         ),
-        .data_rx_datasize_o     ( data_rx_datasize_o    ),
-        .cfg_rx_continuous_o    ( cfg_rx_continuous_o   ),
-        .cfg_rx_en_o            ( cfg_rx_en_o           ),
-        .cfg_rx_clr_o           ( cfg_rx_clr_o          ),
-        .cfg_rx_en_i            ( cfg_rx_en_i           ),
-        .cfg_rx_pending_i       ( cfg_rx_pending_i      ),
-        .cfg_rx_curr_addr_i     ( cfg_rx_curr_addr_i    ),
-        .cfg_rx_bytes_left_i    ( cfg_rx_bytes_left_i   ),
-        
-        .cfg_tx_startaddr_o     ( cfg_tx_startaddr_o    ),
-        .cfg_tx_size_o          ( cfg_tx_size_o         ),
-        .data_tx_datasize_o     ( data_tx_datasize_o    ),
-        .cfg_tx_continuous_o    ( cfg_tx_continuous_o   ),
-        .cfg_tx_en_o            ( cfg_tx_en_o           ),
-        .cfg_tx_clr_o           ( cfg_tx_clr_o          ),
-        .cfg_tx_en_i            ( cfg_tx_en_i           ),
-        .cfg_tx_pending_i       ( cfg_tx_pending_i      ),
-        .cfg_tx_curr_addr_i     ( cfg_tx_curr_addr_i    ),
-        .cfg_tx_bytes_left_i    ( cfg_tx_bytes_left_i   ),
-
-        .evt_eot_hyper_o        ( evt_eot_hyper_o       ),
+        .cfg_rx_startaddr_o     ( s_cfg_rx_o.s_startaddr    ),
+        .cfg_rx_size_o          ( s_cfg_rx_o.s_size         ),
+        .data_rx_datasize_o     ( s_cfg_rx_o.s_datasize     ),
+        .cfg_rx_continuous_o    ( s_cfg_rx_o.s_continuous   ),
+        .cfg_rx_en_o            ( s_cfg_rx_o.s_en           ),
+        .cfg_rx_clr_o           ( s_cfg_rx_o.s_clr          ),
+        .cfg_rx_en_i            ( s_cfg_rx_i.s_en           ),
+        .cfg_rx_pending_i       ( s_cfg_rx_i.s_pending      ),
+        .cfg_rx_curr_addr_i     ( s_cfg_rx_i.s_curr_addr    ),
+        .cfg_rx_bytes_left_i    ( s_cfg_rx_i.s_bytes_left   ),
+                                  
+        .cfg_tx_startaddr_o     ( s_cfg_tx_o.s_startaddr    ),
+        .cfg_tx_size_o          ( s_cfg_tx_o.s_size         ),
+        .data_tx_datasize_o     ( s_cfg_tx_o.s_datasize     ),
+        .cfg_tx_continuous_o    ( s_cfg_tx_o.s_continuous   ),
+        .cfg_tx_en_o            ( s_cfg_tx_o.s_en           ),
+        .cfg_tx_clr_o           ( s_cfg_tx_o.s_clr          ),
+        .cfg_tx_en_i            ( s_cfg_tx_i.s_en           ),
+        .cfg_tx_pending_i       ( s_cfg_tx_i.s_pending      ),
+        .cfg_tx_curr_addr_i     ( s_cfg_tx_i.s_curr_addr    ),
+        .cfg_tx_bytes_left_i    ( s_cfg_tx_i.s_bytes_left   ),
+                                  
+        .evt_eot_hyper_o        ( s_evt_eot_hyper       ),
              
         .pad_hyper_csn          ( pad_hyper_csn         ),
         .pad_hyper_ck           ( pad_hyper_ck          ),
@@ -192,7 +219,7 @@ module hyperbus #(
         );
    
                         
-      cdc_fifo_gray_src #(
+    cdc_fifo_gray_src #(
        .T(logic[31:0]),
        .LOG_DEPTH(3),
        .SYNC_STAGES(2)
@@ -207,7 +234,7 @@ module hyperbus #(
          .src_ready_o(s_data_tx_ready)
          );
                        
-     io_tx_fifo #(
+    io_tx_fifo #(
       .DATA_WIDTH(32),
       .BUFFER_DEPTH(4)
       ) u_fifo (
@@ -238,5 +265,83 @@ module hyperbus #(
       .async_wptr_i       ( s_async_udma_rx_wptr ),
       .async_rptr_o       ( s_async_udma_rx_rptr )
       );
+
+   sync_t # (
+             .T (udma_cfg_o_t),
+             .STAGES (2),
+             .ResetValue ('0)
+             ) udma_rx_cfg_o_sync (
+                                 .clk_i (clk_sys_i),
+                                 .rst_ni (rst_sys_ni),
+                                 .serial_i (s_cfg_rx_o),
+                                 .serial_o (s_cfg_rx_o_sys)
+                                 );
+
+   assign   cfg_rx_startaddr_o = s_cfg_rx_o_sys.s_startaddr;
+   assign   cfg_rx_size_o = s_cfg_rx_o_sys.s_size;
+   assign   cfg_rx_continuous_o = s_cfg_rx_o_sys.s_continuous;
+   assign   cfg_rx_en_o  = s_cfg_rx_o_sys.s_en;
+   assign   cfg_rx_clr_o = s_cfg_rx_o_sys.s_clr;
+   assign   data_rx_datasize_o = s_cfg_rx_o_sys.s_datasize;
    
+   sync_t # (
+             .T (udma_cfg_o_t),
+             .STAGES (2),
+             .ResetValue ('0)
+             ) udma_tx_cfg_o_sync (
+                                 .clk_i (clk_sys_i),
+                                 .rst_ni (rst_sys_ni),
+                                 .serial_i (s_cfg_tx_o),
+                                 .serial_o (s_cfg_tx_o_sys)
+                                 );
+
+   assign   cfg_tx_startaddr_o = s_cfg_tx_o_sys.s_startaddr;
+   assign   cfg_tx_size_o = s_cfg_tx_o_sys.s_size;
+   assign   cfg_tx_continuous_o = s_cfg_tx_o_sys.s_continuous;
+   assign   cfg_tx_en_o  = s_cfg_tx_o_sys.s_en;
+   assign   cfg_tx_clr_o = s_cfg_tx_o_sys.s_clr;
+   assign   data_tx_datasize_o = s_cfg_tx_o_sys.s_datasize;
+   
+   sync_t # (
+             .T (udma_cfg_i_t),
+             .STAGES (2),
+             .ResetValue ('0)
+             ) udma_rx_cfg_i_sync (
+                                 .clk_i (clk_sys_i),
+                                 .rst_ni (rst_sys_ni),
+                                 .serial_i (s_cfg_rx_i_sys),
+                                 .serial_o (s_cfg_rx_i)
+                                 );
+
+   assign s_cfg_rx_i_sys.s_en         =   cfg_rx_en_i;
+   assign s_cfg_rx_i_sys.s_pending    =   cfg_rx_pending_i;
+   assign s_cfg_rx_i_sys.s_curr_addr  =   cfg_rx_curr_addr_i;
+   assign s_cfg_rx_i_sys.s_bytes_left =   cfg_rx_bytes_left_i;
+
+   sync_t # (
+             .T (udma_cfg_i_t),
+             .STAGES (2),
+             .ResetValue ('0)
+             ) udma_tx_cfg_i_sync (
+                                 .clk_i (clk_sys_i),
+                                 .rst_ni (rst_sys_ni),
+                                 .serial_i (s_cfg_tx_i_sys),
+                                 .serial_o (s_cfg_tx_i)
+                                 );
+   
+   assign s_cfg_tx_i_sys.s_en         =   cfg_tx_en_i;
+   assign s_cfg_tx_i_sys.s_pending    =   cfg_tx_pending_i;
+   assign s_cfg_tx_i_sys.s_curr_addr  =   cfg_tx_curr_addr_i;
+   assign s_cfg_tx_i_sys.s_bytes_left =   cfg_tx_bytes_left_i;
+     
+   sync # (
+             .STAGES (2),
+             .ResetValue ('0)
+             ) udma_eot_o_sync (
+                                 .clk_i (clk_sys_i),
+                                 .rst_ni (rst_sys_ni),
+                                 .serial_i (s_evt_eot_hyper),
+                                 .serial_o (evt_eot_hyper_o)
+                                 );
+
 endmodule : hyperbus

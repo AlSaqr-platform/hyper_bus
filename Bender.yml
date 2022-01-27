@@ -7,7 +7,7 @@ package:
     - "Paul Scheffler <paulsc@iis.ee.ethz.ch>"
 
 dependencies:
-  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",       version: 1.21.0 }
+  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",       rev: "3e5eacc2104f0f7ada81672d95e3006b79ab6937" }
   axi:                 { git: "https://github.com/pulp-platform/axi.git",                version: 0.29.1 }
   udma_core:           { git: "https://github.com/Alsaqr-platform/udma_core.git",        version: 2.0.0 }
   # TODO: RTL attributes, then MR
