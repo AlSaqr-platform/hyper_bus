@@ -432,7 +432,7 @@ module fixture_hyperbus #(
 `ifdef TARGET_POST_SYNTH_SIM
     hyperbus_chip_wrap #(
 `else
-    hyperbus_with_pads #(
+    hyperbus #(
 `endif
         .NumChips       ( NumChips    ),
         .NumPhys        ( NumPhys     ),
