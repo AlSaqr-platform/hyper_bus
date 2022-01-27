@@ -61,6 +61,7 @@ sources:
     - src/hyperbus_axi.sv
     - src/hyperbus_arbiter.sv
     - src/hyperbus.sv
+    - src/hyperbus_with_pads.sv
     - target: post_synth_sim
       files:
         - gf22/synopsys/trial1_25_11_2021/netlists/hyperbus_chip.v

@@ -406,28 +406,6 @@ module fixture_hyperbus #(
     generate
        for (genvar i=0; i<NumPhys; i++) begin : hyperrams
 
-         `ifdef TARGET_POST_SYNTH_SIM
-            assign  hyper_rwds_i[i] = ($isunknown(s_hyper_rwds_i[i])) ? '0 : s_hyper_rwds_i[i];
-         `else   
-            assign  hyper_rwds_i[i] = s_hyper_rwds_i[i];
-         `endif
-
-          tristate_shim i_tristate_shim_rwdsi (
-              .out_ena_i  ( hyper_rwds_oe[i]   ),
-              .out_i      ( hyper_rwds_o[i]    ),
-              .in_o       ( s_hyper_rwds_i[i]  ),
-              .line_io    ( hyper_rwds_wire[i] )
-          );
-          
-          for (genvar m = 0; m < 8; m++) begin
-              tristate_shim i_tristate_shim_dqi (
-                  .out_ena_i  ( hyper_dq_oe[i]       ),
-                  .out_i      ( hyper_dq_o[i]    [m] ),
-                  .in_o       ( hyper_dq_i[i]    [m] ),
-                  .line_io    ( hyper_dq_wire[i] [m] )
-              );
-          end
-
           s27ks0641 #(
             /*.mem_file_name ( "s27ks0641.mem"    ),*/
             .TimingModel   ( "S27KS0641DPBHI020"    )
@@ -454,7 +432,7 @@ module fixture_hyperbus #(
 `ifdef TARGET_POST_SYNTH_SIM
     hyperbus_chip_wrap #(
 `else
-    hyperbus #(
+    hyperbus_with_pads #(
 `endif
         .NumChips       ( NumChips    ),
         .NumPhys        ( NumPhys     ),
@@ -523,22 +501,18 @@ module fixture_hyperbus #(
 
         .evt_eot_hyper_o        (                       ),
              
-        .hyper_cs_no            ( hyper_cs_n_wire       ),
-        .hyper_ck_o             ( hyper_ck_wire         ),
-        .hyper_ck_no            ( hyper_ck_n_wire       ),
-        .hyper_rwds_o           ( hyper_rwds_o          ),
-        .hyper_rwds_i           ( hyper_rwds_i          ),
-        .hyper_rwds_oe_o        ( hyper_rwds_oe         ),
-        .hyper_dq_i             ( hyper_dq_i            ),
-        .hyper_dq_o             ( hyper_dq_o            ),
-        .hyper_dq_oe_o          ( hyper_dq_oe           ),
-        .hyper_reset_no         ( hyper_reset_n_wire    )
+        .pad_hyper_csn          ( hyper_cs_n_wire       ),
+        .pad_hyper_ck           ( hyper_ck_wire         ),
+        .pad_hyper_ckn          ( hyper_ck_n_wire       ),
+        .pad_hyper_rwds         ( hyper_rwds_wire       ),
+        .pad_hyper_reset        ( hyper_reset_n_wire    ),
+        .pad_hyper_dq           ( hyper_dq_wire         )
     );
 
     generate
        for (genvar p=0; p<NumPhys; p++) begin : sdf_annotation
          initial begin
-             automatic string sdf_file_path = "/scratch/lvalente/hyperwork/cva6/hardware/working_dir/hyperbus/models/s27ks0641/s27ks0641.sdf";
+             automatic string sdf_file_path = "../models/s27ks0641/s27ks0641.sdf";
              $sdf_annotate(sdf_file_path, hyperrams[p].i_s27ks0641);
              $display("NumPhys:%d",NumPhys);
          end
@@ -593,7 +567,7 @@ module fixture_hyperbus #(
     // Initial reset
     initial begin
         rst_n = 0;
-        $readmemh("./test/test_mem.dat",data_mem); 
+        $readmemh("../test/test_mem.dat",data_mem); 
 
         // Set all inputs at the beginning    
 
