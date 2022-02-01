@@ -102,9 +102,8 @@ module hyperbus #(
     inout  [NumPhys-1:0][7:0]           pad_hyper_dq
 
 );
-
+  
   localparam int unsigned AxiLogDepth = 3;
-   
    
   AXI_BUS_ASYNC_GRAY #(
      .AXI_ADDR_WIDTH ( AxiAddrWidth    ),
@@ -185,6 +184,32 @@ module hyperbus #(
                                                         
     logic          [NB_CH-1:0]  s_evt_eot_hyper;
 
+    logic                        s_async_reg_req_req;
+    logic                        s_async_reg_req_ack;
+    reg_req_t                    s_async_reg_req_data;
+   
+    logic                        s_async_reg_rsp_req;
+    logic                        s_async_reg_rsp_ack;
+    reg_rsp_t                    s_async_reg_rsp_data;
+
+    reg_cdc_slave_intf #(
+     .req_t(reg_req_t),
+     .rsp_t(reg_rsp_t)
+    )i_reg_cdc_slave_intf (
+      .src_clk_i    ( clk_sys_i            ),
+      .src_rst_ni   ( rst_sys_ni           ),
+      .src_req_i    ( reg_req_i            ),
+      .src_rsp_o    ( reg_rsp_o            ),
+                      
+      .async_req_o  ( s_async_reg_req_req  ),
+      .async_ack_i  ( s_async_reg_req_ack  ),
+      .async_data_o ( s_async_reg_req_data ),
+                      
+      .async_req_i  ( s_async_reg_rsp_req  ),
+      .async_ack_o  ( s_async_reg_rsp_ack  ),
+      .async_data_i ( s_async_reg_rsp_data )
+   );
+   
     hyperbus_async_macro #(
         .NumChips         ( NumChips         ),
         .NumPhys          ( NumPhys          ),
@@ -237,8 +262,13 @@ module hyperbus #(
         .async_data_slave_r_wptr_o   ( async_axi_dst.r_wptr  ),
         .async_data_slave_r_rptr_i   ( async_axi_dst.r_rptr  ),
                         
-        .reg_req_i              ( reg_req_i             ),
-        .reg_rsp_o              ( reg_rsp_o             ),
+        .async_reg_req_req_i         ( s_async_reg_req_req   ),
+        .async_reg_req_ack_o         ( s_async_reg_req_ack   ),
+        .async_reg_req_data_i        ( s_async_reg_req_data  ),
+        
+        .async_reg_rsp_req_o         ( s_async_reg_rsp_req   ),
+        .async_reg_rsp_ack_i         ( s_async_reg_rsp_ack   ),
+        .async_reg_rsp_data_o        ( s_async_reg_rsp_data  ),
 
         .async_tx_wptr_i        ( s_async_udma_tx_wptr  ),
         .async_tx_rptr_o        ( s_async_udma_tx_rptr  ),

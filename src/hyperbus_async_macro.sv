@@ -60,8 +60,14 @@ module hyperbus_async_macro #(
     output logic              [AxiLogDepth:0] async_data_slave_r_wptr_o,
     input  logic              [AxiLogDepth:0] async_data_slave_r_rptr_i,
     // Reg bus
-    input  reg_req_t                    reg_req_i,
-    output reg_rsp_t                    reg_rsp_o,
+    input  logic                  async_reg_req_req_i,
+    output logic                  async_reg_req_ack_o,
+    input  reg_req_t              async_reg_req_data_i,
+
+    output logic                  async_reg_rsp_req_o,
+    input  logic                  async_reg_rsp_ack_i,
+    output reg_rsp_t              async_reg_rsp_data_o,
+
     // UDMA interface
     input  logic [31:0]                 cfg_data_i,
     input  logic [4:0]                  cfg_addr_i,
@@ -145,6 +151,27 @@ module hyperbus_async_macro #(
     .dst_req_o                  ( axi_req_i                  ),
     .dst_resp_i                 ( axi_rsp_o                  )
   );
+
+    reg_req_t                    reg_req_i;
+    reg_rsp_t                    reg_rsp_o;
+
+    reg_cdc_master_intf #(
+    .req_t(reg_req_t),
+    .rsp_t(reg_rsp_t)
+    )i_reg_master_cdc_intf (
+      .dst_clk_i(clk_sys_i),
+      .dst_rst_ni(rst_sys_ni),
+      .dst_req_o(reg_req_i),
+      .dst_rsp_i(reg_rsp_o),
+      
+      .async_req_i(async_reg_req_req_i),
+      .async_ack_o(async_reg_req_ack_o),
+      .async_data_i(async_reg_req_data_i),
+      
+      .async_req_o(async_reg_rsp_req_o),
+      .async_ack_i(async_reg_rsp_ack_i),
+      .async_data_o(async_reg_rsp_data_o)
+   );
    
    typedef struct packed {
         logic [(16*NumPhys)-1:0]    data;
