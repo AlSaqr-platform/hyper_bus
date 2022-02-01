@@ -7,6 +7,9 @@
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 // Contributor: Luca Valente <luca.valente@unibo.it>
 
+`include "axi/typedef.svh"
+`include "axi/assign.svh"
+
 module hyperbus #(
     parameter int unsigned  NumChips        = -1,
     parameter int unsigned  NumPhys         = 2,
@@ -17,9 +20,14 @@ module hyperbus #(
     parameter int unsigned  AxiAddrWidth    = -1,
     parameter int unsigned  AxiDataWidth    = -1,
     parameter int unsigned  AxiIdWidth      = -1,
+    parameter int unsigned  AxiUserWidth    = -1,
     parameter type          axi_req_t       = logic,
     parameter type          axi_rsp_t       = logic,
     parameter type          axi_w_chan_t    = logic,
+    parameter type          axi_b_chan_t    = logic,
+    parameter type          axi_ar_chan_t   = logic,
+    parameter type          axi_r_chan_t    = logic,
+    parameter type          axi_aw_chan_t   = logic,
     parameter int unsigned  RegAddrWidth    = -1,
     parameter int unsigned  RegDataWidth    = -1,
     parameter type          reg_req_t       = logic,
@@ -84,7 +92,6 @@ module hyperbus #(
     output logic               [31:0]   data_rx_o,
     output logic                        data_rx_valid_o,
     input  logic                        data_rx_ready_i,
-    // PHY interface
 
     // Physical interace: facing HyperBus
     inout  [NumPhys-1:0][NumChips-1:0]  pad_hyper_csn,
@@ -96,7 +103,48 @@ module hyperbus #(
 
 );
 
+  localparam int unsigned AxiLogDepth = 3;
+   
+   
+  AXI_BUS_ASYNC_GRAY #(
+     .AXI_ADDR_WIDTH ( AxiAddrWidth    ),
+     .AXI_DATA_WIDTH ( AxiDataWidth    ),
+     .AXI_ID_WIDTH   ( AxiIdWidth      ),
+     .AXI_USER_WIDTH ( AxiUserWidth    ),
+     .LOG_DEPTH      ( AxiLogDepth     )
+  ) async_axi_dst();
 
+  axi_cdc_src #(
+    .aw_chan_t  ( axi_aw_chan_t  ),
+    .w_chan_t   ( axi_w_chan_t   ),
+    .b_chan_t   ( axi_b_chan_t   ),
+    .ar_chan_t  ( axi_ar_chan_t  ),
+    .r_chan_t   ( axi_r_chan_t   ),
+    .axi_req_t  ( axi_req_t      ),
+    .axi_resp_t ( axi_rsp_t      ),
+    .LogDepth   ( AxiLogDepth    )
+  ) i_axi_cdc_src (
+    .src_clk_i                    ( clk_sys_i             ),
+    .src_rst_ni                   ( rst_sys_ni            ),
+    .src_req_i                    ( axi_req_i             ),
+    .src_resp_o                   ( axi_rsp_o             ),
+    .async_data_master_aw_data_o  ( async_axi_dst.aw_data ),
+    .async_data_master_aw_wptr_o  ( async_axi_dst.aw_wptr ),
+    .async_data_master_aw_rptr_i  ( async_axi_dst.aw_rptr ),
+    .async_data_master_w_data_o   ( async_axi_dst.w_data  ),
+    .async_data_master_w_wptr_o   ( async_axi_dst.w_wptr  ),
+    .async_data_master_w_rptr_i   ( async_axi_dst.w_rptr  ),
+    .async_data_master_b_data_i   ( async_axi_dst.b_data  ),
+    .async_data_master_b_wptr_i   ( async_axi_dst.b_wptr  ),
+    .async_data_master_b_rptr_o   ( async_axi_dst.b_rptr  ),
+    .async_data_master_ar_data_o  ( async_axi_dst.ar_data ),
+    .async_data_master_ar_wptr_o  ( async_axi_dst.ar_wptr ),
+    .async_data_master_ar_rptr_i  ( async_axi_dst.ar_rptr ),
+    .async_data_master_r_data_i   ( async_axi_dst.r_data  ),
+    .async_data_master_r_wptr_i   ( async_axi_dst.r_wptr  ),
+    .async_data_master_r_rptr_o   ( async_axi_dst.r_rptr  )
+  );
+      
     typedef struct packed {
        logic [L2_AWIDTH_NOAL-1:0]  s_startaddr;
        logic     [TRANS_SIZE-1:0]  s_size;
@@ -147,14 +195,20 @@ module hyperbus #(
         .AxiAddrWidth     ( AxiAddrWidth     ),
         .AxiDataWidth     ( AxiDataWidth     ),
         .AxiIdWidth       ( AxiIdWidth       ),
+        .AxiUserWidth     ( AxiUserWidth     ),
         .axi_req_t        ( axi_req_t        ),
         .axi_rsp_t        ( axi_rsp_t        ),
+        .axi_aw_chan_t    ( axi_aw_chan_t    ),
         .axi_w_chan_t     ( axi_w_chan_t     ),
+        .axi_b_chan_t     ( axi_b_chan_t     ),
+        .axi_ar_chan_t    ( axi_ar_chan_t    ),
+        .axi_r_chan_t     ( axi_r_chan_t     ),
         .RegAddrWidth     ( RegAddrWidth     ),
         .RegDataWidth     ( RegDataWidth     ),
         .reg_req_t        ( reg_req_t        ),
         .reg_rsp_t        ( reg_rsp_t        ),
         .axi_rule_t       ( axi_rule_t       ),
+        .AxiLogDepth      ( AxiLogDepth      ),
         .RxFifoLogDepth   ( RxFifoLogDepth   ),
         .TxFifoLogDepth   ( TxFifoLogDepth   ),
         .RstChipBase      ( RstChipBase      ),
@@ -166,8 +220,23 @@ module hyperbus #(
         .clk_sys_i              ( clk_sys_i             ),
         .rst_sys_ni             ( rst_sys_ni            ),
         .test_mode_i            ( test_mode_i           ),
-        .axi_req_i              ( axi_req_i             ),
-        .axi_rsp_o              ( axi_rsp_o             ),
+                        
+        .async_data_slave_aw_data_i  ( async_axi_dst.aw_data ),
+        .async_data_slave_aw_wptr_i  ( async_axi_dst.aw_wptr ),
+        .async_data_slave_aw_rptr_o  ( async_axi_dst.aw_rptr ),
+        .async_data_slave_w_data_i   ( async_axi_dst.w_data  ),
+        .async_data_slave_w_wptr_i   ( async_axi_dst.w_wptr  ),
+        .async_data_slave_w_rptr_o   ( async_axi_dst.w_rptr  ),
+        .async_data_slave_b_data_o   ( async_axi_dst.b_data  ),
+        .async_data_slave_b_wptr_o   ( async_axi_dst.b_wptr  ),
+        .async_data_slave_b_rptr_i   ( async_axi_dst.b_rptr  ),
+        .async_data_slave_ar_data_i  ( async_axi_dst.ar_data ),
+        .async_data_slave_ar_wptr_i  ( async_axi_dst.ar_wptr ),
+        .async_data_slave_ar_rptr_o  ( async_axi_dst.ar_rptr ),
+        .async_data_slave_r_data_o   ( async_axi_dst.r_data  ),
+        .async_data_slave_r_wptr_o   ( async_axi_dst.r_wptr  ),
+        .async_data_slave_r_rptr_i   ( async_axi_dst.r_rptr  ),
+                        
         .reg_req_i              ( reg_req_i             ),
         .reg_rsp_o              ( reg_rsp_o             ),
 
@@ -266,7 +335,7 @@ module hyperbus #(
       .async_rptr_o       ( s_async_udma_rx_rptr )
       );
 
-   sync_t # (
+   sync # (
              .T (udma_cfg_o_t),
              .STAGES (2),
              .ResetValue ('0)
@@ -284,7 +353,7 @@ module hyperbus #(
    assign   cfg_rx_clr_o = s_cfg_rx_o_sys.s_clr;
    assign   data_rx_datasize_o = s_cfg_rx_o_sys.s_datasize;
    
-   sync_t # (
+   sync # (
              .T (udma_cfg_o_t),
              .STAGES (2),
              .ResetValue ('0)
@@ -302,7 +371,7 @@ module hyperbus #(
    assign   cfg_tx_clr_o = s_cfg_tx_o_sys.s_clr;
    assign   data_tx_datasize_o = s_cfg_tx_o_sys.s_datasize;
    
-   sync_t # (
+   sync # (
              .T (udma_cfg_i_t),
              .STAGES (2),
              .ResetValue ('0)
@@ -318,7 +387,7 @@ module hyperbus #(
    assign s_cfg_rx_i_sys.s_curr_addr  =   cfg_rx_curr_addr_i;
    assign s_cfg_rx_i_sys.s_bytes_left =   cfg_rx_bytes_left_i;
 
-   sync_t # (
+   sync # (
              .T (udma_cfg_i_t),
              .STAGES (2),
              .ResetValue ('0)

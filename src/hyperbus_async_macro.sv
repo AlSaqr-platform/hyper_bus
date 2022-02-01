@@ -17,9 +17,14 @@ module hyperbus_async_macro #(
     parameter int unsigned  AxiAddrWidth    = -1,
     parameter int unsigned  AxiDataWidth    = -1,
     parameter int unsigned  AxiIdWidth      = -1,
+    parameter int unsigned  AxiUserWidth    = -1,
     parameter type          axi_req_t       = logic,
     parameter type          axi_rsp_t       = logic,
     parameter type          axi_w_chan_t    = logic,
+    parameter type          axi_b_chan_t    = logic,
+    parameter type          axi_ar_chan_t   = logic,
+    parameter type          axi_r_chan_t    = logic,
+    parameter type          axi_aw_chan_t   = logic,
     parameter int unsigned  RegAddrWidth    = -1,
     parameter int unsigned  RegDataWidth    = -1,
     parameter type          reg_req_t       = logic,
@@ -30,7 +35,8 @@ module hyperbus_async_macro #(
     parameter int unsigned  TxFifoLogDepth  = 2,
     parameter logic [RegDataWidth-1:0] RstChipBase  = 'h0,      // Base address for all chips
     parameter logic [RegDataWidth-1:0] RstChipSpace = 'h1_0000, // 64 KiB: Current maximum HyperBus device size
-    parameter int unsigned  PhyStartupCycles = 300 /*us*/ * 200 /*MHz*/ // Conservative maximum frequency estimate
+    parameter int unsigned  PhyStartupCycles = 300 * 200, /* us*MHz */ // Conservative maximum frequency estimate
+    parameter int unsigned  AxiLogDepth = 3
 ) (
     input  logic                        clk_phy_i,
     input  logic                        rst_phy_ni,
@@ -38,8 +44,21 @@ module hyperbus_async_macro #(
     input  logic                        rst_sys_ni,
     input  logic                        test_mode_i,
     // AXI bus
-    input  axi_req_t                    axi_req_i,
-    output axi_rsp_t                    axi_rsp_o,
+    input  axi_aw_chan_t [2**AxiLogDepth-1:0] async_data_slave_aw_data_i,
+    input  logic              [AxiLogDepth:0] async_data_slave_aw_wptr_i,
+    output logic              [AxiLogDepth:0] async_data_slave_aw_rptr_o,
+    input  axi_w_chan_t  [2**AxiLogDepth-1:0] async_data_slave_w_data_i,
+    input  logic              [AxiLogDepth:0] async_data_slave_w_wptr_i,
+    output logic              [AxiLogDepth:0] async_data_slave_w_rptr_o,
+    output axi_b_chan_t  [2**AxiLogDepth-1:0] async_data_slave_b_data_o,
+    output logic              [AxiLogDepth:0] async_data_slave_b_wptr_o,
+    input  logic              [AxiLogDepth:0] async_data_slave_b_rptr_i,
+    input  axi_ar_chan_t [2**AxiLogDepth-1:0] async_data_slave_ar_data_i,
+    input  logic              [AxiLogDepth:0] async_data_slave_ar_wptr_i,
+    output logic              [AxiLogDepth:0] async_data_slave_ar_rptr_o,
+    output axi_r_chan_t  [2**AxiLogDepth-1:0] async_data_slave_r_data_o,
+    output logic              [AxiLogDepth:0] async_data_slave_r_wptr_o,
+    input  logic              [AxiLogDepth:0] async_data_slave_r_rptr_i,
     // Reg bus
     input  reg_req_t                    reg_req_i,
     output reg_rsp_t                    reg_rsp_o,
@@ -93,8 +112,41 @@ module hyperbus_async_macro #(
 
 );
 
+  axi_req_t                    axi_req_i;
+  axi_rsp_t                    axi_rsp_o;
+
+  axi_cdc_dst #(
+    .aw_chan_t  ( axi_aw_chan_t ),
+    .w_chan_t   ( axi_w_chan_t  ),
+    .b_chan_t   ( axi_b_chan_t  ),
+    .ar_chan_t  ( axi_ar_chan_t ),
+    .r_chan_t   ( axi_r_chan_t  ),
+    .axi_req_t  ( axi_req_t     ),
+    .axi_resp_t ( axi_rsp_t     ),
+    .LogDepth   ( AxiLogDepth   )
+  ) i_axi_cdc_dst (
+    .async_data_slave_aw_data_i ( async_data_slave_aw_data_i ),
+    .async_data_slave_aw_wptr_i ( async_data_slave_aw_wptr_i ),
+    .async_data_slave_aw_rptr_o ( async_data_slave_aw_rptr_o ),
+    .async_data_slave_w_data_i  ( async_data_slave_w_data_i  ),
+    .async_data_slave_w_wptr_i  ( async_data_slave_w_wptr_i  ),
+    .async_data_slave_w_rptr_o  ( async_data_slave_w_rptr_o  ),
+    .async_data_slave_b_data_o  ( async_data_slave_b_data_o  ),
+    .async_data_slave_b_wptr_o  ( async_data_slave_b_wptr_o  ),
+    .async_data_slave_b_rptr_i  ( async_data_slave_b_rptr_i  ),
+    .async_data_slave_ar_data_i ( async_data_slave_ar_data_i ),
+    .async_data_slave_ar_wptr_i ( async_data_slave_ar_wptr_i ),
+    .async_data_slave_ar_rptr_o ( async_data_slave_ar_rptr_o ),
+    .async_data_slave_r_data_o  ( async_data_slave_r_data_o  ),
+    .async_data_slave_r_wptr_o  ( async_data_slave_r_wptr_o  ),
+    .async_data_slave_r_rptr_i  ( async_data_slave_r_rptr_i  ),
+    .dst_clk_i                  ( clk_sys_i                  ),
+    .dst_rst_ni                 ( rst_sys_ni                 ),
+    .dst_req_o                  ( axi_req_i                  ),
+    .dst_resp_i                 ( axi_rsp_o                  )
+  );
    
-    typedef struct packed {
+   typedef struct packed {
         logic [(16*NumPhys)-1:0]    data;
         logic                       last;
         logic [(2*NumPhys)-1:0]     strb;   // mask data

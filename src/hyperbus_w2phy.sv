@@ -97,15 +97,19 @@ module hyperbus_w2phy #(
          if(!upsize) begin
             // If we sample enough data in a single beat, we can sample the whole
             // AXI DATA WIDTH as we'll send all the data to the phy before sampling again.
-            data_buffer_d = data_i;
+            data_buffer_d.data = data_i.data;
+            data_buffer_d.strb = data_i.strb;
+            data_buffer_d.last = data_i.last;
+            data_buffer_d.user = data_i.user;
             if(first_tx_q) begin
                for (int i=0; i<byte_idx_q; i++)
                  data_buffer_d.strb[i]='0;
             end
          end else begin
-            data_buffer_d.data[byte_idx_q*8 +: (8*NumPhys)] = data_i.data[byte_idx_q*8 +: (8*NumPhys)];
             data_buffer_d.strb[byte_idx_q +: (2*NumPhys)] = data_i.strb[byte_idx_q +: (2*NumPhys)];
+            data_buffer_d.data[byte_idx_q*8 +: (8*NumPhys)] = data_i.data[byte_idx_q*8 +: (8*NumPhys)];
             data_buffer_d.last = data_i.last;
+            data_buffer_d.user = data_i.user;
             if(first_tx_q) begin
                for (int j=0; j<byte_idx_q; j++)
                  data_buffer_d.strb[j]='0;
