@@ -770,6 +770,7 @@ module fixture_hyperbus #(
         cb_udma_hyper.cfg_data_i <= sconfig.cfg_data;
         cb_udma_hyper.cfg_valid_i[id] <= 1;
         cb_udma_hyper.cfg_rwn_i <= 0;
+        wait(cb_udma_hyper.cfg_ready_o);
         #SYS_TCK;
         cb_udma_hyper.cfg_valid_i[id] <= 0;
         #SYS_TCK;

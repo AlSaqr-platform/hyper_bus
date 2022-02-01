@@ -29,6 +29,8 @@ module hyperbus_async_macro #(
     parameter int unsigned  RegDataWidth    = -1,
     parameter type          reg_req_t       = logic,
     parameter type          reg_rsp_t       = logic,
+    parameter type          udma_reg_req_t  = logic,
+    parameter type          udma_reg_rsp_t  = logic,
     parameter type          axi_rule_t      = logic,
     // The below have sensible defaults, but should be set on integration!
     parameter int unsigned  RxFifoLogDepth  = 2,
@@ -69,12 +71,13 @@ module hyperbus_async_macro #(
     output reg_rsp_t              async_reg_rsp_data_o,
 
     // UDMA interface
-    input  logic [31:0]                 cfg_data_i,
-    input  logic [4:0]                  cfg_addr_i,
-    input  logic [NB_CH:0]              cfg_valid_i,
-    input  logic                        cfg_rwn_i,
-    output logic [NB_CH:0]              cfg_ready_o,
-    output logic [NB_CH:0][31:0]        cfg_data_o,
+    input  logic           [NB_CH:0] async_udma_reg_req_req_i,
+    output logic           [NB_CH:0] async_udma_reg_req_ack_o,
+    input  udma_reg_req_t  [NB_CH:0] async_udma_reg_req_data_i,
+                                  
+    output logic           [NB_CH:0] async_udma_reg_rsp_req_o,
+    input  logic           [NB_CH:0] async_udma_reg_rsp_ack_i,
+    output udma_reg_rsp_t  [NB_CH:0] async_udma_reg_rsp_data_o,
 
     output logic [L2_AWIDTH_NOAL-1:0]   cfg_rx_startaddr_o,
     output logic     [TRANS_SIZE-1:0]   cfg_rx_size_o,
@@ -172,7 +175,59 @@ module hyperbus_async_macro #(
       .async_ack_i(async_reg_rsp_ack_i),
       .async_data_o(async_reg_rsp_data_o)
    );
+
+    logic [31:0]                 cfg_data_i;
+    logic [4:0]                  cfg_addr_i;
+    logic [NB_CH:0]              cfg_valid_i;
+    logic                        cfg_rwn_i;
+    logic [NB_CH:0]              cfg_ready_o;
+    logic [31:0][NB_CH:0]        cfg_data_o;
    
+    udma_reg_req_t [NB_CH:0] s_udma_cfg_reqs;   
+    udma_reg_rsp_t [NB_CH:0] s_udma_cfg_rsps;
+
+    logic [2:0]                            whichvalid;
+   
+    onehot_to_bin #(
+                    .ONEHOT_WIDTH(NB_CH+1),
+                    .BIN_WIDTH(3)
+                    ) i_onehot_to_bin (
+                       .onehot(cfg_valid_i),
+                       .bin(whichvalid)
+                    );
+
+
+    assign  cfg_addr_i = s_udma_cfg_reqs[whichvalid].addr ;
+    assign  cfg_data_i = s_udma_cfg_reqs[whichvalid].wdata;
+    assign  cfg_rwn_i = s_udma_cfg_reqs[whichvalid].write;
+
+    generate
+       for(genvar i=0; i<NB_CH+1;i++) begin: udma_channel_bind
+         assign  cfg_valid_i[i] = s_udma_cfg_reqs[i].valid;
+         assign  s_udma_cfg_rsps[i].rdata = cfg_data_o[i];
+         assign  s_udma_cfg_rsps[i].ready = cfg_ready_o[i];
+         assign  s_udma_cfg_rsps[i].error = 1'b0;
+         
+         reg_cdc_master_intf #(
+          .req_t(udma_reg_req_t),
+          .rsp_t(udma_reg_rsp_t)
+         )i_reg_cdc_master_intf (
+           .dst_clk_i    ( clk_sys_i                    ),
+           .dst_rst_ni   ( rst_sys_ni                   ),
+           .dst_req_o    ( s_udma_cfg_reqs[i]           ),
+           .dst_rsp_i    ( s_udma_cfg_rsps[i]           ),
+                           
+           .async_req_o  ( async_udma_reg_rsp_req_o[i]  ),
+           .async_ack_i  ( async_udma_reg_rsp_ack_i[i]  ),
+           .async_data_o ( async_udma_reg_rsp_data_o[i] ),
+                           
+           .async_req_i  ( async_udma_reg_req_req_i[i]  ),
+           .async_ack_o  ( async_udma_reg_req_ack_o[i]  ),
+           .async_data_i ( async_udma_reg_req_data_i[i] )
+         );
+    end
+   endgenerate
+
    typedef struct packed {
         logic [(16*NumPhys)-1:0]    data;
         logic                       last;

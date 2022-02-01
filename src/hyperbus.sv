@@ -9,6 +9,7 @@
 
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
+`include "register_interface/typedef.svh"
 
 module hyperbus #(
     parameter int unsigned  NumChips        = -1,
@@ -209,36 +210,81 @@ module hyperbus #(
       .async_ack_o  ( s_async_reg_rsp_ack  ),
       .async_data_i ( s_async_reg_rsp_data )
    );
+
+   `REG_BUS_TYPEDEF_REQ(udma_cfg_reg_req_t,logic[4:0],logic[31:0],logic)
+   `REG_BUS_TYPEDEF_RSP(udma_cfg_reg_rsp_t,logic[31:0])
+
+    udma_cfg_reg_req_t [NB_CH:0] s_udma_cfg_reqs;
+    udma_cfg_reg_req_t [NB_CH:0] s_udma_cfg_async_reqs;
+    logic [NB_CH:0]              s_udma_cfg_async_reqs_req;
+    logic [NB_CH:0]              s_udma_cfg_async_reqs_ack;
+   
+    udma_cfg_reg_rsp_t [NB_CH:0] s_udma_cfg_rsps;
+    udma_cfg_reg_rsp_t [NB_CH:0] s_udma_cfg_async_rsps;
+    logic [NB_CH:0]              s_udma_cfg_async_rsps_req;
+    logic [NB_CH:0]              s_udma_cfg_async_rsps_ack;
+
+    generate
+       for(genvar i=0; i<NB_CH+1;i++) begin: udma_channel_bind
+         assign  s_udma_cfg_reqs[i].addr  = cfg_addr_i;
+         assign  s_udma_cfg_reqs[i].wdata = cfg_data_i;
+         assign  s_udma_cfg_reqs[i].wstrb = '1;
+         assign  s_udma_cfg_reqs[i].valid = cfg_valid_i[i];
+         assign  s_udma_cfg_reqs[i].write = cfg_rwn_i;
+         assign  cfg_data_o[i] = s_udma_cfg_rsps[i].rdata;
+         assign  cfg_ready_o[i]= s_udma_cfg_rsps[i].ready;
+         
+         reg_cdc_slave_intf #(
+          .req_t(udma_cfg_reg_req_t),
+          .rsp_t(udma_cfg_reg_rsp_t)
+         )i_reg_cdc_slave_intf (
+           .src_clk_i    ( clk_sys_i                    ),
+           .src_rst_ni   ( rst_sys_ni                   ),
+           .src_req_i    ( s_udma_cfg_reqs[i]           ),
+           .src_rsp_o    ( s_udma_cfg_rsps[i]           ),
+                           
+           .async_req_o  ( s_udma_cfg_async_reqs_req[i] ),
+           .async_ack_i  ( s_udma_cfg_async_reqs_ack[i] ),
+           .async_data_o ( s_udma_cfg_async_reqs[i]     ),
+                           
+           .async_req_i  ( s_udma_cfg_async_rsps_req[i] ),
+           .async_ack_o  ( s_udma_cfg_async_rsps_ack[i] ),
+           .async_data_i ( s_udma_cfg_async_rsps[i]     )
+         );
+    end
+   endgenerate
    
     hyperbus_async_macro #(
-        .NumChips         ( NumChips         ),
-        .NumPhys          ( NumPhys          ),
-        .IsClockODelayed  ( IsClockODelayed  ),
-        .L2_AWIDTH_NOAL   ( L2_AWIDTH_NOAL   ),
-        .TRANS_SIZE       ( TRANS_SIZE       ),
-        .NB_CH            ( NB_CH            ),                           
-        .AxiAddrWidth     ( AxiAddrWidth     ),
-        .AxiDataWidth     ( AxiDataWidth     ),
-        .AxiIdWidth       ( AxiIdWidth       ),
-        .AxiUserWidth     ( AxiUserWidth     ),
-        .axi_req_t        ( axi_req_t        ),
-        .axi_rsp_t        ( axi_rsp_t        ),
-        .axi_aw_chan_t    ( axi_aw_chan_t    ),
-        .axi_w_chan_t     ( axi_w_chan_t     ),
-        .axi_b_chan_t     ( axi_b_chan_t     ),
-        .axi_ar_chan_t    ( axi_ar_chan_t    ),
-        .axi_r_chan_t     ( axi_r_chan_t     ),
-        .RegAddrWidth     ( RegAddrWidth     ),
-        .RegDataWidth     ( RegDataWidth     ),
-        .reg_req_t        ( reg_req_t        ),
-        .reg_rsp_t        ( reg_rsp_t        ),
-        .axi_rule_t       ( axi_rule_t       ),
-        .AxiLogDepth      ( AxiLogDepth      ),
-        .RxFifoLogDepth   ( RxFifoLogDepth   ),
-        .TxFifoLogDepth   ( TxFifoLogDepth   ),
-        .RstChipBase      ( RstChipBase      ),
-        .RstChipSpace     ( RstChipSpace     ),
-        .PhyStartupCycles ( PhyStartupCycles )
+        .NumChips         ( NumChips           ),
+        .NumPhys          ( NumPhys            ),
+        .IsClockODelayed  ( IsClockODelayed    ),
+        .L2_AWIDTH_NOAL   ( L2_AWIDTH_NOAL     ),
+        .TRANS_SIZE       ( TRANS_SIZE         ),
+        .NB_CH            ( NB_CH              ),                           
+        .AxiAddrWidth     ( AxiAddrWidth       ),
+        .AxiDataWidth     ( AxiDataWidth       ),
+        .AxiIdWidth       ( AxiIdWidth         ),
+        .AxiUserWidth     ( AxiUserWidth       ),
+        .axi_req_t        ( axi_req_t          ),
+        .axi_rsp_t        ( axi_rsp_t          ),
+        .axi_aw_chan_t    ( axi_aw_chan_t      ),
+        .axi_w_chan_t     ( axi_w_chan_t       ),
+        .axi_b_chan_t     ( axi_b_chan_t       ),
+        .axi_ar_chan_t    ( axi_ar_chan_t      ),
+        .axi_r_chan_t     ( axi_r_chan_t       ),
+        .RegAddrWidth     ( RegAddrWidth       ),
+        .RegDataWidth     ( RegDataWidth       ),
+        .reg_req_t        ( reg_req_t          ),
+        .reg_rsp_t        ( reg_rsp_t          ),
+        .udma_reg_req_t   ( udma_cfg_reg_req_t ),
+        .udma_reg_rsp_t   ( udma_cfg_reg_rsp_t ),
+        .axi_rule_t       ( axi_rule_t         ),
+        .AxiLogDepth      ( AxiLogDepth        ),
+        .RxFifoLogDepth   ( RxFifoLogDepth     ),
+        .TxFifoLogDepth   ( TxFifoLogDepth     ),
+        .RstChipBase      ( RstChipBase        ),
+        .RstChipSpace     ( RstChipSpace       ),
+        .PhyStartupCycles ( PhyStartupCycles   )
     ) i_hyperbus_macro (
         .clk_phy_i              ( clk_phy_i             ),
         .rst_phy_ni             ( rst_phy_ni            ),
@@ -270,20 +316,21 @@ module hyperbus #(
         .async_reg_rsp_ack_i         ( s_async_reg_rsp_ack   ),
         .async_reg_rsp_data_o        ( s_async_reg_rsp_data  ),
 
-        .async_tx_wptr_i        ( s_async_udma_tx_wptr  ),
-        .async_tx_rptr_o        ( s_async_udma_tx_rptr  ),
-        .async_tx_data_i        ( s_async_udma_tx_data  ),
-                                                      
-        .async_rx_wptr_o        ( s_async_udma_rx_wptr  ),
-        .async_rx_rptr_i        ( s_async_udma_rx_rptr  ),
-        .async_rx_data_o        ( s_async_udma_rx_data  ),
+        .async_tx_wptr_i             ( s_async_udma_tx_wptr  ),
+        .async_tx_rptr_o             ( s_async_udma_tx_rptr  ),
+        .async_tx_data_i             ( s_async_udma_tx_data  ),
+                                                           
+        .async_rx_wptr_o             ( s_async_udma_rx_wptr  ),
+        .async_rx_rptr_i             ( s_async_udma_rx_rptr  ),
+        .async_rx_data_o             ( s_async_udma_rx_data  ),
         
-        .cfg_data_i             ( cfg_data_i            ),
-        .cfg_addr_i             ( cfg_addr_i            ),
-        .cfg_valid_i            ( cfg_valid_i           ),
-        .cfg_rwn_i              ( cfg_rwn_i             ),
-        .cfg_data_o             ( cfg_data_o            ),
-        .cfg_ready_o            ( cfg_ready_o           ),
+        .async_udma_reg_req_req_i    ( s_udma_cfg_async_reqs_req ),
+        .async_udma_reg_req_ack_o    ( s_udma_cfg_async_reqs_ack ),
+        .async_udma_reg_req_data_i   ( s_udma_cfg_async_reqs     ),
+        
+        .async_udma_reg_rsp_req_o    ( s_udma_cfg_async_rsps_req ),
+        .async_udma_reg_rsp_ack_i    ( s_udma_cfg_async_rsps_ack ),
+        .async_udma_reg_rsp_data_o   ( s_udma_cfg_async_rsps     ),
         
         .cfg_rx_startaddr_o     ( s_cfg_rx_o.s_startaddr    ),
         .cfg_rx_size_o          ( s_cfg_rx_o.s_size         ),
@@ -442,5 +489,6 @@ module hyperbus #(
                                  .serial_i (s_evt_eot_hyper),
                                  .serial_o (evt_eot_hyper_o)
                                  );
+
 
 endmodule : hyperbus
