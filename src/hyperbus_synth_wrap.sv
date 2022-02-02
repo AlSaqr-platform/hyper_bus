@@ -10,10 +10,13 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-module hyperbus_synth_wrap #(
+module hyperbus_synth_wrap 
+  import axi_pkg::*;
+#(
     // HyperBus parameters
     parameter int unsigned  NumChips        = 2,
     parameter int unsigned  NumPhys         = 2,
+    parameter int unsigned  IsClockODelayed = 0,
     // AXI parameters
     parameter int unsigned  AxiIdWidth      = 6,
     parameter int unsigned  AxiAddrWidth    = 32,
@@ -22,9 +25,11 @@ module hyperbus_synth_wrap #(
     // Regbus parameters
     parameter int unsigned  RegAddrWidth    = 32,
     parameter int unsigned  RegDataWidth    = 32,
+    // Udma parameters
     parameter int unsigned  L2_AWIDTH_NOAL  = 12,
     parameter int unsigned  TRANS_SIZE      = 16,
     parameter int unsigned  NB_CH           = 1,
+    parameter int unsigned  AxiLogDepth     = 3,
     // Dependent parameters; do not override!
     parameter type axi_addr_t   = logic [AxiAddrWidth-1:0],
     parameter type axi_data_t   = logic [AxiDataWidth-1:0],
@@ -34,6 +39,20 @@ module hyperbus_synth_wrap #(
     parameter type reg_addr_t   = logic [RegAddrWidth-1:0],
     parameter type reg_data_t   = logic [RegDataWidth-1:0],
     parameter type reg_strb_t   = logic [RegDataWidth/8-1:0]
+    localparam AxiAwWidth = AxiIdWidth + AxiAddrWidth + $bits(axi_pkg::len_t) + $bits(axi_pkg::size_t) + $bits(axi_pkg::burst_t) + 1 + $bits(axi_pkg::cache_t) + $bits(axi_pkg::prot_t) + $bits(axi_pkg::qos_t) + $bits(axi_pkg::region_t) + $bits(axi_pkg::atop_t) + AxiUserWidth,
+    localparam AxiWWidth  = AxiUserWidth + AxiDataWidth/8 + AxiDataWidth + 1,
+    localparam AxiRWidth  = AxiIdWidth + AxiDataWidth + $bits(axi_pkg::resp_t) + 1 + AxiUserWidth,
+    localparam AxiBWidth  = AxiIdWidth + AxiUserWidth + $bits(axi_pkg::resp_t),
+    localparam AxiArWidth = AxiIdWidth + AxiAddrWidth + $bits(axi_pkg::len_t) + $bits(axi_pkg::size_t) + $bits(axi_pkg::burst_t) + 1 + $bits(axi_pkg::cache_t) + $bits(axi_pkg::prot_t) + $bits(axi_pkg::qos_t) + $bits(axi_pkg::region_t) + AxiUserWidth,
+    localparam AxiAsyncAwWidth = AxiAwWidth*(2**AxiLogDepth),
+    localparam AxiAsyncWWidth  = AxiWWidth *(2**AxiLogDepth),
+    localparam AxiAsyncRWidth  = AxiRWidth *(2**AxiLogDepth),
+    localparam AxiAsyncBWidth  = AxiBWidth *(2**AxiLogDepth),
+    localparam AxiAsyncArWidth = AxiArWidth*(2**AxiLogDepth),
+    localparam RegReqWidth     = RegAddrWidth + 1 + RegDataWidth + RegDataWidth/8 + 1,
+    localparam RegRspWidth     = RegDataWidth + 1 + 1,              
+    localparam UdmaRegReqWidth = 5 + 1 + 32 + 1 + 1,
+    localparam UdmaRegRspWidth = 32 + 1 + 1         
 ) (
     // SoC
     input  logic                        clk_phy_i,
@@ -42,70 +61,38 @@ module hyperbus_synth_wrap #(
     input  logic                        rst_sys_ni,
     input  logic                        test_mode_i,
 
-    // AXI bus
-    input  axi_id_t                     axi_aw_id_i,
-    input  axi_addr_t                   axi_aw_addr_i,
-    input  axi_pkg::len_t               axi_aw_len_i,
-    input  axi_pkg::size_t              axi_aw_size_i,
-    input  axi_pkg::burst_t             axi_aw_burst_i,
-    input  logic                        axi_aw_lock_i,
-    input  axi_pkg::cache_t             axi_aw_cache_i,
-    input  axi_pkg::prot_t              axi_aw_prot_i,
-    input  axi_pkg::qos_t               axi_aw_qos_i,
-    input  axi_pkg::region_t            axi_aw_region_i,
-    input  axi_pkg::atop_t              axi_aw_atop_i,
-    input  axi_user_t                   axi_aw_user_i,
-    input  logic                        axi_aw_valid_i,
-    output logic                        axi_aw_ready_o,
-    input  axi_data_t                   axi_w_data_i,
-    input  axi_strb_t                   axi_w_strb_i,
-    input  logic                        axi_w_last_i,
-    input  axi_user_t                   axi_w_user_i,
-    input  logic                        axi_w_valid_i,
-    output logic                        axi_w_ready_o,
-    output axi_id_t                     axi_b_id_o,
-    output axi_pkg::resp_t              axi_b_resp_o,
-    output axi_user_t                   axi_b_user_o,
-    output logic                        axi_b_valid_o,
-    input  logic                        axi_b_ready_i,
-    input  axi_id_t                     axi_ar_id_i,
-    input  axi_addr_t                   axi_ar_addr_i,
-    input  axi_pkg::len_t               axi_ar_len_i,
-    input  axi_pkg::size_t              axi_ar_size_i,
-    input  axi_pkg::burst_t             axi_ar_burst_i,
-    input  logic                        axi_ar_lock_i,
-    input  axi_pkg::cache_t             axi_ar_cache_i,
-    input  axi_pkg::prot_t              axi_ar_prot_i,
-    input  axi_pkg::qos_t               axi_ar_qos_i,
-    input  axi_pkg::region_t            axi_ar_region_i,
-    input  axi_user_t                   axi_ar_user_i,
-    input  logic                        axi_ar_valid_i,
-    output logic                        axi_ar_ready_o,
-    output axi_id_t                     axi_r_id_o,
-    output axi_data_t                   axi_r_data_o,
-    output axi_pkg::resp_t              axi_r_resp_o,
-    output logic                        axi_r_last_o,
-    output axi_user_t                   axi_r_user_o,
-    output logic                        axi_r_valid_o,
-    input  logic                        axi_r_ready_i,
-
+    input  logic  [AxiAsyncAwWidth-1:0] async_data_slave_aw_data_i,
+    input  logic  [AxiLogDepth:0]       async_data_slave_aw_wptr_i,
+    output logic  [AxiLogDepth:0]       async_data_slave_aw_rptr_o,
+    input  logic  [AxiAsyncWWidth-1:0]  async_data_slave_w_data_i,
+    input  logic  [AxiLogDepth:0]       async_data_slave_w_wptr_i,
+    output logic  [AxiLogDepth:0]       async_data_slave_w_rptr_o,
+    output logic  [AxiAsyncBWidth-1:0]  async_data_slave_b_data_o,
+    output logic  [AxiLogDepth:0]       async_data_slave_b_wptr_o,
+    input  logic  [AxiLogDepth:0]       async_data_slave_b_rptr_i,
+    input  logic  [AxiAsyncArWidth-1:0] async_data_slave_ar_data_i,
+    input  logic  [AxiLogDepth:0]       async_data_slave_ar_wptr_i,
+    output logic  [AxiLogDepth:0]       async_data_slave_ar_rptr_o,
+    output logic  [AxiAsyncRWidth-1:0]  async_data_slave_r_data_o,
+    output logic  [AxiLogDepth:0]       async_data_slave_r_wptr_o,
+    input  logic  [AxiLogDepth:0]       async_data_slave_r_rptr_i,
     // Reg bus
-    input  reg_addr_t                   rbus_req_addr_i,
-    input  logic                        rbus_req_write_i,
-    input  reg_data_t                   rbus_req_wdata_i,
-    input  reg_strb_t                   rbus_req_wstrb_i,
-    input  logic                        rbus_req_valid_i,
-    output reg_data_t                   rbus_rsp_rdata_o,
-    output logic                        rbus_rsp_ready_o,
-    output logic                        rbus_rsp_error_o,
+    input  logic                        async_reg_req_req_i,
+    output logic                        async_reg_req_ack_o,
+    input  logic [RegReqWidth-1:0]      async_reg_req_data_i,
+                                        
+    output logic                        async_reg_rsp_req_o,
+    input  logic                        async_reg_rsp_ack_i,
+    output logic [RegRspWidth-1:0]      async_reg_rsp_data_o,
 
     // UDMA interface
-    input  logic [31:0]                 cfg_data_i,
-    input  logic [4:0]                  cfg_addr_i,
-    input  logic [NB_CH:0]              cfg_valid_i,
-    input  logic                        cfg_rwn_i,
-    output logic [NB_CH:0]              cfg_ready_o,
-    output logic [NB_CH:0][31:0]        cfg_data_o,
+    input  logic                       [NB_CH:0] async_udma_reg_req_req_i,
+    output logic                       [NB_CH:0] async_udma_reg_req_ack_o,
+    input  logic [UdmaRegReqWidth*(NB_CH+1)-1:0] async_udma_reg_req_data_i,
+                                  
+    output logic                       [NB_CH:0] async_udma_reg_rsp_req_o,
+    input  logic                       [NB_CH:0] async_udma_reg_rsp_ack_i,
+    output logic [UdmaRegRspWidth*(NB_CH+1)-1:0] async_udma_reg_rsp_data_o,
 
     output logic [L2_AWIDTH_NOAL-1:0]   cfg_rx_startaddr_o,
     output logic     [TRANS_SIZE-1:0]   cfg_rx_size_o,
@@ -116,6 +103,7 @@ module hyperbus_synth_wrap #(
     input  logic                        cfg_rx_pending_i,
     input  logic [L2_AWIDTH_NOAL-1:0]   cfg_rx_curr_addr_i,
     input  logic     [TRANS_SIZE-1:0]   cfg_rx_bytes_left_i,
+    output logic                [1:0]   data_rx_datasize_o,
 
     output logic [L2_AWIDTH_NOAL-1:0]   cfg_tx_startaddr_o,
     output logic     [TRANS_SIZE-1:0]   cfg_tx_size_o,
@@ -126,52 +114,28 @@ module hyperbus_synth_wrap #(
     input  logic                        cfg_tx_pending_i,
     input  logic [L2_AWIDTH_NOAL-1:0]   cfg_tx_curr_addr_i,
     input  logic     [TRANS_SIZE-1:0]   cfg_tx_bytes_left_i,
-    output logic          [NB_CH-1:0]   evt_eot_hyper_o,
-    output logic                        data_tx_req_o,
-    input  logic                        data_tx_gnt_i,
     output logic                [1:0]   data_tx_datasize_o,
-    input  logic               [31:0]   data_tx_i,
-    input  logic                        data_tx_valid_i,
-    output logic                        data_tx_ready_o,
-    output logic                [1:0]   data_rx_datasize_o,
-    output logic               [31:0]   data_rx_o,
-    output logic                        data_rx_valid_o,
-    input  logic                        data_rx_ready_i,
+
+    output logic          [NB_CH-1:0]   evt_eot_hyper_o,
+
+    output logic [3:0]                  async_rx_wptr_o,
+    input  logic [3:0]                  async_rx_rptr_i,
+    output logic [32*8-1:0]             async_rx_data_o,
+                                        
+    input logic [3:0]                   async_tx_wptr_i,
+    output logic [3:0]                  async_tx_rptr_o,
+    input logic [32*8-1:0]              async_tx_data_i,
 
     // Physical interace: facing HyperBus
-    output logic [NumChips-1:0] hyper0_cs_no,
-    output logic                hyper0_ck_o,
-    output logic                hyper0_ck_no,
-    output logic                hyper0_rwds_o,
-    input  logic                hyper0_rwds_i,
-    output logic                hyper0_rwds_oe_o,
-    input  logic [7:0]          hyper0_dq_i,
-    output logic [7:0]          hyper0_dq_o,
-    output logic                hyper0_dq_oe_o,
-    output logic                hyper0_reset_no,
-    output logic [NumChips-1:0] hyper1_cs_no,
-    output logic                hyper1_ck_o,
-    output logic                hyper1_ck_no,
-    output logic                hyper1_rwds_o,
-    input  logic                hyper1_rwds_i,
-    output logic                hyper1_rwds_oe_o,
-    input  logic [7:0]          hyper1_dq_i,
-    output logic [7:0]          hyper1_dq_o,
-    output logic                hyper1_dq_oe_o,
-    output logic                hyper1_reset_no
+    inout  [NumPhys*NumChips-1:0]       pad_hyper_csn,
+    inout  [NumPhys-1:0]                pad_hyper_ck,
+    inout  [NumPhys-1:0]                pad_hyper_ckn,
+    inout  [NumPhys-1:0]                pad_hyper_rwds,
+    inout  [NumPhys-1:0]                pad_hyper_reset,
+    inout  [NumPhys*8-1:0]              pad_hyper_dq
+
 );
 
-    logic [NumPhys-1:0][NumChips-1:0] hyper_cs_no;
-    logic [NumPhys-1:0]               hyper_ck_o;
-    logic [NumPhys-1:0]               hyper_ck_no;
-    logic [NumPhys-1:0]               hyper_rwds_o;
-    logic [NumPhys-1:0]               hyper_rwds_i;
-    logic [NumPhys-1:0]               hyper_rwds_oe_o;
-    logic [NumPhys-1:0][7:0]          hyper_dq_i;
-    logic [NumPhys-1:0][7:0]          hyper_dq_o;
-    logic [NumPhys-1:0]               hyper_dq_oe_o;
-    logic [NumPhys-1:0]               hyper_reset_no;
-                                   
     // Types
     `AXI_TYPEDEF_AW_CHAN_T(aw_chan_t, axi_addr_t, axi_id_t, axi_user_t)
     `AXI_TYPEDEF_W_CHAN_T(w_chan_t, axi_data_t, axi_strb_t, axi_user_t)
@@ -192,158 +156,113 @@ module hyperbus_synth_wrap #(
 
     typedef axi_pkg::xbar_rule_32_t axi_rule_t;
 
-    // Wrapped instance
-    hyperbus #(
-        .NumChips        ( NumChips        ),
-        .AxiAddrWidth    ( AxiAddrWidth    ),
-        .AxiDataWidth    ( AxiDataWidth    ),
-        .AxiIdWidth      ( AxiIdWidth      ),
-        .axi_req_t       ( axi_req_t       ),
-        .axi_rsp_t       ( axi_rsp_t       ),
-        .axi_w_chan_t    ( w_chan_t        ),
-        .RegAddrWidth    ( RegAddrWidth    ),
-        .RegDataWidth    ( RegDataWidth    ),
-        .reg_req_t       ( reg_req_t       ),
-        .reg_rsp_t       ( reg_rsp_t       ),
-        .axi_rule_t      ( axi_rule_t      )
-    ) i_hyperbus (
-        .clk_phy_i,
-        .rst_phy_ni,
-        .clk_sys_i,
-        .rst_sys_ni,
-        .test_mode_i,
-        .axi_req_i      ( axi_req ),
-        .axi_rsp_o      ( axi_rsp ),
-        .reg_req_i      ( reg_req ),
-        .reg_rsp_o      ( reg_rsp ),
+   `REG_BUS_TYPEDEF_REQ(udma_cfg_reg_req_t,logic[4:0],logic[31:0],logic)
+   `REG_BUS_TYPEDEF_RSP(udma_cfg_reg_rsp_t,logic[31:0])
+      
+    hyperbus_async_macro #(
+        .NumChips         ( NumChips           ),
+        .NumPhys          ( NumPhys            ),
+        .IsClockODelayed  ( IsClockODelayed    ),
+        .L2_AWIDTH_NOAL   ( L2_AWIDTH_NOAL     ),
+        .TRANS_SIZE       ( TRANS_SIZE         ),
+        .NB_CH            ( NB_CH              ),                           
+        .AxiAddrWidth     ( AxiAddrWidth       ),
+        .AxiDataWidth     ( AxiDataWidth       ),
+        .AxiIdWidth       ( AxiIdWidth         ),
+        .AxiUserWidth     ( AxiUserWidth       ),
+        .axi_req_t        ( axi_req_t          ),
+        .axi_rsp_t        ( axi_rsp_t          ),
+        .axi_aw_chan_t    ( aw_chan_t          ),
+        .axi_w_chan_t     ( w_chan_t           ),
+        .axi_b_chan_t     ( b_chan_t           ),
+        .axi_ar_chan_t    ( ar_chan_t          ),
+        .axi_r_chan_t     ( r_chan_t           ),
+        .RegAddrWidth     ( RegAddrWidth       ),
+        .RegDataWidth     ( RegDataWidth       ),
+        .reg_req_t        ( reg_req_t          ),
+        .reg_rsp_t        ( reg_rsp_t          ),
+        .udma_reg_req_t   ( udma_cfg_reg_req_t ),
+        .udma_reg_rsp_t   ( udma_cfg_reg_rsp_t ),
+        .axi_rule_t       ( axi_rule_t         ),
+        .AxiLogDepth      ( AxiLogDepth        )
+    ) i_hyperbus_macro (
+        .clk_phy_i              ( clk_phy_i             ),
+        .rst_phy_ni             ( rst_phy_ni            ),
+        .clk_sys_i              ( clk_sys_i             ),
+        .rst_sys_ni             ( rst_sys_ni            ),
+        .test_mode_i            ( test_mode_i           ),
+                        
+        .async_data_slave_aw_data_i  ( async_data_slave_aw_data_i ),
+        .async_data_slave_aw_wptr_i  ( async_data_slave_aw_wptr_i ),
+        .async_data_slave_aw_rptr_o  ( async_data_slave_aw_rptr_o ),
+        .async_data_slave_w_data_i   ( async_data_slave_w_data_i  ),
+        .async_data_slave_w_wptr_i   ( async_data_slave_w_wptr_i  ),
+        .async_data_slave_w_rptr_o   ( async_data_slave_w_rptr_o  ),
+        .async_data_slave_b_data_o   ( async_data_slave_b_data_o  ),
+        .async_data_slave_b_wptr_o   ( async_data_slave_b_wptr_o  ),
+        .async_data_slave_b_rptr_i   ( async_data_slave_b_rptr_i  ),
+        .async_data_slave_ar_data_i  ( async_data_slave_ar_data_i ),
+        .async_data_slave_ar_wptr_i  ( async_data_slave_ar_wptr_i ),
+        .async_data_slave_ar_rptr_o  ( async_data_slave_ar_rptr_o ),
+        .async_data_slave_r_data_o   ( async_data_slave_r_data_o  ),
+        .async_data_slave_r_wptr_o   ( async_data_slave_r_wptr_o  ),
+        .async_data_slave_r_rptr_i   ( async_data_slave_r_rptr_i  ),
+                        
+        .async_reg_req_req_i         ( async_reg_req_req_i   ),
+        .async_reg_req_ack_o         ( async_reg_req_ack_o   ),
+        .async_reg_req_data_i        ( async_reg_req_data_i  ),
         
-        .cfg_data_i,
-        .cfg_addr_i,
-        .cfg_valid_i,
-        .cfg_rwn_i,
-        .cfg_ready_o,
-        .cfg_data_o,
-       
-        .cfg_rx_startaddr_o,
-        .cfg_rx_size_o,
-        .cfg_rx_continuous_o,
-        .cfg_rx_en_o,
-        .cfg_rx_clr_o,
-        .cfg_rx_en_i,
-        .cfg_rx_pending_i,
-        .cfg_rx_curr_addr_i,
-        .cfg_rx_bytes_left_i,
+        .async_reg_rsp_req_o         ( async_reg_rsp_req_o   ),
+        .async_reg_rsp_ack_i         ( async_reg_rsp_ack_i   ),
+        .async_reg_rsp_data_o        ( async_reg_rsp_data_o  ),
+
+        .async_tx_wptr_i             ( async_tx_wptr_i  ),
+        .async_tx_rptr_o             ( async_tx_rptr_o  ),
+        .async_tx_data_i             ( async_tx_data_i  ),
+                                                    
+        .async_rx_wptr_o             ( async_rx_wptr_o  ),
+        .async_rx_rptr_i             ( async_rx_rptr_i  ),
+        .async_rx_data_o             ( async_rx_data_o  ),
         
-        .cfg_tx_startaddr_o,
-        .cfg_tx_size_o,
-        .cfg_tx_continuous_o,
-        .cfg_tx_en_o,
-        .cfg_tx_clr_o,
-        .cfg_tx_en_i,
-        .cfg_tx_pending_i,
-        .cfg_tx_curr_addr_i,
-        .cfg_tx_bytes_left_i,
-        .evt_eot_hyper_o,
-        .data_tx_req_o,
-        .data_tx_gnt_i,
-        .data_tx_datasize_o,
-        .data_tx_i,
-        .data_tx_valid_i,
-        .data_tx_ready_o,
-        .data_rx_datasize_o,
-        .data_rx_o,
-        .data_rx_valid_o,
-        .data_rx_ready_i,
-                  
-        .hyper_cs_no,
-        .hyper_ck_o,
-        .hyper_ck_no,
-        .hyper_rwds_o,
-        .hyper_rwds_i,
-        .hyper_rwds_oe_o,
-        .hyper_dq_i,
-        .hyper_dq_o,
-        .hyper_dq_oe_o,
-        .hyper_reset_no
-    );
-
-    // AXI Slave
-    assign axi_req.aw.id        = axi_aw_id_i;
-    assign axi_req.aw.addr      = axi_aw_addr_i;
-    assign axi_req.aw.len       = axi_aw_len_i;
-    assign axi_req.aw.size      = axi_aw_size_i;
-    assign axi_req.aw.burst     = axi_aw_burst_i;
-    assign axi_req.aw.lock      = axi_aw_lock_i;
-    assign axi_req.aw.cache     = axi_aw_cache_i;
-    assign axi_req.aw.prot      = axi_aw_prot_i;
-    assign axi_req.aw.qos       = axi_aw_qos_i;
-    assign axi_req.aw.region    = axi_aw_region_i;
-    assign axi_req.aw.atop      = axi_aw_atop_i;
-    assign axi_req.aw.user      = axi_aw_user_i;
-    assign axi_req.aw_valid     = axi_aw_valid_i;
-    assign axi_aw_ready_o       = axi_rsp.aw_ready;
-    assign axi_req.w.data       = axi_w_data_i;
-    assign axi_req.w.strb       = axi_w_strb_i;
-    assign axi_req.w.last       = axi_w_last_i;
-    assign axi_req.w.user       = axi_w_user_i;
-    assign axi_req.w_valid      = axi_w_valid_i;
-    assign axi_w_ready_o        = axi_rsp.w_ready;
-    assign axi_b_id_o           = axi_rsp.b.id;
-    assign axi_b_resp_o         = axi_rsp.b.resp;
-    assign axi_b_user_o         = axi_rsp.b.user;
-    assign axi_b_valid_o        = axi_rsp.b_valid;
-    assign axi_req.b_ready      = axi_b_ready_i;
-    assign axi_req.ar.id        = axi_ar_id_i;
-    assign axi_req.ar.addr      = axi_ar_addr_i;
-    assign axi_req.ar.len       = axi_ar_len_i;
-    assign axi_req.ar.size      = axi_ar_size_i;
-    assign axi_req.ar.burst     = axi_ar_burst_i;
-    assign axi_req.ar.lock      = axi_ar_lock_i;
-    assign axi_req.ar.cache     = axi_ar_cache_i;
-    assign axi_req.ar.prot      = axi_ar_prot_i;
-    assign axi_req.ar.qos       = axi_ar_qos_i;
-    assign axi_req.ar.region    = axi_ar_region_i;
-    assign axi_req.ar.user      = axi_ar_user_i;
-    assign axi_req.ar_valid     = axi_ar_valid_i;
-    assign axi_ar_ready_o       = axi_rsp.ar_ready;
-    assign axi_r_id_o           = axi_rsp.r.id;
-    assign axi_r_data_o         = axi_rsp.r.data;
-    assign axi_r_resp_o         = axi_rsp.r.resp;
-    assign axi_r_last_o         = axi_rsp.r.last;
-    assign axi_r_user_o         = axi_rsp.r.user;
-    assign axi_r_valid_o        = axi_rsp.r_valid;
-    assign axi_req.r_ready      = axi_r_ready_i;
-
-    // Regbus slave
-    assign reg_req.addr         = rbus_req_addr_i;
-    assign reg_req.write        = rbus_req_write_i;
-    assign reg_req.wdata        = rbus_req_wdata_i;
-    assign reg_req.wstrb        = rbus_req_wstrb_i;
-    assign reg_req.valid        = rbus_req_valid_i;
-    assign rbus_rsp_rdata_o     = reg_rsp.rdata;
-    assign rbus_rsp_ready_o     = reg_rsp.ready;
-    assign rbus_rsp_error_o     = reg_rsp.error;
-
-    assign hyper0_cs_no = hyper_cs_no[0];
-    assign hyper0_ck_o = hyper_ck_o[0];
-    assign hyper0_ck_no = hyper_ck_no[0];
-    assign hyper0_rwds_o = hyper_rwds_o[0];
-    assign hyper_rwds_i[0] = hyper0_rwds_i;
-    assign hyper0_rwds_oe_o = hyper_rwds_oe_o[0];
-    assign hyper_dq_i[0] = hyper0_dq_i;
-    assign hyper0_dq_o = hyper_dq_o[0];
-    assign hyper0_dq_oe_o = hyper_dq_oe_o[0];
-    assign hyper0_reset_no = hyper_reset_no[0];
-
-    assign hyper1_cs_no = hyper_cs_no[1];
-    assign hyper1_ck_o = hyper_ck_o[1];
-    assign hyper1_ck_no = hyper_ck_no[1];
-    assign hyper1_rwds_o = hyper_rwds_o[1];
-    assign hyper_rwds_i[1] = hyper1_rwds_i;
-    assign hyper1_rwds_oe_o = hyper_rwds_oe_o[1];
-    assign hyper_dq_i[1] = hyper1_dq_i;
-    assign hyper1_dq_o = hyper_dq_o[1];
-    assign hyper1_dq_oe_o = hyper_dq_oe_o[1];
-    assign hyper1_reset_no = hyper_reset_no[1];
-
+        .async_udma_reg_req_req_i    ( async_udma_reg_req_req_i  ),
+        .async_udma_reg_req_ack_o    ( async_udma_reg_req_ack_o  ),
+        .async_udma_reg_req_data_i   ( async_udma_reg_req_data_i ),
+                                                  
+        .async_udma_reg_rsp_req_o    ( async_udma_reg_rsp_req_o  ),
+        .async_udma_reg_rsp_ack_i    ( async_udma_reg_rsp_ack_i  ),
+        .async_udma_reg_rsp_data_o   ( async_udma_reg_rsp_data_o ),
+        
+        .cfg_rx_startaddr_o     ( cfg_rx_startaddr_o   ),
+        .cfg_rx_size_o          ( cfg_rx_size_o        ),
+        .data_rx_datasize_o     ( data_rx_datasize_o   ),
+        .cfg_rx_continuous_o    ( cfg_rx_continuous_o  ),
+        .cfg_rx_en_o            ( cfg_rx_en_o          ),
+        .cfg_rx_clr_o           ( cfg_rx_clr_o         ),
+        .cfg_rx_en_i            ( cfg_rx_en_i          ),
+        .cfg_rx_pending_i       ( cfg_rx_pending_i     ),
+        .cfg_rx_curr_addr_i     ( cfg_rx_curr_addr_i   ),
+        .cfg_rx_bytes_left_i    ( cfg_rx_bytes_left_i  ),
+                                  
+        .cfg_tx_startaddr_o     ( cfg_tx_startaddr_o   ),
+        .cfg_tx_size_o          ( cfg_tx_size_o        ),
+        .data_tx_datasize_o     ( data_tx_datasize_o   ),
+        .cfg_tx_continuous_o    ( cfg_tx_continuous_o  ),
+        .cfg_tx_en_o            ( cfg_tx_en_o          ),
+        .cfg_tx_clr_o           ( cfg_tx_clr_o         ),
+        .cfg_tx_en_i            ( cfg_tx_en_i          ),
+        .cfg_tx_pending_i       ( cfg_tx_pending_i     ),
+        .cfg_tx_curr_addr_i     ( cfg_tx_curr_addr_i   ),
+        .cfg_tx_bytes_left_i    ( cfg_tx_bytes_left_i  ),
+                                  
+        .evt_eot_hyper_o        ( evt_eot_hyper        ),
+             
+        .pad_hyper_csn          ( pad_hyper_csn         ),
+        .pad_hyper_ck           ( pad_hyper_ck          ),
+        .pad_hyper_ckn          ( pad_hyper_ckn         ),
+        .pad_hyper_rwds         ( pad_hyper_rwds        ),
+        .pad_hyper_reset        ( pad_hyper_reset       ),
+        .pad_hyper_dq           ( pad_hyper_dq          )
+        );   
+   
+   
 endmodule : hyperbus_synth_wrap

@@ -35,6 +35,7 @@ sources:
         GF22_DELAY_LINES: ~
       files:
         - models/techcells/tc_clk_gf22.sv
+        - models/techcells/pads_gf22.sv
     - src/hyperbus_pkg.sv
     - src/udma_hyper/udma_hyper_busy.sv
     - src/udma_hyper/udma_cmd_queue.sv

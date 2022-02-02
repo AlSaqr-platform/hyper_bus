@@ -648,8 +648,8 @@ module hyperbus_async_macro #(
    assign phy_b_ready     = s_sel ? 1'b1 : axi_phy_b_ready;
  
     // Shift clock by 90 degrees
-   generate
-    if(IsClockODelayed==0)
+   generate 
+    if(IsClockODelayed==0) begin : clock_generator
      hyperbus_clk_gen ddr_clk (
          .clk_i    ( clk_phy_i                       ),
          .rst_ni   ( rst_phy_ni                      ),
@@ -659,7 +659,7 @@ module hyperbus_async_macro #(
          .clk270_o (                                 ),
          .rst_no   ( rst_phy                         )
      );   
-    else if (IsClockODelayed==1) begin
+     end else if (IsClockODelayed==1) begin
      assign clk_phy_i_0 = clk_phy_i;
      assign rst_phy = rst_phy_ni;
      hyperbus_delay i_delay_tx_clk_90 (
@@ -671,10 +671,9 @@ module hyperbus_async_macro #(
     endgenerate
    
    for (genvar i = 0 ; i<NumPhys; i++) begin: pad_gen
-
-      for (genvar j = 0; j<NumChips; j++) begin
-         pad_functional_pu padinst_hyper_csno   (.OEN( 1'b0            ), .I( hyper_cs_n_wire[i][j] ), .O(                  ), .PAD( pad_hyper_csn[i][j] ), .PEN(1'b1 ) );
-      end
+    for (genvar j = 0; j<NumChips; j++) begin
+      pad_functional_pu padinst_hyper_csno   (.OEN( 1'b0            ), .I( hyper_cs_n_wire[i][j] ), .O(                  ), .PAD( pad_hyper_csn[i][j] ), .PEN(1'b1 ) );
+    end
     pad_functional_pu padinst_hyper_ck     (.OEN( 1'b0            ), .I( hyper_ck_wire[i]      ), .O(                  ), .PAD( pad_hyper_ck[i]     ), .PEN(1'b1 ) );
     pad_functional_pu padinst_hyper_ckno   (.OEN( 1'b0            ), .I( hyper_ck_n_wire[i]    ), .O(                  ), .PAD( pad_hyper_ckn[i]    ), .PEN(1'b1 ) );
     pad_functional_pu padinst_hyper_rwds0  (.OEN(~hyper_rwds_oe[i]), .I( hyper_rwds_o[i]       ), .O( hyper_rwds_i[i]  ), .PAD( pad_hyper_rwds[i]   ), .PEN(1'b1 ) );

@@ -73,9 +73,9 @@ module hyperbus_phy_if import hyperbus_pkg::*; #(
       logic                        phy_b_ready;
 
       genvar                          i;
-      generate
+      generate 
 
-         if (NumPhys==2) begin
+         if (NumPhys==2) begin : phy_wrap
 
             assign rx_both_valid = & fifo_axi_valid;
             assign rx_valid_o = rx_both_valid;
@@ -96,7 +96,7 @@ module hyperbus_phy_if import hyperbus_pkg::*; #(
             assign trans_ready_o = ts_both_ready;
             assign phy_trans_valid = ts_both_ready && trans_valid_i;
 
-            for ( i=0; i<NumPhys;i++) begin
+            for ( i=0; i<NumPhys;i++) begin : phy_unroll
                assign rx_o.data[i*16 +:16] = fifo_axi_rx[i].data;
          
                stream_fifo #(
