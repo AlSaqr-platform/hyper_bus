@@ -34,6 +34,7 @@ sources:
       defines:
         GF22_DELAY_LINES: ~
       files:
+        - models/techcells/delay_line.gf22.sv
         - models/techcells/tc_clk_gf22.sv
         - models/techcells/pads_gf22.sv
     - src/hyperbus_pkg.sv
