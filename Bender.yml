@@ -5,14 +5,15 @@ package:
     - "Stephan Keck <kecks@ethz.ch>"
     - "Thomas Benz <tbenz@iis.ee.ethz.ch>"
     - "Paul Scheffler <paulsc@iis.ee.ethz.ch>"
+    - "Luca Valente <luca.valente@unibo.it>"
 
 dependencies:
-  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git",       rev: "944538538befdbd26698800bfd24f808373e82b7" }
-  axi:                 { git: "https://github.com/pulp-platform/axi.git",                version: 0.29.1 }
-  udma_core:           { git: "https://github.com/Alsaqr-platform/udma_core.git",        version: 2.0.0 }
-  # TODO: RTL attributes, then MR
+  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git", version: 1.21.0 }
+  axi:                 { git: "https://github.com/pulp-platform/axi.git", version: 0.29.1 }
+  udma_core:           { git: "https://github.com/Alsaqr-platform/udma_core.git", version: 2.0.0 }
   tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.4  }
   register_interface:  { git: "https://github.com/Alsaqr-platform/register_interface.git", rev: "6b81692ab5f6e7ab7a2663da9ecc7390014ce070"  }
+  common_pads:         { git: "git@github.com:AlSaqr-platform/common_pads.git", version: 0.0.2 }
 
 sources:
   files:
@@ -60,7 +61,6 @@ sources:
     - src/hyperbus_phy_if.sv
     - src/hyperbus_axi.sv
     - src/hyperbus_arbiter.sv
-    - src/hyperbus_pads.sv
     - src/hyperbus_async_macro.sv
     - target: post_synth_sim
       files:

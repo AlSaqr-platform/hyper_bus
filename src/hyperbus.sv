@@ -10,6 +10,7 @@
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
 `include "register_interface/typedef.svh"
+`include "common_cells/registers.svh"
 
 module hyperbus #(
     parameter int unsigned  NumChips        = -1,
@@ -417,16 +418,7 @@ module hyperbus #(
       .async_rptr_o       ( s_async_udma_rx_rptr )
       );
 
-   sync # (
-             .T (udma_cfg_o_t),
-             .STAGES (2),
-             .ResetValue ('0)
-             ) udma_rx_cfg_o_sync (
-                                 .clk_i (clk_sys_i),
-                                 .rst_ni (rst_sys_ni),
-                                 .serial_i (s_cfg_rx_o),
-                                 .serial_o (s_cfg_rx_o_sys)
-                                 );
+   `FFARN(s_cfg_rx_o_sys,s_cfg_rx_o,'0,clk_sys_i,rst_sys_ni);
 
    assign   cfg_rx_startaddr_o = s_cfg_rx_o_sys.s_startaddr;
    assign   cfg_rx_size_o = s_cfg_rx_o_sys.s_size;
@@ -435,16 +427,7 @@ module hyperbus #(
    assign   cfg_rx_clr_o = s_cfg_rx_o_sys.s_clr;
    assign   data_rx_datasize_o = s_cfg_rx_o_sys.s_datasize;
    
-   sync # (
-             .T (udma_cfg_o_t),
-             .STAGES (2),
-             .ResetValue ('0)
-             ) udma_tx_cfg_o_sync (
-                                 .clk_i (clk_sys_i),
-                                 .rst_ni (rst_sys_ni),
-                                 .serial_i (s_cfg_tx_o),
-                                 .serial_o (s_cfg_tx_o_sys)
-                                 );
+   `FFARN(s_cfg_tx_o_sys,s_cfg_tx_o,'0,clk_sys_i,rst_sys_ni);
 
    assign   cfg_tx_startaddr_o = s_cfg_tx_o_sys.s_startaddr;
    assign   cfg_tx_size_o = s_cfg_tx_o_sys.s_size;
@@ -453,47 +436,20 @@ module hyperbus #(
    assign   cfg_tx_clr_o = s_cfg_tx_o_sys.s_clr;
    assign   data_tx_datasize_o = s_cfg_tx_o_sys.s_datasize;
    
-   sync # (
-             .T (udma_cfg_i_t),
-             .STAGES (2),
-             .ResetValue ('0)
-             ) udma_rx_cfg_i_sync (
-                                 .clk_i (clk_sys_i),
-                                 .rst_ni (rst_sys_ni),
-                                 .serial_i (s_cfg_rx_i_sys),
-                                 .serial_o (s_cfg_rx_i)
-                                 );
+   `FFARN(s_cfg_rx_i,s_cfg_rx_i_sys,'0,clk_sys_i,rst_sys_ni);
 
    assign s_cfg_rx_i_sys.s_en         =   cfg_rx_en_i;
    assign s_cfg_rx_i_sys.s_pending    =   cfg_rx_pending_i;
    assign s_cfg_rx_i_sys.s_curr_addr  =   cfg_rx_curr_addr_i;
    assign s_cfg_rx_i_sys.s_bytes_left =   cfg_rx_bytes_left_i;
 
-   sync # (
-             .T (udma_cfg_i_t),
-             .STAGES (2),
-             .ResetValue ('0)
-             ) udma_tx_cfg_i_sync (
-                                 .clk_i (clk_sys_i),
-                                 .rst_ni (rst_sys_ni),
-                                 .serial_i (s_cfg_tx_i_sys),
-                                 .serial_o (s_cfg_tx_i)
-                                 );
+   `FFARN(s_cfg_tx_i,s_cfg_tx_i_sys,'0,clk_sys_i,rst_sys_ni);
    
    assign s_cfg_tx_i_sys.s_en         =   cfg_tx_en_i;
    assign s_cfg_tx_i_sys.s_pending    =   cfg_tx_pending_i;
    assign s_cfg_tx_i_sys.s_curr_addr  =   cfg_tx_curr_addr_i;
    assign s_cfg_tx_i_sys.s_bytes_left =   cfg_tx_bytes_left_i;
-     
-   sync # (
-             .STAGES (2),
-             .ResetValue ('0)
-             ) udma_eot_o_sync (
-                                 .clk_i (clk_sys_i),
-                                 .rst_ni (rst_sys_ni),
-                                 .serial_i (s_evt_eot_hyper),
-                                 .serial_o (evt_eot_hyper_o)
-                                 );
 
+   `FFARN(evt_eot_hyper_o, s_evt_eot_hyper, '0, clk_sys_i, rst_sys_ni);
 
 endmodule : hyperbus
