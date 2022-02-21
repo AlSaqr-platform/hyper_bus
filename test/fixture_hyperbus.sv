@@ -51,19 +51,11 @@ module fixture_hyperbus #(
    
     int unsigned            k, j;
 
-`ifdef TARGET_POST_SYNTH_SIM
-    localparam time SYS_TCK  = 8.78ns;
-    localparam time SYS_TA   = 1ns;
-    localparam time SYS_TT   = SYS_TCK - 1ns;
-
-    localparam time PHY_TCK  = 20ns;
-`else
     localparam time SYS_TCK  = 2.78ns;
     localparam time SYS_TA   = 1ns;
     localparam time SYS_TT   = SYS_TCK - 1ns;
 
     localparam time PHY_TCK  = 6ns;
-`endif // !`ifdef POST_SYNTH
    
     logic sys_clk      = 0;
     logic phy_clk      = 0;
@@ -167,11 +159,11 @@ module fixture_hyperbus #(
 
 `ifdef TARGET_POST_SYNTH_SIM
     assign reg_req = reg_req_t'{
-        addr:   'h0,
-        write:  'h0,
-        wdata:  'h0,
-        wstrb:  'h0,
-        valid:  'h0
+        addr:   $isunknown(i_rbus.addr ) ? 1'b0 : i_rbus.addr ,
+        write:  $isunknown(i_rbus.write) ? 1'b0 : i_rbus.write,
+        wdata:  $isunknown(i_rbus.wdata) ? 1'b0 : i_rbus.wdata,
+        wstrb:  $isunknown(i_rbus.wstrb) ? 1'b0 : i_rbus.wstrb,
+        valid:  $isunknown(i_rbus.valid) ? 1'b0 : i_rbus.valid
     };
 `else 
     assign reg_req = reg_req_t'{
@@ -397,6 +389,7 @@ module fixture_hyperbus #(
     wire  [NumPhys-1:0]      hyper_rwds_i;
     wire  [NumPhys-1:0]      hyper_rwds_oe;
     wire  [NumPhys-1:0]      hyper_rwds_wire;
+    wire  [NumPhys-1:0]      s_hyper_rwds_wire;
     wire  [NumPhys-1:0][7:0] hyper_dq_i;
     wire  [NumPhys-1:0][7:0] hyper_dq_o;
     wire  [NumPhys-1:0]      hyper_dq_oe;
@@ -424,16 +417,12 @@ module fixture_hyperbus #(
             .CKNeg         ( hyper_ck_n_wire[i]       ),
             .RESETNeg      ( hyper_reset_n_wire[i]    )
           );
+
        end // block: hyperrams
     endgenerate
- 
    
     // DUT
-`ifdef TARGET_POST_SYNTH_SIM
-    hyperbus_chip_wrap #(
-`else
     hyperbus #(
-`endif
         .NumChips       ( NumChips    ),
         .NumPhys        ( NumPhys     ),
         .AxiAddrWidth   ( AxiAw       ),
@@ -512,12 +501,18 @@ module fixture_hyperbus #(
         .pad_hyper_rwds         ( hyper_rwds_wire       ),
         .pad_hyper_reset        ( hyper_reset_n_wire    ),
         .pad_hyper_dq           ( hyper_dq_wire         )
+
     );
 
+    
     generate
        for (genvar p=0; p<NumPhys; p++) begin : sdf_annotation
          initial begin
+             `ifndef TARGET_POST_SYNTH_SIM
              automatic string sdf_file_path = "../models/s27ks0641/s27ks0641.sdf";
+             `else
+             automatic string sdf_file_path = "../../models/s27ks0641/s27ks0641.sdf";
+             `endif
              $sdf_annotate(sdf_file_path, hyperrams[p].i_s27ks0641);
              $display("NumPhys:%d",NumPhys);
          end
@@ -572,8 +567,12 @@ module fixture_hyperbus #(
     // Initial reset
     initial begin
         rst_n = 0;
-        $readmemh("../test/test_mem.dat",data_mem); 
 
+        `ifndef TARGET_POST_SYNTH_SIM
+        $readmemh("../test/test_mem.dat",data_mem); 
+        `else
+        $readmemh("../../test/test_mem.dat",data_mem); 
+        `endif
         // Set all inputs at the beginning    
 
         // Will be applied on negedge of clock!
@@ -596,7 +595,7 @@ module fixture_hyperbus #(
         axi_master_drv.reset_master();
         fr = $fopen ("axireadvalues.txt","w");
         fw = $fopen ("axiwrotevalues.txt","w");
-        // i_rmaster.reset_master();
+        i_rmaster.reset_master();
         #(0.25*SYS_TCK);
         #(10*SYS_TCK);
         rst_n = 1;

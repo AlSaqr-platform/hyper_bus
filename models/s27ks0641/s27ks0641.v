@@ -350,7 +350,7 @@ module s27ks0641
 
     $recovery (posedge CSNeg, negedge CK &&& tRWR_CHK, trecovery_CSNeg_CK, Viol);
 
-    $skew (negedge CSNeg, posedge CSNeg, tskew_CSNeg_CSNeg, Viol);
+//    $skew (negedge CSNeg, posedge CSNeg, tskew_CSNeg_CSNeg, Viol);
 
     $width (posedge CK                 , tpw_CK_posedge);
     $width (negedge CK                 , tpw_CK_negedge);

@@ -34,9 +34,7 @@ sources:
       defines:
         GF22_DELAY_LINES: ~
       files:
-        - models/techcells/delay_line.gf22.sv
-        - models/techcells/tc_clk_gf22.sv
-        - models/techcells/pads_gf22.sv
+p        - models/techcells/tc_clk_gf22.sv
     - src/hyperbus_pkg.sv
     - src/udma_hyper/udma_hyper_busy.sv
     - src/udma_hyper/udma_cmd_queue.sv
@@ -62,12 +60,11 @@ sources:
     - src/hyperbus_phy_if.sv
     - src/hyperbus_axi.sv
     - src/hyperbus_arbiter.sv
+    - src/hyperbus_pads.sv
     - src/hyperbus_async_macro.sv
-    - src/hyperbus.sv
     - target: post_synth_sim
       files:
-        - gf22/synopsys/trial1_25_11_2021/netlists/hyperbus_chip.v
-        - test/hyperbus_chip_wrap.sv
+        - gf22/innovus/trial3/out/hyperbus_synth_wrap.v
     - target: test
       files:
         # Device models. TODO: extend
@@ -75,3 +72,4 @@ sources:
         # Testbench
         - test/fixture_hyperbus.sv
         - test/hyperbus_tb.sv
+    - src/hyperbus.sv

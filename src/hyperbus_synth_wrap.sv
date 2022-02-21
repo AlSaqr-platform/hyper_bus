@@ -133,7 +133,6 @@ module hyperbus_synth_wrap
     inout  [NumPhys-1:0]                pad_hyper_rwds,
     inout  [NumPhys-1:0]                pad_hyper_reset,
     inout  [NumPhys*8-1:0]              pad_hyper_dq
-
 );
 
     // Types
@@ -262,6 +261,7 @@ module hyperbus_synth_wrap
         .pad_hyper_rwds         ( pad_hyper_rwds        ),
         .pad_hyper_reset        ( pad_hyper_reset       ),
         .pad_hyper_dq           ( pad_hyper_dq          )
+
         );   
    
    

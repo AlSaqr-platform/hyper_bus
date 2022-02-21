@@ -6,6 +6,7 @@
 /// Authors: Thomas Benz <tbenz@iis.ee.ethz.ch>
 ///          Luca Valente <luca.valente@unibo.it>
 
+`timescale 1 ns/1 ps
 
 module hyperbus_tb;
 

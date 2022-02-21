@@ -101,7 +101,7 @@ module hyperbus #(
     inout  [NumPhys-1:0]                pad_hyper_rwds,
     inout  [NumPhys-1:0]                pad_hyper_reset,
     inout  [NumPhys-1:0][7:0]           pad_hyper_dq
-
+   
 );
   
   localparam int unsigned AxiLogDepth = 3;
@@ -253,7 +253,8 @@ module hyperbus #(
          );
     end
    endgenerate
-   
+
+   `ifndef TARGET_POST_SYNTH_SIM 
     hyperbus_async_macro #(
         .NumChips         ( NumChips           ),
         .NumPhys          ( NumPhys            ),
@@ -286,6 +287,9 @@ module hyperbus #(
         .RstChipSpace     ( RstChipSpace       ),
         .PhyStartupCycles ( PhyStartupCycles   )
     ) i_hyperbus_macro (
+      `else
+     hyperbus_synth_wrap i_hyperbus_macro ( 
+      `endif
         .clk_phy_i              ( clk_phy_i             ),
         .rst_phy_ni             ( rst_phy_ni            ),
         .clk_sys_i              ( clk_sys_i             ),
@@ -362,6 +366,7 @@ module hyperbus #(
         .pad_hyper_rwds         ( pad_hyper_rwds        ),
         .pad_hyper_reset        ( pad_hyper_reset       ),
         .pad_hyper_dq           ( pad_hyper_dq          )
+                                            
         );
    
                         
