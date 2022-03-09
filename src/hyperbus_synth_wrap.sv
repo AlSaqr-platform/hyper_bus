@@ -18,16 +18,16 @@ module hyperbus_synth_wrap
     parameter int unsigned  NumPhys         = 2,
     parameter int unsigned  IsClockODelayed = 0,
     // AXI parameters
-    parameter int unsigned  AxiIdWidth      = 6,
-    parameter int unsigned  AxiAddrWidth    = 32,
+    parameter int unsigned  AxiIdWidth      = 7,
+    parameter int unsigned  AxiAddrWidth    = 64,
     parameter int unsigned  AxiDataWidth    = 64,
     parameter int unsigned  AxiUserWidth    = 1,
     // Regbus parameters
     parameter int unsigned  RegAddrWidth    = 32,
     parameter int unsigned  RegDataWidth    = 32,
     // Udma parameters
-    parameter int unsigned  L2_AWIDTH_NOAL  = 12,
-    parameter int unsigned  TRANS_SIZE      = 16,
+    parameter int unsigned  L2_AWIDTH_NOAL  = 21,
+    parameter int unsigned  TRANS_SIZE      = 20,
     parameter int unsigned  NB_CH           = 1,
     parameter int unsigned  AxiLogDepth     = 3,
     // Dependent parameters; do not override!
