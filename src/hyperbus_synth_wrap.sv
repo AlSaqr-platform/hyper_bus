@@ -38,7 +38,7 @@ module hyperbus_synth_wrap
     parameter type axi_user_t   = logic [AxiUserWidth-1:0],
     parameter type reg_addr_t   = logic [RegAddrWidth-1:0],
     parameter type reg_data_t   = logic [RegDataWidth-1:0],
-    parameter type reg_strb_t   = logic [RegDataWidth/8-1:0]
+    parameter type reg_strb_t   = logic [RegDataWidth/8-1:0],
     localparam AxiAwWidth = AxiIdWidth + AxiAddrWidth + $bits(axi_pkg::len_t) + $bits(axi_pkg::size_t) + $bits(axi_pkg::burst_t) + 1 + $bits(axi_pkg::cache_t) + $bits(axi_pkg::prot_t) + $bits(axi_pkg::qos_t) + $bits(axi_pkg::region_t) + $bits(axi_pkg::atop_t) + AxiUserWidth,
     localparam AxiWWidth  = AxiUserWidth + AxiDataWidth/8 + AxiDataWidth + 1,
     localparam AxiRWidth  = AxiIdWidth + AxiDataWidth + $bits(axi_pkg::resp_t) + 1 + AxiUserWidth,
@@ -183,7 +183,9 @@ module hyperbus_synth_wrap
         .udma_reg_req_t   ( udma_cfg_reg_req_t ),
         .udma_reg_rsp_t   ( udma_cfg_reg_rsp_t ),
         .axi_rule_t       ( axi_rule_t         ),
-        .AxiLogDepth      ( AxiLogDepth        )
+        .AxiLogDepth      ( AxiLogDepth        ),
+        .RstChipBase      ( 32'h80000000       ),
+        .RstChipSpace     ( 32'h800000         )
     ) i_hyperbus_macro (
         .clk_phy_i              ( clk_phy_i             ),
         .rst_phy_ni             ( rst_phy_ni            ),
