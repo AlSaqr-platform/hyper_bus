@@ -7,6 +7,14 @@
 // Author: Paul Scheffler <paulsc@iis.ee.ethz.ch>
 // Contributor: Luca Valente <luca.valente@unibo.it>
 
+`ifdef TARGET_POST_SYNTH_SIM
+ `define INST_MACRO
+`elsif TARGET_TOP_LEVEL
+ `define INST_MACRO
+`elsif TARGET_TOP_POST_SYNTH
+ `define INST_MACRO
+`endif
+
 `include "axi/typedef.svh"
 `include "axi/assign.svh"
 `include "register_interface/typedef.svh"
@@ -255,7 +263,7 @@ module hyperbus #(
     end
    endgenerate
 
-   `ifndef TARGET_POST_SYNTH_SIM 
+   `ifndef INST_MACRO 
     hyperbus_async_macro #(
         .NumChips         ( NumChips           ),
         .NumPhys          ( NumPhys            ),
