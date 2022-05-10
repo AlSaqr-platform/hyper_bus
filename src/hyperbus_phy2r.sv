@@ -108,21 +108,23 @@ module hyperbus_phy2r #(
            end
         end
         WaitData: begin
+           phy_ready_o = 1'b1;
            if (phy_valid_i) begin
               state_d = Sample;
            end
         end
         Sample: begin
            phy_ready_o = 1'b1;
-           if(phy_valid_i && enough_data) begin
+           if(enough_data) begin
               state_d = CntReady;
-           end 
+           end
         end
         CntReady: begin
            phy_ready_o = 1'b0;
            axi_valid_o = 1'b1;
            if(sent_available_data) begin
-                state_d = (data_o.last) ? Idle : WaitData;
+                phy_ready_o = 1'b1;
+                state_d = (data_o.last) ? Idle : ( phy_valid_i ? Sample : WaitData );
            end else if (last_addr_q==byte_axi_addr_d) begin
               state_d = Idle;
            end

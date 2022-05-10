@@ -34,7 +34,6 @@ module hyperbus_w2phy #(
    // Cutting the combinatorial path between AXI master and cdc fifo
    typedef enum logic [2:0] {
        Idle,
-       WaitData,
        Sample,
        CntReady
    } hyper_upsizer_state_t;
@@ -93,7 +92,7 @@ module hyperbus_w2phy #(
       if (state_d==Idle) begin
          data_buffer_d.last = 1'b0;
          data_buffer_d.data = '0; // for debug
-      end else if (state_d==Sample && axi_valid_i) begin
+      end else if (axi_ready_o && axi_valid_i) begin
          if(!upsize) begin
             // If we sample enough data in a single beat, we can sample the whole
             // AXI DATA WIDTH as we'll send all the data to the phy before sampling again.
@@ -127,11 +126,6 @@ module hyperbus_w2phy #(
         Idle: begin
            mask_strobe_d = '1;
            if (trans_handshake & is_a_write) begin
-              state_d = WaitData;
-           end
-        end
-        WaitData: begin
-           if (axi_valid_i) begin
               state_d = Sample;
            end
         end
@@ -146,7 +140,7 @@ module hyperbus_w2phy #(
                     for (int k=0; k<NumPhys*2 ; k++)
                       mask_strobe_d[k] = (k<byte_idx_d[NumPhys-1:0]) ? 1'b1 : 1'b0;
                  end else begin
-                    state_d = WaitData;
+                    state_d = Sample;
                  end
               end else begin
                  state_d = CntReady;
@@ -162,12 +156,16 @@ module hyperbus_w2phy #(
               end else if (size_d>=NumPhys) begin
                  if (cnt_data_phy_d != byte_idx_q) begin
                    state_d = CntReady;
+                 end else if (axi_valid_i) begin
+                    axi_ready_o = 1'b1;
+                    state_d = enough_data ? CntReady : Sample;
                  end else begin
-                   state_d = WaitData;
+                   state_d = Sample;
                  end
               end else if (size_d<NumPhys) begin
                  if (cnt_data_phy_d[NumPhys-1:0]=='0) begin
-                    state_d = WaitData;
+                    axi_ready_o = !upsize;
+                    state_d = Sample;
                  end 
               end
            end

@@ -51,11 +51,11 @@ module fixture_hyperbus #(
    
     int unsigned            k, j;
 
-    localparam time SYS_TCK  = 2.78ns;
+    localparam time SYS_TCK  = 8ns;
     localparam time SYS_TA   = 1ns;
     localparam time SYS_TT   = SYS_TCK - 1ns;
 
-    localparam time PHY_TCK  = 6ns;
+    localparam time PHY_TCK  = 4ns;
    
     logic sys_clk      = 0;
     logic phy_clk      = 0;
