@@ -115,7 +115,12 @@ module hyperbus_axi #(
 
     // R channel
     axi_r_t         s_r_split;
-          
+
+    // W channel
+    logic w_data_valid;
+    logic w_data_ready;
+    axi_w_chan_t w_data_fifo;
+
     // Whether a transfer is currently active
     logic           trans_active_d, trans_active_q;
     logic           trans_active_set, trans_active_reset;
@@ -130,8 +135,8 @@ module hyperbus_axi #(
     axi_atop_filter #(
         .AxiIdWidth         ( AxiIdWidth    ),
         .AxiMaxWriteTxns    ( 1             ),
-        .req_t              ( axi_req_t     ),
-        .resp_t             ( axi_rsp_t     )
+        .axi_req_t          ( axi_req_t     ),
+        .axi_resp_t         ( axi_rsp_t     )
     ) i_axi_atop_filter (
         .clk_i,
         .rst_ni,
@@ -146,8 +151,8 @@ module hyperbus_axi #(
         .MaxReadTxns    ( 1             ),
         .MaxWriteTxns   ( 1             ),
         .AxiIdWidth     ( AxiIdWidth    ),
-        .req_t          ( axi_req_t     ),
-        .resp_t         ( axi_rsp_t     )
+        .axi_req_t      ( axi_req_t     ),
+        .axi_resp_t     ( axi_rsp_t     )
     ) i_axi_serializer (
         .clk_i,
         .rst_ni,
@@ -310,7 +315,25 @@ module hyperbus_axi #(
     // =========================================================
     //    W channel: Buffer. Cuts path and upsamples when needed
     // =========================================================
-
+   
+    stream_fifo #(
+        .FALL_THROUGH ( 1'b0         ),
+        .T            ( axi_w_chan_t ),
+        .DEPTH        ( 8            )
+        ) wchan_stream_fifo (
+        .clk_i,
+        .rst_ni,
+        .flush_i    ( 1'b0                ),
+        .testmode_i ( 1'b0                ),
+        .usage_o    (                     ),
+        .data_i     ( ser_out_req.w       ),
+        .valid_i    ( ser_out_req.w_valid ),
+        .ready_o    ( ser_out_rsp.w_ready ),
+        .data_o     ( w_data_fifo         ),
+        .valid_o    ( w_data_valid        ),
+        .ready_i    ( w_data_ready        )
+        );
+   
     hyperbus_w2phy #(
         .AxiDataWidth ( AxiDataWidth                  ),
         .BurstLength  ( hyperbus_pkg::HyperBurstWidth ),
@@ -324,9 +347,9 @@ module hyperbus_axi #(
         .is_a_write      ( rr_out_req_write                        ),
         .trans_handshake ( trans_handshake                         ),
         .start_addr      ( rr_out_req_ax.addr[AxiBusAddrWidth-1:0] ),
-        .data_i          ( ser_out_req.w                           ),
-        .axi_valid_i     ( ser_out_req.w_valid                     ),
-        .axi_ready_o     ( ser_out_rsp.w_ready                     ),
+        .data_i          ( w_data_fifo                             ),
+        .axi_valid_i     ( w_data_valid                            ),
+        .axi_ready_o     ( w_data_ready                            ),
         .data_o          ( tx_o.data                               ),
         .last_o          ( tx_o.last                               ),
         .strb_o          ( tx_o.strb                               ),
