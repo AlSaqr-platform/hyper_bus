@@ -54,6 +54,7 @@ The block diagram below outlines the approximate architecture. Note that there a
 
 ```
 git clone git@github.com:Alsaqr-platform/hyperbus.git
+cd hyperbus
 git checkout samuel_readme
 cp /home/lvalente/bender ~
 export PATH=~/:$PATH
