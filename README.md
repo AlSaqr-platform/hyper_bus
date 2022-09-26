@@ -48,3 +48,23 @@ The block diagram below outlines the approximate architecture. Note that there a
     - [ ] More memories
 - [ ] PSRAM support through additional CA decoder
 - [ ] Tested silicon implementation in Zest
+
+
+## Simulate
+
+```
+git clone git@github.com:Alsaqr-platform/hyperbus.git
+git checkout samuel_readme
+cp /home/lvalente/bender ~
+export PATH=~/:$PATH
+bender update (to fetch the dependencies)
+make scripts/compile.tcl
+vsim
+```
+From questasim bash:
+```
+source scripts/compile.tcl
+source scripts/start.tcl
+run -all
+```
+enjoy the waveforms.
