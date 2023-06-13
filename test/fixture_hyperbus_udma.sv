@@ -1,4 +1,4 @@
-// Hyperbus Fixture
+// Hyperbus w/ uDMA Fixture
 
 // this code is unstable and most likely buggy
 // it should not be used by anyone
@@ -43,7 +43,7 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-module fixture_hyperbus #(
+module fixture_hyperbus_udma #(
     parameter int unsigned NumChips = 2,
     parameter int unsigned NumPhys = 2
 );
@@ -422,7 +422,7 @@ module fixture_hyperbus #(
     endgenerate
    
     // DUT
-    hyperbus #(
+    hyperbus_udma #(
         .NumChips       ( NumChips    ),
         .NumPhys        ( NumPhys     ),
         .AxiAddrWidth   ( AxiAw       ),
@@ -980,7 +980,7 @@ module fixture_hyperbus #(
     endtask: RegTransaction
 
    
-endmodule : fixture_hyperbus
+endmodule : fixture_hyperbus_udma
 
 
 module tristate_shim (

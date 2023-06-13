@@ -1,4 +1,4 @@
-// Hyperbus AXI
+// Hyperbus AXI w/ uDMA
 
 // this code is unstable and most likely buggy
 // it should not be used by anyone
@@ -20,7 +20,7 @@
 `include "register_interface/typedef.svh"
 `include "common_cells/registers.svh"
 
-module hyperbus #(
+module hyperbus_udma #(
     parameter int unsigned  NumChips        = -1,
     parameter int unsigned  NumPhys         = 2,
     parameter int unsigned  IsClockODelayed = 0,
@@ -460,4 +460,4 @@ module hyperbus #(
 
    `FFARN(evt_eot_hyper_o, s_evt_eot_hyper, '0, clk_sys_i, rst_sys_ni);
 
-endmodule : hyperbus
+endmodule : hyperbus_udma

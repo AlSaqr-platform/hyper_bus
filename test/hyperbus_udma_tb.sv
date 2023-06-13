@@ -1,4 +1,4 @@
-// Hyperbus Testbench
+// Hyperbus w/ uDMA Testbench
 
 // this code is unstable and most likely buggy
 // it should not be used by anyone
@@ -8,11 +8,11 @@
 
 `timescale 1 ns/1 ps
 
-module hyperbus_tb;
+module hyperbus_udma_tb;
 
     localparam NumPhys=2;
    
-    fixture_hyperbus #(.NumChips(2), .NumPhys(NumPhys) ) fix ();
+    fixture_hyperbus_udma #(.NumChips(2), .NumPhys(NumPhys) ) fix ();
 
     logic error;
 
@@ -345,4 +345,4 @@ module hyperbus_tb;
         $stop();
     end
 
-endmodule : hyperbus_tb
+endmodule : hyperbus_udma_tb

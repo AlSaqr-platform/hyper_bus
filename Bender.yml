@@ -1,5 +1,5 @@
 package:
-  name: hyperbus
+  name: hyperbus_udma
   authors:
     - "Armin Berger <bergerar@ethz.ch>"
     - "Stephan Keck <kecks@ethz.ch>"
@@ -8,12 +8,13 @@ package:
     - "Luca Valente <luca.valente@unibo.it>"
 
 dependencies:
-  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git", version: 1.21.0 }
-  axi:                 { git: "https://github.com/pulp-platform/axi.git", version: 0.35.3 }
+  common_cells:        { git: "https://github.com/pulp-platform/common_cells.git", version: 1.30.0 }
+  axi:                 { git: "https://github.com/pulp-platform/axi.git", version: 0.39.0-beta.4 }
   udma_core:           { git: "https://github.com/Alsaqr-platform/udma_core.git", version: 2.0.0 }
-  tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.4  }
+  tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.11  }
   register_interface:  { git: "git@github.com:AlSaqr-platform/register_interface.git",   version:  0.3.2 }
   common_pads:         { git: "git@github.com:AlSaqr-platform/common_pads.git", version: 0.0.4 }
+  hyperbus:            { git: "https://github.com/pulp-platform/hyperbus.git", version: 0.0.1 }
 
 sources:
   files:
@@ -36,7 +37,6 @@ sources:
         GF22_DELAY_LINES: ~
       files:
         - models/techcells/tc_clk_gf22.sv
-    - src/hyperbus_pkg.sv
     - src/udma_hyper/udma_hyper_busy.sv
     - src/udma_hyper/udma_cmd_queue.sv
     - src/udma_hyper/udma_hyper_reg_if_common.sv
@@ -49,16 +49,6 @@ sources:
     - src/udma_hyper/udma_cfg_outbuff.sv
     - src/udma_hyper/udma_hyper_busy_phy.sv
     - src/udma_hyper/udma_hyper.sv
-    - src/hyperbus_clk_gen.sv
-    - src/hyperbus_clock_diff_out.sv
-    - src/hyperbus_w2phy.sv
-    - src/hyperbus_phy2r.sv
-    - src/hyperbus_ddr_out.sv
-    - src/hyperbus_delay.sv
-    - src/hyperbus_trx.sv
-    - src/hyperbus_cfg_regs.sv
-    - src/hyperbus_phy.sv
-    - src/hyperbus_phy_if.sv
     - src/hyperbus_axi.sv
     - src/hyperbus_arbiter.sv
     - src/hyperbus_async_macro.sv
@@ -70,6 +60,6 @@ sources:
         # Device models. TODO: extend
         - models/s27ks0641/s27ks0641.v
         # Testbench
-        - test/fixture_hyperbus.sv
-        - test/hyperbus_tb.sv
-    - src/hyperbus.sv
+        - test/fixture_hyperbus_udma.sv
+        - test/hyperbus_udma_tb.sv
+    - src/hyperbus_udma.sv
