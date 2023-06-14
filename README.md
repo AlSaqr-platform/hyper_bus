@@ -55,10 +55,10 @@ The block diagram below outlines the approximate architecture. Note that there a
 ```
 git clone git@github.com:Alsaqr-platform/hyperbus.git
 cd hyperbus
-git checkout samuel_readme
+git checkout pulp_integration
 cp /home/lvalente/bender ~
 export PATH=~/:$PATH
-bender update (to fetch the dependencies)
+bender update
 make scripts/compile.tcl
 vsim
 ```
