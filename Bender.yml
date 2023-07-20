@@ -55,7 +55,7 @@ sources:
     - target: post_synth_sim
       files:
         - gf22/innovus/trial3/out/hyperbus_synth_wrap.v
-    - target: test
+    - target: test_tb
       files:
         # Device models. TODO: extend
         - models/s27ks0641/s27ks0641.v
