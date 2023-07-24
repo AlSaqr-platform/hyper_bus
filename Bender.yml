@@ -9,12 +9,12 @@ package:
 
 dependencies:
   common_cells:        { git: "https://github.com/pulp-platform/common_cells.git", version: 1.30.0 }
-  axi:                 { git: "https://github.com/pulp-platform/axi.git", version: 0.39.0-beta.4 }
+  axi:                 { git: "https://github.com/pulp-platform/axi.git", version: 0.39.1-beta }
   udma_core:           { git: "https://github.com/Alsaqr-platform/udma_core.git", version: 2.0.0 }
   tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.11  }
   register_interface:  { git: "git@github.com:AlSaqr-platform/register_interface.git",   version:  0.3.2 }
   common_pads:         { git: "git@github.com:AlSaqr-platform/common_pads.git", version: 0.0.4 }
-  hyperbus:            { git: "https://github.com/pulp-platform/hyperbus.git", version: 0.0.2 }
+  hyperbus:            { git: "https://github.com/pulp-platform/hyperbus.git", rev: "aae70b232fc50bbfc990c09ec91ccb10cfcff62c" } # branch sm/upd_sync_stg_cdc
 
 sources:
   files:
