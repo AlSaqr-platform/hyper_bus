@@ -14,18 +14,19 @@
 
 module udma_hyperbus
   import hyperbus_pkg::*;
-   
+
 #(
     parameter L2_AWIDTH_NOAL  = 12,
     parameter TRANS_SIZE      = 16,
+    parameter SYNC_STAGES     = 2,
     parameter DELAY_BIT_WIDTH = 3,
     parameter NumChips        =2,
     parameter NB_CH           =8,
     parameter int unsigned NumPhys       = -1,
-    parameter type         hyper_tx_t    = logic,   
+    parameter type         hyper_tx_t    = logic,
     parameter type         hyper_rx_t    = logic,
     localparam BUFFER_DEPTH   =8
-) 
+)
 (
     input logic                        sys_clk_i,
     input logic                        clk_phy_i,
@@ -35,11 +36,11 @@ module udma_hyperbus
     output logic [3:0]                 async_rx_wptr_o,
     input  logic [3:0]                 async_rx_rptr_i,
     output logic [31:0][7:0]           async_rx_data_o,
- 
+
     input logic [3:0]                  async_tx_wptr_i,
     output logic [3:0]                 async_tx_rptr_o,
     input logic [31:0][7:0]            async_tx_data_i,
- 
+
     input logic [31:0]                 cfg_data_i,
     input logic [4:0]                  cfg_addr_i,
     input logic [NB_CH:0]              cfg_valid_i,
@@ -94,10 +95,10 @@ module udma_hyperbus
     // spram select
     output logic [1:0]                 mem_sel_o,
     output logic                       busy_o
- 
+
 );
 
-   
+
    localparam LOG_NB_CH = (NB_CH == 1) ? 1 : $clog2(NB_CH);
 
    logic                          clk0;
@@ -118,7 +119,7 @@ module udma_hyperbus
    logic [TRANS_SIZE-1:0]         trans_burst;
    logic [TRANS_SIZE-1:0]         remained_data;
    logic [NumChips-1:0]              trans_cs;
-   
+
 // Signals for data communication (TX direction)
    logic                          tx_valid_phy;
    logic                          tx_ready_phy;
@@ -135,7 +136,7 @@ module udma_hyperbus
    logic [NB_CH:0] [31:0]         cfg_data;
    logic [NB_CH:0]                cfg_ready;
 
-   
+
    logic [NB_CH-1:0][L2_AWIDTH_NOAL*2+TRANS_SIZE*6+32+16+1+1+1+1+1-1:0] trans_cmd_data;
    logic [NB_CH-1:0]              trans_cmd_valid;
    logic [NB_CH-1:0]              trans_cmd_ready;
@@ -146,7 +147,7 @@ module udma_hyperbus
    logic [L2_AWIDTH_NOAL-1:0]     twd_rx_start_addr;
    logic [L2_AWIDTH_NOAL-1:0]     twd_tx_start_addr;
    logic [TRANS_SIZE-1:0]         twd_rx_size;
-   logic [TRANS_SIZE-1:0]         twd_tx_size;  
+   logic [TRANS_SIZE-1:0]         twd_tx_size;
    logic [31:0]                   twd_hyper_addr;
    logic [15:0]                   twd_hyper_intreg;
    logic [2:0]                    twd_page_bound;
@@ -156,7 +157,7 @@ module udma_hyperbus
    logic [1:0]                    twd_mem_sel;
    logic [4:0]                    twd_chip_sel;
    logic                          twd_trans_ext_act;
-   logic [TRANS_SIZE-1:0]         twd_trans_ext_count;   
+   logic [TRANS_SIZE-1:0]         twd_trans_ext_count;
    logic [TRANS_SIZE-1:0]         twd_trans_ext_stride;
    logic                          twd_trans_l2_act;
    logic [TRANS_SIZE-1:0]         twd_trans_l2_count;
@@ -178,7 +179,7 @@ module udma_hyperbus
    logic [L2_AWIDTH_NOAL-1:0]     ond_rx_start_addr;
    logic [L2_AWIDTH_NOAL-1:0]     ond_tx_start_addr;
    logic [TRANS_SIZE-1:0]         ond_rx_size;
-   logic [TRANS_SIZE-1:0]         ond_tx_size;  
+   logic [TRANS_SIZE-1:0]         ond_tx_size;
    logic [31:0]                   ond_hyper_addr;
    logic [15:0]                   ond_hyper_intreg;
    logic [2:0]                    ond_page_bound;
@@ -196,7 +197,7 @@ module udma_hyperbus
    logic [DELAY_BIT_WIDTH-1:0]    ond_t_rwds_delay_line;
    logic [3:0]                    ond_t_variable_latency_check;
 
-   
+
 // Signals for the transaction stored in the FIFO
    logic [L2_AWIDTH_NOAL-1:0]     pack_rx_start_addr;
    logic [L2_AWIDTH_NOAL-1:0]     pack_tx_start_addr;
@@ -287,7 +288,7 @@ module udma_hyperbus
    logic [NB_CH-1:0] busy_vec;
 
    assign busy_o = |busy_vec;
-   
+
    logic r_running_trans_phy;
 
    assign running_trans_phy = pack_trans_valid | (!pack_trans_ready) | unpack_trans_valid | (!unpack_trans_ready) | phy_trans_valid;
@@ -350,8 +351,8 @@ module udma_hyperbus
        .data_o             ({twd_rx_start_addr,   twd_rx_size,
                              twd_tx_start_addr,   twd_tx_size,
                              twd_hyper_addr,      twd_hyper_intreg,
-                             twd_rw_hyper,        twd_addr_space, 
-                             twd_burst_type,      twd_trans_ext_act, 
+                             twd_rw_hyper,        twd_addr_space,
+                             twd_burst_type,      twd_trans_ext_act,
                              twd_trans_ext_count, twd_trans_ext_stride,
                              twd_trans_l2_act,    twd_trans_l2_count,
                              twd_trans_l2_stride}  )
@@ -394,8 +395,8 @@ module udma_hyperbus
    assign cfg_tx_continuous_o = 1'b0;
    assign cfg_rx_clr_o = 1'b0;
    assign cfg_tx_clr_o = 1'b0;
-   
-   
+
+
    hyper_twd_trans_spliter  #(
       .L2_AWIDTH_NOAL(L2_AWIDTH_NOAL),
       .ID_WIDTH(LOG_NB_CH),
@@ -405,13 +406,13 @@ module udma_hyperbus
    (
       .clk_i                  ( sys_clk_i             ),
       .rst_ni                 ( rst_ni                ),
-    
+
       .src_valid_i            ( twd_trans_valid       ),
-      .src_ready_o            ( twd_trans_ready       ), 
-      
-      .dst_ready_i            ( ond_trans_ready       ), 
-      .dst_valid_o            ( ond_trans_valid       ), 
- 
+      .src_ready_o            ( twd_trans_ready       ),
+
+      .dst_ready_i            ( ond_trans_ready       ),
+      .dst_valid_o            ( ond_trans_valid       ),
+
       .rx_start_addr_i        ( twd_rx_start_addr     ),
       .tx_start_addr_i        ( twd_tx_start_addr     ),
       .rx_size_i              ( twd_rx_size           ),
@@ -442,7 +443,7 @@ module udma_hyperbus
       .cfg_t_variable_latency_check_i ( twd_t_variable_latency_check ),
 
       .rx_start_addr_o        ( ond_rx_start_addr     ),
-      .tx_start_addr_o        ( ond_tx_start_addr     ), 
+      .tx_start_addr_o        ( ond_tx_start_addr     ),
       .rx_size_o              ( ond_rx_size           ),
       .tx_size_o              ( ond_tx_size           ),
       .hyper_sa_addr_o        ( ond_hyper_addr        ),
@@ -469,7 +470,7 @@ module udma_hyperbus
 
    udma_dc_fifo #(
       .DATA_WIDTH(L2_AWIDTH_NOAL*2+TRANS_SIZE*2+32*3+16+5+3+DELAY_BIT_WIDTH+4+2+1*5+LOG_NB_CH+5),
-      .BUFFER_DEPTH(BUFFER_DEPTH) 
+      .BUFFER_DEPTH(BUFFER_DEPTH)
      ) u_dc_tran
      (
       .dst_clk_i          ( clk0                                   ),
@@ -479,7 +480,7 @@ module udma_hyperbus
                              pack_tx_start_addr,     pack_tx_size,
                              pack_hyper_addr,        pack_hyper_intreg,
                              pack_page_bound,        pack_rw_hyper,
-                             pack_addr_space,        pack_burst_type,  
+                             pack_addr_space,        pack_burst_type,
                              pack_mem_sel,           pack_chip_sel,
                              pack_trans_id,
                              pack_t_latency_access,  pack_en_latency_additional,
@@ -492,7 +493,7 @@ module udma_hyperbus
       .src_clk_i          ( sys_clk_i                               ),
       .src_rstn_i         ( rst_ni                                  ),
 
-      .src_data_i         ( {ond_rx_start_addr,     ond_rx_size, 
+      .src_data_i         ( {ond_rx_start_addr,     ond_rx_size,
                              ond_tx_start_addr,     ond_tx_size,
                              ond_hyper_addr,        ond_hyper_intreg,
                              ond_page_bound,        ond_rw_hyper,
@@ -522,7 +523,7 @@ module udma_hyperbus
 
       .src_clk_i          ( clk0                                    ),
       .src_rstn_i         ( phy_rst_ni                              ),
-      
+
       .src_data_i         ( {unpack_tx_start_addr, unpack_tx_size,
                              unpack_rw_hyper, unpack_rx_start_addr,
                              unpack_rx_size, unpack_trans_id}       ),
@@ -541,10 +542,10 @@ module udma_hyperbus
 
       .toudma_tx_start_addr_i  ( toudma_tx_start_addr ),
       .toudma_tx_size_i        ( toudma_tx_size       ),
-     
+
       .toudma_rx_start_addr_i  ( toudma_rx_start_addr ),
       .toudma_rx_size_i        ( toudma_rx_size       ),
-     
+
       .toudma_rw_hyper_i       ( toudma_rw_hyper      ),
       .toudma_trans_valid_i    ( toudma_trans_valid   ),
       .toudma_trans_id_i       ( toudma_trans_id      ),
@@ -553,7 +554,7 @@ module udma_hyperbus
       .udma_tx_size_o          ( udma_tx_size_o       ),
       .udma_tx_en_o            ( udma_tx_en_o         ),
       .udma_rx_start_addr_o    ( udma_rx_startaddr_o  ),
-      .udma_rx_size_o          ( udma_rx_size_o       ), 
+      .udma_rx_size_o          ( udma_rx_size_o       ),
       .udma_rx_en_o            ( udma_rx_en_o         ),
 
       .udma_tx_en_i            ( cfg_tx_en_i          ),
@@ -596,7 +597,7 @@ module udma_hyperbus
       .pack_t_read_write_recovery_i    ( pack_t_read_write_recovery    ),
       .pack_t_rwds_delay_line_i        ( pack_t_rwds_delay_line        ),
       .pack_t_variable_latency_check_i ( pack_t_variable_latency_check ),
- 
+
       .unpack_trans_ready_i    ( unpack_trans_ready   ),
       .unpack_trans_valid_o    ( unpack_trans_valid   ),
       .unpack_hyper_addr_o     ( unpack_hyper_addr    ),
@@ -702,7 +703,7 @@ module udma_hyperbus
 /////////////////////////////////////////////////////////////////////////
 /////////////////////////Data Path///////////////////////////////////////
 /////////////////////////////////////////////////////////////////////////
- 
+
 
 ///////////////READ PATH///////////////////////////////////////////
    udma_rxbuffer #(
@@ -726,7 +727,7 @@ module udma_hyperbus
    cdc_fifo_gray_src #(
     .T(logic[31:0]),
     .LOG_DEPTH(3),
-    .SYNC_STAGES(2)
+    .SYNC_STAGES(SYNC_STAGES)
     ) u_dc_rx (
       .src_clk_i          ( clk0                 ),
       .src_rst_ni         ( phy_rst_ni           ),
@@ -737,7 +738,7 @@ module udma_hyperbus
       .async_wptr_o       ( async_rx_wptr_o      ),
       .async_rptr_i       ( async_rx_rptr_i      )
       );
-                                  
+
 ///////////////////WIRTE PATH////////////////////////////////////
 
    udma_txbuffer #(
@@ -768,7 +769,7 @@ module udma_hyperbus
     cdc_fifo_gray_dst   #(
          .T(logic[31:0]),
          .LOG_DEPTH(3),
-         .SYNC_STAGES(2)
+         .SYNC_STAGES(SYNC_STAGES)
          ) u_dc_tx (
            .async_data_i (async_tx_data_i),
            .async_wptr_i (async_tx_wptr_i),
@@ -779,16 +780,16 @@ module udma_hyperbus
            .dst_valid_o  (tx_valid_fifo),
            .dst_ready_i  (tx_ready_fifo)
       );
-   
+
    assign config_t_latency_access         ={ 27'b0, ctrl_t_latency_access };
    assign config_en_latency_additional    ={ 31'b0, ctrl_en_latency_additional };
    assign config_t_cs_max                 =ctrl_t_cs_max;
    assign config_t_read_write_recovery    =ctrl_t_read_write_recovery;
    assign config_t_rwds_delay_line        =ctrl_t_rwds_delay_line;
    assign config_t_variable_latency_check ={ 28'b0, ctrl_t_variable_latency_check };
-   
+
    assign trans_valid_o                   =phy_trans_valid;
-   assign phy_trans_ready                 =trans_ready_i; 
+   assign phy_trans_ready                 =trans_ready_i;
    assign trans_cs_o                      =trans_cs;
    assign udma_phy_tf.address             =ctrl_hyper_addr;
    assign udma_phy_tf.write               =~ctrl_rw_hyper;
@@ -807,7 +808,7 @@ module udma_hyperbus
      assign udma_phy_tx.strb              ={~tx_data_upper_mask,~tx_data_lower_mask};
      assign rx_data_phy                   =udma_phy_rx.data;
    end
-                                           
+
    assign udma_phy_tx.last                =((remained_data==NumPhys)||(remained_data==1))&tx_valid_phy&tx_ready_phy;
 
    assign rx_valid_phy                    =rx_valid_i;
@@ -824,5 +825,5 @@ module udma_hyperbus
             else $error("NumChips > 5 is not supported");
     `endif
     // pragma translate_on
-     
+
 endmodule // udma_hyperbus_mulid

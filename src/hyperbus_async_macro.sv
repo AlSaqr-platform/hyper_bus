@@ -38,7 +38,8 @@ module hyperbus_async_macro #(
     parameter logic [RegDataWidth-1:0] RstChipBase  = 'h0,      // Base address for all chips
     parameter logic [RegDataWidth-1:0] RstChipSpace = 'h1_0000, // 64 KiB: Current maximum HyperBus device size
     parameter int unsigned  PhyStartupCycles = 300 * 200, /* us*MHz */ // Conservative maximum frequency estimate
-    parameter int unsigned  AxiLogDepth = 3
+    parameter int unsigned  AxiLogDepth = 3,
+    parameter int unsigned  SyncStages  = 2
 ) (
     input  logic                        clk_phy_i,
     input  logic                        rst_phy_ni,
@@ -74,7 +75,7 @@ module hyperbus_async_macro #(
     input  logic           [NB_CH:0] async_udma_reg_req_req_i,
     output logic           [NB_CH:0] async_udma_reg_req_ack_o,
     input  udma_reg_req_t  [NB_CH:0] async_udma_reg_req_data_i,
-                                  
+
     output logic           [NB_CH:0] async_udma_reg_rsp_req_o,
     input  logic           [NB_CH:0] async_udma_reg_rsp_ack_i,
     output udma_reg_rsp_t  [NB_CH:0] async_udma_reg_rsp_data_o,
@@ -106,7 +107,7 @@ module hyperbus_async_macro #(
     output logic [3:0]                  async_rx_wptr_o,
     input  logic [3:0]                  async_rx_rptr_i,
     output logic [31:0][7:0]            async_rx_data_o,
-                                        
+
     input logic [3:0]                   async_tx_wptr_i,
     output logic [3:0]                  async_tx_rptr_o,
     input logic [31:0][7:0]             async_tx_data_i,
@@ -117,7 +118,7 @@ module hyperbus_async_macro #(
     inout  [NumPhys-1:0]                pad_hyper_ckn,
     inout  [NumPhys-1:0]                pad_hyper_rwds,
     inout  [NumPhys-1:0]                pad_hyper_reset,
-    inout  [NumPhys-1:0][7:0]           pad_hyper_dq   
+    inout  [NumPhys-1:0][7:0]           pad_hyper_dq
 );
 
   axi_req_t                    axi_req_i;
@@ -131,7 +132,8 @@ module hyperbus_async_macro #(
     .r_chan_t   ( axi_r_chan_t  ),
     .axi_req_t  ( axi_req_t     ),
     .axi_resp_t ( axi_rsp_t     ),
-    .LogDepth   ( AxiLogDepth   )
+    .LogDepth   ( AxiLogDepth   ),
+    .SyncStages ( SyncStages    )
   ) i_axi_cdc_dst (
     .async_data_slave_aw_data_i ( async_data_slave_aw_data_i ),
     .async_data_slave_aw_wptr_i ( async_data_slave_aw_wptr_i ),
@@ -165,11 +167,11 @@ module hyperbus_async_macro #(
       .dst_rst_ni(rst_sys_ni),
       .dst_req_o(reg_req_i),
       .dst_rsp_i(reg_rsp_o),
-      
+
       .async_req_i(async_reg_req_req_i),
       .async_ack_o(async_reg_req_ack_o),
       .async_data_i(async_reg_req_data_i),
-      
+
       .async_req_o(async_reg_rsp_req_o),
       .async_ack_i(async_reg_rsp_ack_i),
       .async_data_o(async_reg_rsp_data_o)
@@ -181,12 +183,12 @@ module hyperbus_async_macro #(
     logic                        cfg_rwn_i;
     logic [NB_CH:0]              cfg_ready_o;
     logic [31:0][NB_CH:0]        cfg_data_o;
-   
-    udma_reg_req_t [NB_CH:0] s_udma_cfg_reqs;   
+
+    udma_reg_req_t [NB_CH:0] s_udma_cfg_reqs;
     udma_reg_rsp_t [NB_CH:0] s_udma_cfg_rsps;
 
     logic [2:0]                            whichvalid;
-   
+
     onehot_to_bin #(
                     .ONEHOT_WIDTH(NB_CH+1),
                     .BIN_WIDTH(3)
@@ -206,7 +208,7 @@ module hyperbus_async_macro #(
          assign  s_udma_cfg_rsps[i].rdata = cfg_data_o[i];
          assign  s_udma_cfg_rsps[i].ready = cfg_ready_o[i];
          assign  s_udma_cfg_rsps[i].error = 1'b0;
-         
+
          reg_cdc_master_intf #(
           .req_t(udma_reg_req_t),
           .rsp_t(udma_reg_rsp_t)
@@ -215,11 +217,11 @@ module hyperbus_async_macro #(
            .dst_rst_ni   ( rst_sys_ni                   ),
            .dst_req_o    ( s_udma_cfg_reqs[i]           ),
            .dst_rsp_i    ( s_udma_cfg_rsps[i]           ),
-                           
+
            .async_req_o  ( async_udma_reg_rsp_req_o[i]  ),
            .async_ack_i  ( async_udma_reg_rsp_ack_i[i]  ),
            .async_data_o ( async_udma_reg_rsp_data_o[i] ),
-                           
+
            .async_req_i  ( async_udma_reg_req_req_i[i]  ),
            .async_ack_o  ( async_udma_reg_req_ack_o[i]  ),
            .async_data_i ( async_udma_reg_req_data_i[i] )
@@ -245,9 +247,9 @@ module hyperbus_async_macro #(
         logic [NumChips-1:0]        cs;
     } tf_cdc_t;
 
-   
+
     logic                       clk_phy_i_0, clk_phy_i_90, rst_phy;
-    
+
     // Register file
     hyperbus_pkg::hyper_cfg_t   cfg;
     axi_rule_t [NumChips-1:0]   chip_rules;
@@ -280,7 +282,7 @@ module hyperbus_async_macro #(
     tf_cdc_t                    axi_phy_tf_cdc;
     logic                       axi_phy_trans_valid;
     logic                       axi_phy_trans_ready;
-   
+
     // PHY
     hyper_rx_t                  phy_rx;
     logic                       phy_rx_valid;
@@ -305,7 +307,7 @@ module hyperbus_async_macro #(
     logic [NumPhys-1:0][7:0]          hyper_dq_o;
     logic [NumPhys-1:0]               hyper_dq_oe;
     logic [NumPhys-1:0]               hyper_reset_n_wire;
-   
+
     // Config register File
     hyperbus_cfg_regs #(
         .NumChips       ( NumChips      ),
@@ -372,7 +374,8 @@ module hyperbus_async_macro #(
         .StartupCycles  ( PhyStartupCycles  ),
         .NumPhys        ( NumPhys           ),
         .hyper_rx_t     ( hyper_rx_t        ),
-        .hyper_tx_t     ( hyper_tx_t        )
+        .hyper_tx_t     ( hyper_tx_t        ),
+        .SyncStages     ( SyncStages        )
     ) i_phy (
         .clk_i          ( clk_phy_i_0       ),
         .clk_i_90       ( clk_phy_i_90      ),
@@ -442,7 +445,8 @@ module hyperbus_async_macro #(
     // Write data, TX CDC FIFO
     cdc_fifo_gray  #(
         .T          ( hyper_tx_t     ),
-        .LOG_DEPTH  ( TxFifoLogDepth )
+        .LOG_DEPTH  ( TxFifoLogDepth ),
+        .SYNC_STAGES( SyncStages     )
     ) i_cdc_fifo_tx (
         .src_rst_ni     ( rst_sys_ni    ),
         .src_clk_i      ( clk_sys_i     ),
@@ -460,7 +464,8 @@ module hyperbus_async_macro #(
     // Read data, RX CDC FIFO
     cdc_fifo_gray  #(
         .T          ( hyper_rx_t     ),
-        .LOG_DEPTH  ( RxFifoLogDepth )
+        .LOG_DEPTH  ( RxFifoLogDepth ),
+        .SYNC_STAGES( SyncStages     )
     ) i_cdc_fifo_rx (
         .src_rst_ni     ( rst_phy       ),
         .src_clk_i      ( clk_phy_i_0   ),
@@ -476,8 +481,8 @@ module hyperbus_async_macro #(
     );
 
 
-    logic                   s_sel; 
-   
+    logic                   s_sel;
+
     // PHY
     hyper_rx_t                  udma_phy_rx;
     logic                       udma_phy_rx_valid;
@@ -488,7 +493,7 @@ module hyperbus_async_macro #(
     tf_cdc_t                    udma_phy_tf_cdc;
     logic                       udma_phy_trans_valid;
     logic                       udma_phy_trans_ready;
-   
+
     logic [3:0]                 s_async_udma_tx_wptr;
     logic [3:0]                 s_async_udma_tx_rptr;
     logic [31:0][7:0]           s_async_udma_tx_data;
@@ -499,18 +504,19 @@ module hyperbus_async_macro #(
 
     logic [3:0]                 s_async_udma_rx_wptr;
     logic [3:0]                 s_async_udma_rx_rptr;
-    logic [31:0][7:0]           s_async_udma_rx_data;                                
+    logic [31:0][7:0]           s_async_udma_rx_data;
 
   udma_hyperbus #(
     .L2_AWIDTH_NOAL  (L2_AWIDTH_NOAL),
     .TRANS_SIZE      (TRANS_SIZE),
+    .SYNC_STAGES     ( SyncStages ),
     .DELAY_BIT_WIDTH (4),
-    .NumChips        (NumChips), 
+    .NumChips        (NumChips),
     .NB_CH           (NB_CH),
     .NumPhys         (NumPhys),
     .hyper_rx_t      (hyper_rx_t),
     .hyper_tx_t      (hyper_tx_t)
-   ) udma_hyper (    
+   ) udma_hyper (
         .sys_clk_i               ( clk_sys_i                    ),
         .clk_phy_i               ( clk_phy_i_0                  ),
         .rst_ni                  ( rst_sys_ni                   ),
@@ -526,11 +532,11 @@ module hyperbus_async_macro #(
         .async_tx_wptr_i         ( async_tx_wptr_i              ),
         .async_tx_rptr_o         ( async_tx_rptr_o              ),
         .async_tx_data_i         ( async_tx_data_i              ),
-                                                       
+
         .async_rx_wptr_o         ( async_rx_wptr_o              ),
         .async_rx_rptr_i         ( async_rx_rptr_i              ),
         .async_rx_data_o         ( async_rx_data_o              ),
-                     
+
         .udma_rx_startaddr_o     ( cfg_rx_startaddr_o           ),
         .udma_rx_size_o          ( cfg_rx_size_o                ),
         .cfg_rx_datasize_o       ( data_rx_datasize_o           ),
@@ -561,20 +567,20 @@ module hyperbus_async_macro #(
         .config_t_read_write_recovery(),
         .config_t_variable_latency_check(),
         .config_t_rwds_delay_line(),
-        
+
         .trans_valid_o(udma_phy_trans_valid),
         .trans_ready_i(udma_phy_trans_ready),
         .udma_phy_tf(udma_phy_tf_cdc.trans),
-        .trans_cs_o(udma_phy_tf_cdc.cs),        // chipselect      
-        
+        .trans_cs_o(udma_phy_tf_cdc.cs),        // chipselect
+
         .tx_valid_o(udma_phy_tx_valid),
         .tx_ready_i(udma_phy_tx_ready),
         .udma_phy_tx(udma_phy_tx),
-    
+
         .rx_valid_i(udma_phy_rx_valid),
         .rx_ready_o(udma_phy_rx_ready),
         .udma_phy_rx(udma_phy_rx),
-            
+
         .mem_sel_o(),
         .busy_o()
         );
@@ -592,9 +598,9 @@ module hyperbus_async_macro #(
    .phy_rx_last(phy_rx.last),
    .phy_tx_valid(phy_tx_valid),
    .phy_tx_ready(phy_tx_ready),
-   .phy_tx_last(phy_tx.last),   
+   .phy_tx_last(phy_tx.last),
    .sel_o(s_sel)
-   );   
+   );
 
  stream_mux #(
   .DATA_T(hyper_tx_t),
@@ -637,17 +643,17 @@ module hyperbus_async_macro #(
   .oup_valid_o({udma_phy_rx_valid,axi_phy_rx_valid}),
   .oup_ready_i({udma_phy_rx_ready,axi_phy_rx_ready})
   );
-   
+
    assign udma_phy_rx = phy_rx;
    assign axi_phy_rx = phy_rx;
- 
+
 
    assign axi_phy_b_error = s_sel ? '0 : phy_b_error;
    assign axi_phy_b_valid = s_sel ? '0 : phy_b_valid;
    assign phy_b_ready     = s_sel ? 1'b1 : axi_phy_b_ready;
- 
+
     // Shift clock by 90 degrees
-   generate 
+   generate
     if(IsClockODelayed==0) begin : clock_generator
      hyperbus_clk_gen ddr_clk (
          .clk_i    ( clk_phy_i                       ),
@@ -657,7 +663,7 @@ module hyperbus_async_macro #(
          .clk180_o (                                 ),
          .clk270_o (                                 ),
          .rst_no   ( rst_phy                         )
-     );   
+     );
      end else if (IsClockODelayed==1) begin
      assign clk_phy_i_0 = clk_phy_i;
      assign rst_phy = rst_phy_ni;
@@ -668,7 +674,7 @@ module hyperbus_async_macro #(
          );
        end
     endgenerate
-   
+
    wire PWROK_S, IOPWROK_S, BIAS_S, RETC_S;
 
    for (genvar i = 0 ; i<NumPhys; i++) begin: pad_gen
@@ -698,5 +704,5 @@ module hyperbus_async_macro #(
         .BIAS       ( BIAS_S    )
       );
     `endif
-   
+
 endmodule : hyperbus_async_macro

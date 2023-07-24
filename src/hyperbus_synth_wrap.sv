@@ -10,7 +10,7 @@
 `include "axi/typedef.svh"
 `include "register_interface/typedef.svh"
 
-module hyperbus_synth_wrap 
+module hyperbus_synth_wrap
   import axi_pkg::*;
 #(
     // HyperBus parameters
@@ -30,6 +30,7 @@ module hyperbus_synth_wrap
     parameter int unsigned  TRANS_SIZE      = 20,
     parameter int unsigned  NB_CH           = 1,
     parameter int unsigned  AxiLogDepth     = 3,
+    parameter int unsigned  SyncStages      = 3,
     // Dependent parameters; do not override!
     parameter type axi_addr_t   = logic [AxiAddrWidth-1:0],
     parameter type axi_data_t   = logic [AxiDataWidth-1:0],
@@ -50,9 +51,9 @@ module hyperbus_synth_wrap
     localparam AxiAsyncBWidth  = AxiBWidth *(2**AxiLogDepth),
     localparam AxiAsyncArWidth = AxiArWidth*(2**AxiLogDepth),
     localparam RegReqWidth     = RegAddrWidth + 1 + RegDataWidth + RegDataWidth/8 + 1,
-    localparam RegRspWidth     = RegDataWidth + 1 + 1,              
+    localparam RegRspWidth     = RegDataWidth + 1 + 1,
     localparam UdmaRegReqWidth = 5 + 1 + 32 + 1 + 1,
-    localparam UdmaRegRspWidth = 32 + 1 + 1         
+    localparam UdmaRegRspWidth = 32 + 1 + 1
 ) (
     // SoC
     input  logic                        clk_phy_i,
@@ -80,7 +81,7 @@ module hyperbus_synth_wrap
     input  logic                        async_reg_req_req_i,
     output logic                        async_reg_req_ack_o,
     input  logic [RegReqWidth-1:0]      async_reg_req_data_i,
-                                        
+
     output logic                        async_reg_rsp_req_o,
     input  logic                        async_reg_rsp_ack_i,
     output logic [RegRspWidth-1:0]      async_reg_rsp_data_o,
@@ -89,7 +90,7 @@ module hyperbus_synth_wrap
     input  logic                       [NB_CH:0] async_udma_reg_req_req_i,
     output logic                       [NB_CH:0] async_udma_reg_req_ack_o,
     input  logic [UdmaRegReqWidth*(NB_CH+1)-1:0] async_udma_reg_req_data_i,
-                                  
+
     output logic                       [NB_CH:0] async_udma_reg_rsp_req_o,
     input  logic                       [NB_CH:0] async_udma_reg_rsp_ack_i,
     output logic [UdmaRegRspWidth*(NB_CH+1)-1:0] async_udma_reg_rsp_data_o,
@@ -121,7 +122,7 @@ module hyperbus_synth_wrap
     output logic [3:0]                  async_rx_wptr_o,
     input  logic [3:0]                  async_rx_rptr_i,
     output logic [32*8-1:0]             async_rx_data_o,
-                                        
+
     input logic [3:0]                   async_tx_wptr_i,
     output logic [3:0]                  async_tx_rptr_o,
     input logic [32*8-1:0]              async_tx_data_i,
@@ -157,14 +158,14 @@ module hyperbus_synth_wrap
 
    `REG_BUS_TYPEDEF_REQ(udma_cfg_reg_req_t,logic[4:0],logic[31:0],logic)
    `REG_BUS_TYPEDEF_RSP(udma_cfg_reg_rsp_t,logic[31:0])
-      
+
     hyperbus_async_macro #(
         .NumChips         ( NumChips           ),
         .NumPhys          ( NumPhys            ),
         .IsClockODelayed  ( IsClockODelayed    ),
         .L2_AWIDTH_NOAL   ( L2_AWIDTH_NOAL     ),
         .TRANS_SIZE       ( TRANS_SIZE         ),
-        .NB_CH            ( NB_CH              ),                           
+        .NB_CH            ( NB_CH              ),
         .AxiAddrWidth     ( AxiAddrWidth       ),
         .AxiDataWidth     ( AxiDataWidth       ),
         .AxiIdWidth       ( AxiIdWidth         ),
@@ -184,6 +185,7 @@ module hyperbus_synth_wrap
         .udma_reg_rsp_t   ( udma_cfg_reg_rsp_t ),
         .axi_rule_t       ( axi_rule_t         ),
         .AxiLogDepth      ( AxiLogDepth        ),
+        .SyncStages       ( SyncStages         ),
         .RstChipBase      ( 32'h80000000       ),
         .RstChipSpace     ( 32'h800000         )
     ) i_hyperbus_macro (
@@ -192,7 +194,7 @@ module hyperbus_synth_wrap
         .clk_sys_i              ( clk_sys_i             ),
         .rst_sys_ni             ( rst_sys_ni            ),
         .test_mode_i            ( test_mode_i           ),
-                        
+
         .async_data_slave_aw_data_i  ( async_data_slave_aw_data_i ),
         .async_data_slave_aw_wptr_i  ( async_data_slave_aw_wptr_i ),
         .async_data_slave_aw_rptr_o  ( async_data_slave_aw_rptr_o ),
@@ -208,11 +210,11 @@ module hyperbus_synth_wrap
         .async_data_slave_r_data_o   ( async_data_slave_r_data_o  ),
         .async_data_slave_r_wptr_o   ( async_data_slave_r_wptr_o  ),
         .async_data_slave_r_rptr_i   ( async_data_slave_r_rptr_i  ),
-                        
+
         .async_reg_req_req_i         ( async_reg_req_req_i   ),
         .async_reg_req_ack_o         ( async_reg_req_ack_o   ),
         .async_reg_req_data_i        ( async_reg_req_data_i  ),
-        
+
         .async_reg_rsp_req_o         ( async_reg_rsp_req_o   ),
         .async_reg_rsp_ack_i         ( async_reg_rsp_ack_i   ),
         .async_reg_rsp_data_o        ( async_reg_rsp_data_o  ),
@@ -220,19 +222,19 @@ module hyperbus_synth_wrap
         .async_tx_wptr_i             ( async_tx_wptr_i  ),
         .async_tx_rptr_o             ( async_tx_rptr_o  ),
         .async_tx_data_i             ( async_tx_data_i  ),
-                                                    
+
         .async_rx_wptr_o             ( async_rx_wptr_o  ),
         .async_rx_rptr_i             ( async_rx_rptr_i  ),
         .async_rx_data_o             ( async_rx_data_o  ),
-        
+
         .async_udma_reg_req_req_i    ( async_udma_reg_req_req_i  ),
         .async_udma_reg_req_ack_o    ( async_udma_reg_req_ack_o  ),
         .async_udma_reg_req_data_i   ( async_udma_reg_req_data_i ),
-                                                  
+
         .async_udma_reg_rsp_req_o    ( async_udma_reg_rsp_req_o  ),
         .async_udma_reg_rsp_ack_i    ( async_udma_reg_rsp_ack_i  ),
         .async_udma_reg_rsp_data_o   ( async_udma_reg_rsp_data_o ),
-        
+
         .cfg_rx_startaddr_o     ( cfg_rx_startaddr_o   ),
         .cfg_rx_size_o          ( cfg_rx_size_o        ),
         .data_rx_datasize_o     ( data_rx_datasize_o   ),
@@ -243,7 +245,7 @@ module hyperbus_synth_wrap
         .cfg_rx_pending_i       ( cfg_rx_pending_i     ),
         .cfg_rx_curr_addr_i     ( cfg_rx_curr_addr_i   ),
         .cfg_rx_bytes_left_i    ( cfg_rx_bytes_left_i  ),
-                                  
+
         .cfg_tx_startaddr_o     ( cfg_tx_startaddr_o   ),
         .cfg_tx_size_o          ( cfg_tx_size_o        ),
         .data_tx_datasize_o     ( data_tx_datasize_o   ),
@@ -254,9 +256,9 @@ module hyperbus_synth_wrap
         .cfg_tx_pending_i       ( cfg_tx_pending_i     ),
         .cfg_tx_curr_addr_i     ( cfg_tx_curr_addr_i   ),
         .cfg_tx_bytes_left_i    ( cfg_tx_bytes_left_i  ),
-                                  
+
         .evt_eot_hyper_o        ( evt_eot_hyper        ),
-             
+
         .pad_hyper_csn          ( pad_hyper_csn         ),
         .pad_hyper_ck           ( pad_hyper_ck          ),
         .pad_hyper_ckn          ( pad_hyper_ckn         ),
@@ -264,7 +266,7 @@ module hyperbus_synth_wrap
         .pad_hyper_reset        ( pad_hyper_reset       ),
         .pad_hyper_dq           ( pad_hyper_dq          )
 
-        );   
-   
-   
+        );
+
+
 endmodule : hyperbus_synth_wrap
