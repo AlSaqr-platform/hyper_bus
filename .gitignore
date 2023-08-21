@@ -18,5 +18,4 @@ transcript
 
 # Bender
 .bender
-Bender.lock
 scripts/compile.tcl
