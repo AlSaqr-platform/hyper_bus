@@ -124,6 +124,10 @@ module hyperbus_async_macro #(
   axi_req_t                    axi_req_i;
   axi_rsp_t                    axi_rsp_o;
 
+  import hyper_pad_reg_pkg::hyper_pad_reg2hw_t;
+
+  hyper_pad_reg_pkg::hyper_pad_reg2hw_t s_pad_cfg;
+
   axi_cdc_dst #(
     .aw_chan_t  ( axi_aw_chan_t ),
     .w_chan_t   ( axi_w_chan_t  ),
@@ -156,8 +160,8 @@ module hyperbus_async_macro #(
     .dst_resp_i                 ( axi_rsp_o                  )
   );
 
-    reg_req_t                    reg_req_i;
-    reg_rsp_t                    reg_rsp_o;
+    reg_req_t                    reg_req_i, pad_reg_req_i, cfg_reg_req_i;
+    reg_rsp_t                    reg_rsp_o, pad_reg_rsp_o, cfg_reg_rsp_o;
 
     reg_cdc_master_intf #(
     .req_t(reg_req_t),
@@ -175,6 +179,20 @@ module hyperbus_async_macro #(
       .async_req_o(async_reg_rsp_req_o),
       .async_ack_i(async_reg_rsp_ack_i),
       .async_data_o(async_reg_rsp_data_o)
+   );
+
+   reg_demux #(
+    .NoPorts ( 2         ),
+    .req_t   ( reg_req_t ),
+    .rsp_t   ( reg_rsp_t )
+   ) i_reg_demux (
+       .clk_i       ( clk_sys_i                      ),
+       .rst_ni      ( rst_sys_ni                     ),
+       .in_select_i ( reg_req_i.addr[8]              ),
+       .in_req_i    ( reg_req_i                      ),
+       .in_rsp_o    ( reg_rsp_o                      ),
+       .out_req_o   ( {pad_reg_req_i, cfg_reg_req_i} ),
+       .out_rsp_i   ( {pad_reg_rsp_o, cfg_reg_rsp_o} )
    );
 
     logic [31:0]                 cfg_data_i;
@@ -321,12 +339,25 @@ module hyperbus_async_macro #(
     ) i_cfg_regs (
         .clk_i          ( clk_sys_i     ),
         .rst_ni         ( rst_sys_ni    ),
-        .reg_req_i      ( reg_req_i     ),
-        .reg_rsp_o      ( reg_rsp_o     ),
+        .reg_req_i      ( cfg_reg_req_i ),
+        .reg_rsp_o      ( cfg_reg_rsp_o ),
         .cfg_o          ( cfg           ),
         .chip_rules_o   ( chip_rules    ),
         .trans_active_i ( trans_active  )
     );
+
+   hyper_pad_reg_top #(
+     .reg_req_t      ( reg_req_t     ),
+     .reg_rsp_t      ( reg_rsp_t     ),
+     .AW             ( 4             )
+   ) i_hyper_pad_reg_top (
+       .clk_i          ( clk_sys_i     ),
+       .rst_ni         ( rst_sys_ni    ),
+       .reg_req_i      ( pad_reg_req_i ),
+       .reg_rsp_o      ( pad_reg_rsp_o ),
+       .reg2hw         ( s_pad_cfg     ),
+       .devmode_i      ( 1'b0          )
+   );
 
     // AXI slave interfacing PHY
     hyperbus_axi #(
@@ -335,7 +366,6 @@ module hyperbus_async_macro #(
         .AxiIdWidth     ( AxiIdWidth        ),
         .axi_req_t      ( axi_req_t         ),
         .axi_rsp_t      ( axi_rsp_t         ),
-        .axi_w_chan_t   ( axi_w_chan_t      ),
         .NumChips       ( NumChips          ),
         .NumPhys        ( NumPhys           ),
         .hyper_rx_t     ( hyper_rx_t        ),
@@ -679,20 +709,20 @@ module hyperbus_async_macro #(
 
    for (genvar i = 0 ; i<NumPhys; i++) begin: pad_gen
     for (genvar j = 0; j<NumChips; j++) begin
-      pad_alsaqr_pd padinst_hyper_csno   (.OEN( 1'b0            ), .I( hyper_cs_n_wire[i][j] ), .O(                  ), .PAD( pad_hyper_csn[i][j] ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
+      pad_alsaqr_pd padinst_hyper_csno   (.OEN( 1'b0            ), .I( hyper_cs_n_wire[i][j] ), .O(                  ), .PAD( pad_hyper_csn[i][j] ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
     end
-    pad_alsaqr_pd padinst_hyper_ck     (.OEN( 1'b0            ), .I( hyper_ck_wire[i]      ), .O(                  ), .PAD( pad_hyper_ck[i]     ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_ckno   (.OEN( 1'b0            ), .I( hyper_ck_n_wire[i]    ), .O(                  ), .PAD( pad_hyper_ckn[i]    ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_rwds0  (.OEN(~hyper_rwds_oe[i]), .I( hyper_rwds_o[i]       ), .O( hyper_rwds_i[i]  ), .PAD( pad_hyper_rwds[i]   ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_resetn (.OEN( 1'b0            ), .I( hyper_reset_n_wire[i] ), .O(                  ), .PAD( pad_hyper_reset[i]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_dqio0  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][0]      ), .O( hyper_dq_i[i][0] ), .PAD( pad_hyper_dq[i][0]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_dqio1  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][1]      ), .O( hyper_dq_i[i][1] ), .PAD( pad_hyper_dq[i][1]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_dqio2  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][2]      ), .O( hyper_dq_i[i][2] ), .PAD( pad_hyper_dq[i][2]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_dqio3  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][3]      ), .O( hyper_dq_i[i][3] ), .PAD( pad_hyper_dq[i][3]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_dqio4  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][4]      ), .O( hyper_dq_i[i][4] ), .PAD( pad_hyper_dq[i][4]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_dqio5  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][5]      ), .O( hyper_dq_i[i][5] ), .PAD( pad_hyper_dq[i][5]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_dqio6  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][6]      ), .O( hyper_dq_i[i][6] ), .PAD( pad_hyper_dq[i][6]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
-    pad_alsaqr_pd padinst_hyper_dqio7  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][7]      ), .O( hyper_dq_i[i][7] ), .PAD( pad_hyper_dq[i][7]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(2'b11), .SLW(1'b0), .SMT(1'b0) );
+    pad_alsaqr_pd padinst_hyper_ck     (.OEN( 1'b0            ), .I( hyper_ck_wire[i]      ), .O(                  ), .PAD( pad_hyper_ck[i]     ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_ckno   (.OEN( 1'b0            ), .I( hyper_ck_n_wire[i]    ), .O(                  ), .PAD( pad_hyper_ckn[i]    ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_rwds0  (.OEN(~hyper_rwds_oe[i]), .I( hyper_rwds_o[i]       ), .O( hyper_rwds_i[i]  ), .PAD( pad_hyper_rwds[i]   ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_resetn (.OEN( 1'b0            ), .I( hyper_reset_n_wire[i] ), .O(                  ), .PAD( pad_hyper_reset[i]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_dqio0  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][0]      ), .O( hyper_dq_i[i][0] ), .PAD( pad_hyper_dq[i][0]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_dqio1  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][1]      ), .O( hyper_dq_i[i][1] ), .PAD( pad_hyper_dq[i][1]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_dqio2  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][2]      ), .O( hyper_dq_i[i][2] ), .PAD( pad_hyper_dq[i][2]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_dqio3  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][3]      ), .O( hyper_dq_i[i][3] ), .PAD( pad_hyper_dq[i][3]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_dqio4  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][4]      ), .O( hyper_dq_i[i][4] ), .PAD( pad_hyper_dq[i][4]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_dqio5  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][5]      ), .O( hyper_dq_i[i][5] ), .PAD( pad_hyper_dq[i][5]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_dqio6  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][6]      ), .O( hyper_dq_i[i][6] ), .PAD( pad_hyper_dq[i][6]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
+    pad_alsaqr_pd padinst_hyper_dqio7  (.OEN(~hyper_dq_oe[i]  ), .I( hyper_dq_o[i][7]      ), .O( hyper_dq_i[i][7] ), .PAD( pad_hyper_dq[i][7]  ), .PWROK(PWROK_S), .IOPWROK(IOPWROK_S), .BIAS(BIAS_S), .RETC(RETC_S), .DRV(s_pad_cfg.pads.drv.q), .SLW(s_pad_cfg.pads.slw.q), .SMT(s_pad_cfg.pads.smt.q) );
    end
 
    `ifdef TARGET_ASIC

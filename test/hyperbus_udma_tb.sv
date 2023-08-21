@@ -21,6 +21,8 @@ module hyperbus_udma_tb;
         #500us;
         fix.i_rmaster.send_write('h4, 'h1, '1, error);
 
+        fix.i_rmaster.send_write('h100, 'b1100, '1, error);
+
         #200ns;
 
         $display("=================");

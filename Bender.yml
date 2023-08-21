@@ -49,12 +49,16 @@ sources:
     - src/udma_hyper/udma_cfg_outbuff.sv
     - src/udma_hyper/udma_hyper_busy_phy.sv
     - src/udma_hyper/udma_hyper.sv
-    - src/hyperbus_axi.sv
+    - src/hyper_pad_reg_pkg.sv
+    - src/hyper_pad_reg_top.sv
     - src/hyperbus_arbiter.sv
     - src/hyperbus_async_macro.sv
+    - src/hyperbus_udma.sv
+
     - target: post_synth_sim
       files:
         - gf22/innovus/trial3/out/hyperbus_synth_wrap.v
+
     - target: test_tb
       files:
         # Device models. TODO: extend
@@ -62,4 +66,3 @@ sources:
         # Testbench
         - test/fixture_hyperbus_udma.sv
         - test/hyperbus_udma_tb.sv
-    - src/hyperbus_udma.sv
