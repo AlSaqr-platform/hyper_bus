@@ -19,12 +19,14 @@ module generic_delay_D4_O1_3P750_CG0 (
   output logic [1-1:0] clk_o
 );
 
-  logic enable_latched;
-  logic clk;
-  
-  assign clk = clk_i;
-
-  always @(clk) clk_o[0] <= #(real'(delay_i)*3.750ns/15) clk;
-
+  IBUF #
+    (
+     .IBUF_LOW_PWR ("FALSE")
+     ) u_ibufg_sys_clk_o
+      (
+       .I  (clk_i),
+       .O  (clk_o[0])
+       );  
+        
 endmodule
 

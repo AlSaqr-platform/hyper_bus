@@ -13,15 +13,19 @@ clean: sim_clean
 # RTL SIMULATION
 # --------------
 
+REG_PATH ?= $(shell $(BENDER) path register_interface)
+
 VLOG_ARGS += -suppress vlog-2583 -suppress vlog-13314 -suppress vlog-13233 -timescale \"1 ns / 1 ps\"
 XVLOG_ARGS += -64bit -compile -vtimescale 1ns/1ns -quiet
 
 define generate_vsim
 	echo 'set ROOT [file normalize [file dirname [info script]]/$3]' > $1
-	bender script $(VSIM) --vlog-arg="$(VLOG_ARGS)" $2 | grep -v "set ROOT" >> $1
+	bender script $(VSIM) -t rtl -t test -t test_tb --vlog-arg="$(VLOG_ARGS)" $2 | grep -v "set ROOT" >> $1
 	echo >> $1
-	#echo 'vlog "$$ROOT/test/elfloader.cpp" -ccflags "-std=c++11"' >> $1 # TODO: Reactivate elf loader later?
 endef
+
+gen_regs:
+	$(REG_PATH)/vendor/lowrisc_opentitan/util/regtool.py -r reg-pads.hjson --outdir ./src
 
 sim_all: scripts/compile.tcl
 sim_all: models/generic_delay_D4_O1_3P750_CG0.behav.sv
@@ -33,6 +37,8 @@ sim_clean:
 scripts/compile.tcl: Bender.yml
 	$(call generate_vsim, $@, -t rtl -t test,..)
 
+compile: scripts/compile.tcl
+	vsim -c -do "source scripts/compile.tcl"
 # --------------
 # SYNTHESIS
 # --------------
@@ -43,14 +49,26 @@ define generate_synopsys
 	echo >> $1
 endef
 
-synth_all: tsmc65/synopsys/scripts/analyze.tcl
-synth_all: models/generic_delay_D4_O1_3P750_CG0_mid.db
+synth_tsmc65: tsmc65/synopsys/scripts/analyze.tcl
+synth_tsmc65: models/generic_delay_D4_O1_3P750_CG0_mid.db
 
 tsmc65/cockpit.log:
 	cd tsmc65 && icdesign tsmc65 -update all -nogui
 
 tsmc65/synopsys/scripts/analyze.tcl: Bender.yml | tsmc65/cockpit.log
 	$(call generate_synopsys, $@, -t rtl -t default -t synthesis -t tsmc65,..)
+
+synth_gf22: gf22/synopsys/scripts/analyze.tcl
+
+gf22/cockpit.log:
+	cd gf22 && icdesign gf22 -update all -nogui
+
+gf22/synopsys/scripts/analyze.tcl: Bender.yml | gf22/cockpit.log
+	$(call generate_synopsys, $@, -t rtl -t default -t asic -t gf22,..)
+
+post_synth_compile:
+	echo 'set ROOT [file normalize [file dirname [info script]]/../]' > scripts/post_synth_compile.tcl
+	bender script $(VSIM) --vlog-arg="-work gate" -t post_synth_sim -t test | grep -v "set ROOT" >> scripts/post_synth_compile.tcl
 
 # --------------
 # GENERIC-DELAY
