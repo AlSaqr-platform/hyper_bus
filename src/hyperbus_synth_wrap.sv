@@ -18,7 +18,7 @@ module hyperbus_synth_wrap
     parameter int unsigned  NumPhys         = 2,
     parameter int unsigned  IsClockODelayed = 0,
     // AXI parameters
-    parameter int unsigned  AxiIdWidth      = 7,
+    parameter int unsigned  AxiIdWidth      = 8,
     parameter int unsigned  AxiAddrWidth    = 64,
     parameter int unsigned  AxiDataWidth    = 64,
     parameter int unsigned  AxiUserWidth    = 1,
