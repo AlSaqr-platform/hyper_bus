@@ -7,7 +7,7 @@
 package hyper_pad_reg_pkg;
 
   // Address widths within the block
-  parameter int BlockAw = 0;
+  parameter int BlockAw = 5;
 
   ////////////////////////////
   // Typedefs for registers //
@@ -23,24 +23,105 @@ package hyper_pad_reg_pkg;
     struct packed {
       logic [1:0]  q;
     } drv;
-  } hyper_pad_reg2hw_pads_reg_t;
+  } hyper_pad_reg2hw_pads_mreg_t;
 
   // Register -> HW type
   typedef struct packed {
-    hyper_pad_reg2hw_pads_reg_t pads; // [3:0]
+    hyper_pad_reg2hw_pads_mreg_t [27:0] pads; // [111:0]
   } hyper_pad_reg2hw_t;
 
   // Register offsets
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_OFFSET = 0'h 0;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_0_OFFSET = 5'h 0;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_1_OFFSET = 5'h 1;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_2_OFFSET = 5'h 2;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_3_OFFSET = 5'h 3;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_4_OFFSET = 5'h 4;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_5_OFFSET = 5'h 5;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_6_OFFSET = 5'h 6;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_7_OFFSET = 5'h 7;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_8_OFFSET = 5'h 8;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_9_OFFSET = 5'h 9;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_10_OFFSET = 5'h a;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_11_OFFSET = 5'h b;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_12_OFFSET = 5'h c;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_13_OFFSET = 5'h d;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_14_OFFSET = 5'h e;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_15_OFFSET = 5'h f;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_16_OFFSET = 5'h 10;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_17_OFFSET = 5'h 11;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_18_OFFSET = 5'h 12;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_19_OFFSET = 5'h 13;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_20_OFFSET = 5'h 14;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_21_OFFSET = 5'h 15;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_22_OFFSET = 5'h 16;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_23_OFFSET = 5'h 17;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_24_OFFSET = 5'h 18;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_25_OFFSET = 5'h 19;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_26_OFFSET = 5'h 1a;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_27_OFFSET = 5'h 1b;
 
   // Register index
   typedef enum int {
-    HYPER_PAD_PADS
+    HYPER_PAD_PADS_0,
+    HYPER_PAD_PADS_1,
+    HYPER_PAD_PADS_2,
+    HYPER_PAD_PADS_3,
+    HYPER_PAD_PADS_4,
+    HYPER_PAD_PADS_5,
+    HYPER_PAD_PADS_6,
+    HYPER_PAD_PADS_7,
+    HYPER_PAD_PADS_8,
+    HYPER_PAD_PADS_9,
+    HYPER_PAD_PADS_10,
+    HYPER_PAD_PADS_11,
+    HYPER_PAD_PADS_12,
+    HYPER_PAD_PADS_13,
+    HYPER_PAD_PADS_14,
+    HYPER_PAD_PADS_15,
+    HYPER_PAD_PADS_16,
+    HYPER_PAD_PADS_17,
+    HYPER_PAD_PADS_18,
+    HYPER_PAD_PADS_19,
+    HYPER_PAD_PADS_20,
+    HYPER_PAD_PADS_21,
+    HYPER_PAD_PADS_22,
+    HYPER_PAD_PADS_23,
+    HYPER_PAD_PADS_24,
+    HYPER_PAD_PADS_25,
+    HYPER_PAD_PADS_26,
+    HYPER_PAD_PADS_27
   } hyper_pad_id_e;
 
   // Register width information to check illegal writes
-  parameter logic [3:0] HYPER_PAD_PERMIT [1] = '{
-    4'b 0001  // index[0] HYPER_PAD_PADS
+  parameter logic [3:0] HYPER_PAD_PERMIT [28] = '{
+    4'b 0001, // index[ 0] HYPER_PAD_PADS_0
+    4'b 0001, // index[ 1] HYPER_PAD_PADS_1
+    4'b 0001, // index[ 2] HYPER_PAD_PADS_2
+    4'b 0001, // index[ 3] HYPER_PAD_PADS_3
+    4'b 0001, // index[ 4] HYPER_PAD_PADS_4
+    4'b 0001, // index[ 5] HYPER_PAD_PADS_5
+    4'b 0001, // index[ 6] HYPER_PAD_PADS_6
+    4'b 0001, // index[ 7] HYPER_PAD_PADS_7
+    4'b 0001, // index[ 8] HYPER_PAD_PADS_8
+    4'b 0001, // index[ 9] HYPER_PAD_PADS_9
+    4'b 0001, // index[10] HYPER_PAD_PADS_10
+    4'b 0001, // index[11] HYPER_PAD_PADS_11
+    4'b 0001, // index[12] HYPER_PAD_PADS_12
+    4'b 0001, // index[13] HYPER_PAD_PADS_13
+    4'b 0001, // index[14] HYPER_PAD_PADS_14
+    4'b 0001, // index[15] HYPER_PAD_PADS_15
+    4'b 0001, // index[16] HYPER_PAD_PADS_16
+    4'b 0001, // index[17] HYPER_PAD_PADS_17
+    4'b 0001, // index[18] HYPER_PAD_PADS_18
+    4'b 0001, // index[19] HYPER_PAD_PADS_19
+    4'b 0001, // index[20] HYPER_PAD_PADS_20
+    4'b 0001, // index[21] HYPER_PAD_PADS_21
+    4'b 0001, // index[22] HYPER_PAD_PADS_22
+    4'b 0001, // index[23] HYPER_PAD_PADS_23
+    4'b 0001, // index[24] HYPER_PAD_PADS_24
+    4'b 0001, // index[25] HYPER_PAD_PADS_25
+    4'b 0001, // index[26] HYPER_PAD_PADS_26
+    4'b 0001  // index[27] HYPER_PAD_PADS_27
   };
 
 endpackage

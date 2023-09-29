@@ -11,34 +11,36 @@
   ],
   regwidth: "4",
   registers :[
-
-    { name: "PADs",
-      desc: "pad configuration",
-      swaccess: "rw",
-      fields: [
-        { bits: "0" ,
-          name: "SMT",
-          desc: "SMT",
-          swaccess: "rw",
-          hwaccess: "hro",
-          resval: "0"
-        }
-        { bits: "1" ,
-          swaccess: "rw",
-          hwaccess: "hro",
-          resval: "0",
-          name: "SLW",
-          desc: "SLW",
-        }
-        { bits: "3:2" ,
-          swaccess: "rw",
-          hwaccess: "hro",
-          resval: "0",
-          name: "DRV",
-          desc: "Drive strength"
-        }
-      ],
-    }
-
+            { multireg :
+                       { name: "PADs",
+                         desc: "pad configuration",
+                         count: "28",
+                         cname: "cfg",
+                         swaccess: "rw",
+                         fields: [
+                           { bits: "0" ,
+                             name: "SMT",
+                             desc: "SMT",
+                             swaccess: "rw",
+                             hwaccess: "hro",
+                             resval: "0"
+                           }
+                           { bits: "1" ,
+                             swaccess: "rw",
+                             hwaccess: "hro",
+                             resval: "0",
+                             name: "SLW",
+                             desc: "SLW",
+                           }
+                           { bits: "3:2" ,
+                             swaccess: "rw",
+                             hwaccess: "hro",
+                             resval: "0",
+                             name: "DRV",
+                             desc: "Drive strength"
+                           }
+                         ],
+                       }
+            }
   ],
 }

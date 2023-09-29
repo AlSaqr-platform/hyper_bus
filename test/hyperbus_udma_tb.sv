@@ -21,7 +21,9 @@ module hyperbus_udma_tb;
         #500us;
         fix.i_rmaster.send_write('h4, 'h1, '1, error);
 
-        fix.i_rmaster.send_write('h100, 'b1100, '1, error);
+        for(int i = 0; i<28; i = i+1) begin
+           fix.i_rmaster.send_write('h100 + i, 'b1100, '1, error);
+        end
 
         #200ns;
 
