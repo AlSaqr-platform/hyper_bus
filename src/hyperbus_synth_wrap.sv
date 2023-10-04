@@ -26,7 +26,7 @@ module hyperbus_synth_wrap
     parameter int unsigned  RegAddrWidth    = 32,
     parameter int unsigned  RegDataWidth    = 32,
     // Udma parameters
-    parameter int unsigned  L2_AWIDTH_NOAL  = 21,
+    parameter int unsigned  L2_AWIDTH_NOAL  = 32,
     parameter int unsigned  TRANS_SIZE      = 20,
     parameter int unsigned  NB_CH           = 1,
     parameter int unsigned  AxiLogDepth     = 3,
