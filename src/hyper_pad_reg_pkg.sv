@@ -27,7 +27,7 @@ package hyper_pad_reg_pkg;
 
   // Register -> HW type
   typedef struct packed {
-    hyper_pad_reg2hw_pads_mreg_t [27:0] pads; // [111:0]
+    hyper_pad_reg2hw_pads_mreg_t [31:0] pads; // [127:0]
   } hyper_pad_reg2hw_t;
 
   // Register offsets
@@ -59,6 +59,10 @@ package hyper_pad_reg_pkg;
   parameter logic [BlockAw-1:0] HYPER_PAD_PADS_25_OFFSET = 5'h 19;
   parameter logic [BlockAw-1:0] HYPER_PAD_PADS_26_OFFSET = 5'h 1a;
   parameter logic [BlockAw-1:0] HYPER_PAD_PADS_27_OFFSET = 5'h 1b;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_28_OFFSET = 5'h 1c;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_29_OFFSET = 5'h 1d;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_30_OFFSET = 5'h 1e;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_31_OFFSET = 5'h 1f;
 
   // Register index
   typedef enum int {
@@ -89,11 +93,15 @@ package hyper_pad_reg_pkg;
     HYPER_PAD_PADS_24,
     HYPER_PAD_PADS_25,
     HYPER_PAD_PADS_26,
-    HYPER_PAD_PADS_27
+    HYPER_PAD_PADS_27,
+    HYPER_PAD_PADS_28,
+    HYPER_PAD_PADS_29,
+    HYPER_PAD_PADS_30,
+    HYPER_PAD_PADS_31
   } hyper_pad_id_e;
 
   // Register width information to check illegal writes
-  parameter logic [3:0] HYPER_PAD_PERMIT [28] = '{
+  parameter logic [3:0] HYPER_PAD_PERMIT [32] = '{
     4'b 0001, // index[ 0] HYPER_PAD_PADS_0
     4'b 0001, // index[ 1] HYPER_PAD_PADS_1
     4'b 0001, // index[ 2] HYPER_PAD_PADS_2
@@ -121,7 +129,11 @@ package hyper_pad_reg_pkg;
     4'b 0001, // index[24] HYPER_PAD_PADS_24
     4'b 0001, // index[25] HYPER_PAD_PADS_25
     4'b 0001, // index[26] HYPER_PAD_PADS_26
-    4'b 0001  // index[27] HYPER_PAD_PADS_27
+    4'b 0001, // index[27] HYPER_PAD_PADS_27
+    4'b 0001, // index[28] HYPER_PAD_PADS_28
+    4'b 0001, // index[29] HYPER_PAD_PADS_29
+    4'b 0001, // index[30] HYPER_PAD_PADS_30
+    4'b 0001  // index[31] HYPER_PAD_PADS_31
   };
 
 endpackage
