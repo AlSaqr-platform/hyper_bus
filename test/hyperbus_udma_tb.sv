@@ -11,8 +11,9 @@
 module hyperbus_udma_tb;
 
     localparam NumPhys=2;
-   
-    fixture_hyperbus_udma #(.NumChips(2), .NumPhys(NumPhys) ) fix ();
+    localparam NumChips=4;
+
+    fixture_hyperbus_udma #(.NumChips(NumChips), .NumPhys(NumPhys) ) fix ();
 
     logic error;
 
@@ -21,7 +22,7 @@ module hyperbus_udma_tb;
         #500us;
         fix.i_rmaster.send_write('h4, 'h1, '1, error);
 
-        for(int i = 0; i<28; i = i+1) begin
+        for(int i = 0; i<32; i = i+1) begin
            fix.i_rmaster.send_write('h100 + i, 'b1100, '1, error);
         end
 
@@ -88,23 +89,23 @@ module hyperbus_udma_tb;
         $display("=================");
         $display("16 BIT BURSTS");
         $display("=================");
-  
+
         // wide 16 bit burst
         fix.write_axi('h410, 18, 1, 0, 'hffff);
         fix.read_axi('h410, 18, 1);
-       
+
         // narrow 16 bit burst
         fix.write_axi('h402, 5, 1, 0, 'hffff);
         fix.read_axi('h402, 5, 1);
-       
+
         // wide 16 bit burst
         fix.write_axi('h470, 5, 1, 0, 'hffff);
-        fix.read_axi('h470, 5, 1);  
-     
+        fix.read_axi('h470, 5, 1);
+
         // narrow 16 bit burst
         fix.write_axi('h452, 6, 1, 0, 'hffff);
         fix.read_axi('h452, 6, 1);
-       
+
         $display("=================");
         $display("8 BIT BURSTS");
         $display("=================");
@@ -145,7 +146,7 @@ module hyperbus_udma_tb;
         // clean up
         fix.write_axi('h00, 100, 3, 1, 'hffff);
         fix.read_axi('h0, 100, 3);
-       
+
 
         $display("=================");
         $display("32 BIT ALIGNED ACCESSES");
@@ -263,7 +264,7 @@ module hyperbus_udma_tb;
         fix.write_axi('h992, 4, 3, 0, 'hFF0F);
         fix.read_axi('h992, 4, 3);
 
-        // 64b inner single on 32b boundary 
+        // 64b inner single on 32b boundary
         fix.write_axi('h924, 0, 3, 0, 'hF0FF);
         fix.read_axi('h924, 0, 3);
 
@@ -272,13 +273,13 @@ module hyperbus_udma_tb;
         fix.read_axi('h930, 0, 4);
 
         fix.write_axi('h954, 0, 4, 1, 'hFFFF);
-        fix.read_axi('h954, 0, 4);  
-     
+        fix.read_axi('h954, 0, 4);
+
         // 128 outer single on 32b boundary (read back in aligned fasion)
         fix.write_axi('h954, 0, 4, 0, 'hFFFF);
         fix.read_axi('h954, 0, 4);
 
-       
+
         // 128 outer single on 64b boundary (read back in aligned fasion)
         fix.write_axi('h978, 0, 4, 1, 'hFFFF);
         fix.read_axi('h978, 0, 4); //siamo qua
@@ -320,7 +321,7 @@ module hyperbus_udma_tb;
 
         fix.LongWriteTransactionTest(70, 5,'h3, 0);
         #8us;
-  
+
         fix.LongWriteTransactionTest(100, 8,'h4,0);
         #8us;
 
@@ -344,7 +345,7 @@ module hyperbus_udma_tb;
         $display("======================");
         $display("AND WITH NO TIME OUTS!");
         $display("======================");
-        
+
         #5us;
         $stop();
     end

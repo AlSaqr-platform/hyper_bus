@@ -319,6 +319,42 @@ module hyper_pad_reg_top #(
   logic [1:0] pads_27_drv_27_qs;
   logic [1:0] pads_27_drv_27_wd;
   logic pads_27_drv_27_we;
+  logic pads_28_smt_28_qs;
+  logic pads_28_smt_28_wd;
+  logic pads_28_smt_28_we;
+  logic pads_28_slw_28_qs;
+  logic pads_28_slw_28_wd;
+  logic pads_28_slw_28_we;
+  logic [1:0] pads_28_drv_28_qs;
+  logic [1:0] pads_28_drv_28_wd;
+  logic pads_28_drv_28_we;
+  logic pads_29_smt_29_qs;
+  logic pads_29_smt_29_wd;
+  logic pads_29_smt_29_we;
+  logic pads_29_slw_29_qs;
+  logic pads_29_slw_29_wd;
+  logic pads_29_slw_29_we;
+  logic [1:0] pads_29_drv_29_qs;
+  logic [1:0] pads_29_drv_29_wd;
+  logic pads_29_drv_29_we;
+  logic pads_30_smt_30_qs;
+  logic pads_30_smt_30_wd;
+  logic pads_30_smt_30_we;
+  logic pads_30_slw_30_qs;
+  logic pads_30_slw_30_wd;
+  logic pads_30_slw_30_we;
+  logic [1:0] pads_30_drv_30_qs;
+  logic [1:0] pads_30_drv_30_wd;
+  logic pads_30_drv_30_we;
+  logic pads_31_smt_31_qs;
+  logic pads_31_smt_31_wd;
+  logic pads_31_smt_31_we;
+  logic pads_31_slw_31_qs;
+  logic pads_31_slw_31_wd;
+  logic pads_31_slw_31_we;
+  logic [1:0] pads_31_drv_31_qs;
+  logic [1:0] pads_31_drv_31_wd;
+  logic pads_31_drv_31_we;
 
   // Register instances
 
@@ -2590,10 +2626,334 @@ module hyper_pad_reg_top #(
   );
 
 
+  // Subregister 28 of Multireg pads
+  // R[pads_28]: V(False)
+
+  // F[smt_28]: 0:0
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_pads_28_smt_28 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_28_smt_28_we),
+    .wd     (pads_28_smt_28_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[28].smt.q ),
+
+    // to register interface (read)
+    .qs     (pads_28_smt_28_qs)
+  );
+
+
+  // F[slw_28]: 1:1
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_pads_28_slw_28 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_28_slw_28_we),
+    .wd     (pads_28_slw_28_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[28].slw.q ),
+
+    // to register interface (read)
+    .qs     (pads_28_slw_28_qs)
+  );
+
+
+  // F[drv_28]: 3:2
+  prim_subreg #(
+    .DW      (2),
+    .SWACCESS("RW"),
+    .RESVAL  (2'h0)
+  ) u_pads_28_drv_28 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_28_drv_28_we),
+    .wd     (pads_28_drv_28_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[28].drv.q ),
+
+    // to register interface (read)
+    .qs     (pads_28_drv_28_qs)
+  );
+
+
+  // Subregister 29 of Multireg pads
+  // R[pads_29]: V(False)
+
+  // F[smt_29]: 0:0
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_pads_29_smt_29 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_29_smt_29_we),
+    .wd     (pads_29_smt_29_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[29].smt.q ),
+
+    // to register interface (read)
+    .qs     (pads_29_smt_29_qs)
+  );
+
+
+  // F[slw_29]: 1:1
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_pads_29_slw_29 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_29_slw_29_we),
+    .wd     (pads_29_slw_29_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[29].slw.q ),
+
+    // to register interface (read)
+    .qs     (pads_29_slw_29_qs)
+  );
+
+
+  // F[drv_29]: 3:2
+  prim_subreg #(
+    .DW      (2),
+    .SWACCESS("RW"),
+    .RESVAL  (2'h0)
+  ) u_pads_29_drv_29 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_29_drv_29_we),
+    .wd     (pads_29_drv_29_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[29].drv.q ),
+
+    // to register interface (read)
+    .qs     (pads_29_drv_29_qs)
+  );
+
+
+  // Subregister 30 of Multireg pads
+  // R[pads_30]: V(False)
+
+  // F[smt_30]: 0:0
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_pads_30_smt_30 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_30_smt_30_we),
+    .wd     (pads_30_smt_30_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[30].smt.q ),
+
+    // to register interface (read)
+    .qs     (pads_30_smt_30_qs)
+  );
+
+
+  // F[slw_30]: 1:1
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_pads_30_slw_30 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_30_slw_30_we),
+    .wd     (pads_30_slw_30_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[30].slw.q ),
+
+    // to register interface (read)
+    .qs     (pads_30_slw_30_qs)
+  );
+
+
+  // F[drv_30]: 3:2
+  prim_subreg #(
+    .DW      (2),
+    .SWACCESS("RW"),
+    .RESVAL  (2'h0)
+  ) u_pads_30_drv_30 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_30_drv_30_we),
+    .wd     (pads_30_drv_30_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[30].drv.q ),
+
+    // to register interface (read)
+    .qs     (pads_30_drv_30_qs)
+  );
+
+
+  // Subregister 31 of Multireg pads
+  // R[pads_31]: V(False)
+
+  // F[smt_31]: 0:0
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_pads_31_smt_31 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_31_smt_31_we),
+    .wd     (pads_31_smt_31_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[31].smt.q ),
+
+    // to register interface (read)
+    .qs     (pads_31_smt_31_qs)
+  );
+
+
+  // F[slw_31]: 1:1
+  prim_subreg #(
+    .DW      (1),
+    .SWACCESS("RW"),
+    .RESVAL  (1'h0)
+  ) u_pads_31_slw_31 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_31_slw_31_we),
+    .wd     (pads_31_slw_31_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[31].slw.q ),
+
+    // to register interface (read)
+    .qs     (pads_31_slw_31_qs)
+  );
+
+
+  // F[drv_31]: 3:2
+  prim_subreg #(
+    .DW      (2),
+    .SWACCESS("RW"),
+    .RESVAL  (2'h0)
+  ) u_pads_31_drv_31 (
+    .clk_i   (clk_i    ),
+    .rst_ni  (rst_ni  ),
+
+    // from register interface
+    .we     (pads_31_drv_31_we),
+    .wd     (pads_31_drv_31_wd),
+
+    // from internal hardware
+    .de     (1'b0),
+    .d      ('0  ),
+
+    // to internal hardware
+    .qe     (),
+    .q      (reg2hw.pads[31].drv.q ),
+
+    // to register interface (read)
+    .qs     (pads_31_drv_31_qs)
+  );
 
 
 
-  logic [27:0] addr_hit;
+
+
+  logic [31:0] addr_hit;
   always_comb begin
     addr_hit = '0;
     addr_hit[ 0] = (reg_addr == HYPER_PAD_PADS_0_OFFSET);
@@ -2624,6 +2984,10 @@ module hyper_pad_reg_top #(
     addr_hit[25] = (reg_addr == HYPER_PAD_PADS_25_OFFSET);
     addr_hit[26] = (reg_addr == HYPER_PAD_PADS_26_OFFSET);
     addr_hit[27] = (reg_addr == HYPER_PAD_PADS_27_OFFSET);
+    addr_hit[28] = (reg_addr == HYPER_PAD_PADS_28_OFFSET);
+    addr_hit[29] = (reg_addr == HYPER_PAD_PADS_29_OFFSET);
+    addr_hit[30] = (reg_addr == HYPER_PAD_PADS_30_OFFSET);
+    addr_hit[31] = (reg_addr == HYPER_PAD_PADS_31_OFFSET);
   end
 
   assign addrmiss = (reg_re || reg_we) ? ~|addr_hit : 1'b0 ;
@@ -2658,7 +3022,11 @@ module hyper_pad_reg_top #(
                (addr_hit[24] & (|(HYPER_PAD_PERMIT[24] & ~reg_be))) |
                (addr_hit[25] & (|(HYPER_PAD_PERMIT[25] & ~reg_be))) |
                (addr_hit[26] & (|(HYPER_PAD_PERMIT[26] & ~reg_be))) |
-               (addr_hit[27] & (|(HYPER_PAD_PERMIT[27] & ~reg_be)))));
+               (addr_hit[27] & (|(HYPER_PAD_PERMIT[27] & ~reg_be))) |
+               (addr_hit[28] & (|(HYPER_PAD_PERMIT[28] & ~reg_be))) |
+               (addr_hit[29] & (|(HYPER_PAD_PERMIT[29] & ~reg_be))) |
+               (addr_hit[30] & (|(HYPER_PAD_PERMIT[30] & ~reg_be))) |
+               (addr_hit[31] & (|(HYPER_PAD_PERMIT[31] & ~reg_be)))));
   end
 
   assign pads_0_smt_0_we = addr_hit[0] & reg_we & !reg_error;
@@ -2913,6 +3281,42 @@ module hyper_pad_reg_top #(
   assign pads_27_drv_27_we = addr_hit[27] & reg_we & !reg_error;
   assign pads_27_drv_27_wd = reg_wdata[3:2];
 
+  assign pads_28_smt_28_we = addr_hit[28] & reg_we & !reg_error;
+  assign pads_28_smt_28_wd = reg_wdata[0];
+
+  assign pads_28_slw_28_we = addr_hit[28] & reg_we & !reg_error;
+  assign pads_28_slw_28_wd = reg_wdata[1];
+
+  assign pads_28_drv_28_we = addr_hit[28] & reg_we & !reg_error;
+  assign pads_28_drv_28_wd = reg_wdata[3:2];
+
+  assign pads_29_smt_29_we = addr_hit[29] & reg_we & !reg_error;
+  assign pads_29_smt_29_wd = reg_wdata[0];
+
+  assign pads_29_slw_29_we = addr_hit[29] & reg_we & !reg_error;
+  assign pads_29_slw_29_wd = reg_wdata[1];
+
+  assign pads_29_drv_29_we = addr_hit[29] & reg_we & !reg_error;
+  assign pads_29_drv_29_wd = reg_wdata[3:2];
+
+  assign pads_30_smt_30_we = addr_hit[30] & reg_we & !reg_error;
+  assign pads_30_smt_30_wd = reg_wdata[0];
+
+  assign pads_30_slw_30_we = addr_hit[30] & reg_we & !reg_error;
+  assign pads_30_slw_30_wd = reg_wdata[1];
+
+  assign pads_30_drv_30_we = addr_hit[30] & reg_we & !reg_error;
+  assign pads_30_drv_30_wd = reg_wdata[3:2];
+
+  assign pads_31_smt_31_we = addr_hit[31] & reg_we & !reg_error;
+  assign pads_31_smt_31_wd = reg_wdata[0];
+
+  assign pads_31_slw_31_we = addr_hit[31] & reg_we & !reg_error;
+  assign pads_31_slw_31_wd = reg_wdata[1];
+
+  assign pads_31_drv_31_we = addr_hit[31] & reg_we & !reg_error;
+  assign pads_31_drv_31_wd = reg_wdata[3:2];
+
   // Read data return
   always_comb begin
     reg_rdata_next = '0;
@@ -3083,6 +3487,30 @@ module hyper_pad_reg_top #(
         reg_rdata_next[0] = pads_27_smt_27_qs;
         reg_rdata_next[1] = pads_27_slw_27_qs;
         reg_rdata_next[3:2] = pads_27_drv_27_qs;
+      end
+
+      addr_hit[28]: begin
+        reg_rdata_next[0] = pads_28_smt_28_qs;
+        reg_rdata_next[1] = pads_28_slw_28_qs;
+        reg_rdata_next[3:2] = pads_28_drv_28_qs;
+      end
+
+      addr_hit[29]: begin
+        reg_rdata_next[0] = pads_29_smt_29_qs;
+        reg_rdata_next[1] = pads_29_slw_29_qs;
+        reg_rdata_next[3:2] = pads_29_drv_29_qs;
+      end
+
+      addr_hit[30]: begin
+        reg_rdata_next[0] = pads_30_smt_30_qs;
+        reg_rdata_next[1] = pads_30_slw_30_qs;
+        reg_rdata_next[3:2] = pads_30_drv_30_qs;
+      end
+
+      addr_hit[31]: begin
+        reg_rdata_next[0] = pads_31_smt_31_qs;
+        reg_rdata_next[1] = pads_31_slw_31_qs;
+        reg_rdata_next[3:2] = pads_31_drv_31_qs;
       end
 
       default: begin

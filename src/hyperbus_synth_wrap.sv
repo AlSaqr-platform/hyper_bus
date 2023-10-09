@@ -14,7 +14,7 @@ module hyperbus_synth_wrap
   import axi_pkg::*;
 #(
     // HyperBus parameters
-    parameter int unsigned  NumChips        = 2,
+    parameter int unsigned  NumChips        = 4,
     parameter int unsigned  NumPhys         = 2,
     parameter int unsigned  IsClockODelayed = 0,
     // AXI parameters

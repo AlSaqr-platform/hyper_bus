@@ -14,7 +14,7 @@
             { multireg :
                        { name: "PADs",
                          desc: "pad configuration",
-                         count: "28",
+                         count: "32",
                          cname: "cfg",
                          swaccess: "rw",
                          fields: [
