@@ -8,10 +8,10 @@
 `define REG_RX_SADDR            5'b00000 //BASEADDR+0x00 L2 address for RX
 `define REG_RX_SIZE             5'b00001 //BASEADDR+0x04 size of the software buffer in L2
 `define REG_UDMA_RXCFG          5'b00010 //BASEADDR+0x08 UDMA configuration setup (RX)
-`define REG_TX_SADDR            5'b00011 //BASEADDR+0x0C address of the data being transferred 
+`define REG_TX_SADDR            5'b00011 //BASEADDR+0x0C address of the data being transferred
 `define REG_TX_SIZE             5'b00100 //BASEADDR+0x10 size of the data being transferred
 `define REG_UDMA_TXCFG          5'b00101 //BASEADDR+0x14 UDMA configuration setup (TX)
-`define HYPER_CA_SETUP          5'b00110 //BASEADDR+0x18 set read/write, address space, and burst type 
+`define HYPER_CA_SETUP          5'b00110 //BASEADDR+0x18 set read/write, address space, and burst type
 `define REG_HYPER_ADDR          5'b00111 //BASEADDR+0x1C set address in a hyper ram.
 `define REG_HYPER_CFG           5'b01000 //BASEADDR+0x20 set the configuration data for HyperRAM
 `define STATUS                  5'b01001 //BASEADDR+0x24 status register
@@ -48,7 +48,7 @@ module fixture_hyperbus_udma #(
     parameter int unsigned NumPhys = 2
 );
 
-   
+
     int unsigned            k, j;
 
     localparam time SYS_TCK  = 8ns;
@@ -56,7 +56,7 @@ module fixture_hyperbus_udma #(
     localparam time SYS_TT   = SYS_TCK - 1ns;
 
     localparam time PHY_TCK  = 4ns;
-   
+
     logic sys_clk      = 0;
     logic phy_clk      = 0;
     logic test_mode    = 0;
@@ -133,12 +133,12 @@ module fixture_hyperbus_udma #(
     axi_addr_t    temp_raddr;
     logic [4:0]   last_waddr;
     logic [4:0]   last_raddr;
-    typedef logic [AxiDw-1:0] data_t;   
+    typedef logic [AxiDw-1:0] data_t;
     data_t        memory[bit [31:0]];
     int           read_index = 0;
     int           write_index = 0;
-   
-   
+
+
     reg_req_t   reg_req;
     reg_rsp_t   reg_rsp;
 
@@ -165,7 +165,7 @@ module fixture_hyperbus_udma #(
         wstrb:  $isunknown(i_rbus.wstrb) ? 1'b0 : i_rbus.wstrb,
         valid:  $isunknown(i_rbus.valid) ? 1'b0 : i_rbus.valid
     };
-`else 
+`else
     assign reg_req = reg_req_t'{
         addr:   i_rbus.addr,
         write:  i_rbus.write,
@@ -174,7 +174,7 @@ module fixture_hyperbus_udma #(
         valid:  i_rbus.valid
     };
 `endif
-   
+
     assign i_rbus.rdata = reg_rsp.rdata;
     assign i_rbus.ready = reg_rsp.ready;
     assign i_rbus.error = reg_rsp.error;
@@ -186,24 +186,24 @@ module fixture_hyperbus_udma #(
     localparam BYTE_WIDTH = 8;
     localparam MEM_DEPTH = 4096;
     localparam NB_CH=1;
-     
+
     logic [31:0]            rx_data_udma_o;
     logic                   rx_valid_udma_o;
     logic                   rx_ready_udma_i;
-    
+
     logic [31:0]            tx_data_udma_i;
     logic                   tx_valid_udma_i;
     logic                   tx_valid_udma_d;
     logic                   tx_valid_udma2_i;
     logic                   tx_ready_udma_o;
-    
+
     logic [31:0]            cfg_data_i;
     logic [4:0]             cfg_addr_i;
     logic [NB_CH:0]         cfg_valid_i;
     logic                   cfg_rwn_i;
     logic [NB_CH:0][31:0]   cfg_data_o;
     logic [NB_CH:0]         cfg_ready_o;
-    
+
     logic [L2_AWIDTH_NOAL-1:0] cfg_rx_startaddr_o;
     logic [TRANS_SIZE-1:0]     cfg_rx_size_o;
     logic [1:0]                cfg_rx_datasize_o;
@@ -214,7 +214,7 @@ module fixture_hyperbus_udma #(
     logic                      cfg_rx_pending_i;
     logic [L2_AWIDTH_NOAL-1:0] cfg_rx_curr_addr_i;
     logic [TRANS_SIZE-1:0]     cfg_rx_bytes_left_i;
-    
+
     logic [L2_AWIDTH_NOAL-1:0] cfg_tx_startaddr_o;
     logic [TRANS_SIZE-1:0]     cfg_tx_size_o;
     logic [1:0]                cfg_tx_datasize_o;
@@ -226,10 +226,10 @@ module fixture_hyperbus_udma #(
     logic [L2_AWIDTH_NOAL-1:0] cfg_tx_curr_addr_i;
     logic [TRANS_SIZE-1:0]     cfg_tx_bytes_left_i;
     logic [31:0]               count;
-    
+
     logic [BYTE_WIDTH-1:0]     data_mem [0:MEM_DEPTH-1]; // 4KB data mem
     logic [31:0]               udma_sent_word[0:MEM_DEPTH-1];
-   
+
     logic [L2_AWIDTH_NOAL-1:0] data_mem_addr;
     logic [L2_AWIDTH_NOAL-1:0] r_tx_addr;
     logic [31:0]               mem_data_out;
@@ -243,13 +243,13 @@ module fixture_hyperbus_udma #(
     logic                      r_rx_en;
     logic                      s_req_o;
     logic [31:0]               udma_rx_last_addr;
-   
+
    // Data memory for test
    /////////////////////////////////////////////////
    //                    MEMORY                   //
    /////////////////////////////////////////////////
     assign mem_data_out = { data_mem[data_mem_addr+3], data_mem[data_mem_addr+2], data_mem[data_mem_addr+1], data_mem[data_mem_addr]};
- 
+
     always @(posedge sys_clk or negedge rst_n)
       begin
         if(!rst_n)
@@ -270,7 +270,7 @@ module fixture_hyperbus_udma #(
               end
           end
       end
-    
+
      assign cfg_tx_bytes_left_i = (r_write_tran_en)? r_tx_size - data_count: 0;
 
      always  @(posedge sys_clk or negedge rst_n)
@@ -304,7 +304,7 @@ module fixture_hyperbus_udma #(
                end
            end
        end
-    
+
      always @(posedge sys_clk or negedge rst_n)
        begin
          if(!rst_n)
@@ -313,10 +313,10 @@ module fixture_hyperbus_udma #(
            end
          else
            begin
-             if( cfg_tx_en_o & data_count ==0) 
+             if( cfg_tx_en_o & data_count ==0)
                begin
                   data_mem_addr <= cfg_tx_startaddr_o;
-               end 
+               end
              else
                begin
                  if(r_write_tran_en & tx_ready_udma_o & tx_valid_udma_i)
@@ -324,7 +324,7 @@ module fixture_hyperbus_udma #(
                end
            end
        end
-    
+
     assign cfg_rx_en_i = cfg_rx_en_o | r_rx_en;
     always @(posedge sys_clk or negedge rst_n)
       begin
@@ -376,12 +376,12 @@ module fixture_hyperbus_udma #(
               end
           end
     end
-   
+
   assign #(SYS_TCK/6) mem_data_out_d  =  mem_data_out;
   assign #(SYS_TCK/6) tx_valid_udma_d = tx_valid_udma_i;
-   
+
     // -------------------------- DUT --------------------------
-    wire  [NumPhys-1:0][1:0] hyper_cs_n_wire;
+    wire  [NumPhys-1:0][NumChips-1:0] hyper_cs_n_wire;
     wire  [NumPhys-1:0]      hyper_ck_wire;
     wire  [NumPhys-1:0]      hyper_ck_n_wire;
     wire  [NumPhys-1:0]      hyper_rwds_o;
@@ -395,7 +395,7 @@ module fixture_hyperbus_udma #(
     wire  [NumPhys-1:0]      hyper_dq_oe;
     wire  [NumPhys-1:0][7:0] hyper_dq_wire;
     wire  [NumPhys-1:0]      hyper_reset_n_wire;
-             
+
     generate
        for (genvar i=0; i<NumPhys; i++) begin : hyperrams
 
@@ -420,7 +420,7 @@ module fixture_hyperbus_udma #(
 
        end // block: hyperrams
     endgenerate
-   
+
     // DUT
     hyperbus_udma #(
         .NumChips       ( NumChips    ),
@@ -457,20 +457,20 @@ module fixture_hyperbus_udma #(
         .data_rx_o              ( rx_data_udma_o        ),
         .data_rx_valid_o        ( rx_valid_udma_o       ),
         .data_rx_ready_i        ( 1'b1                  ),
-        
+
         .data_tx_i              ( mem_data_out_d        ),
         .data_tx_valid_i        ( tx_valid_udma_d       ),
         .data_tx_ready_o        ( tx_ready_udma_o       ),
         .data_tx_gnt_i          ( s_req_o               ),
         .data_tx_req_o          ( s_req_o               ),
-        
+
         .cfg_data_i             ( cfg_data_i            ),
         .cfg_addr_i             ( cfg_addr_i            ),
         .cfg_valid_i            ( cfg_valid_i           ),
         .cfg_rwn_i              ( cfg_rwn_i             ),
         .cfg_data_o             ( cfg_data_o            ),
         .cfg_ready_o            ( cfg_ready_o           ),
-        
+
         .cfg_rx_startaddr_o     ( cfg_rx_startaddr_o    ),
         .cfg_rx_size_o          ( cfg_rx_size_o         ),
         .data_rx_datasize_o     ( cfg_rx_datasize_o     ),
@@ -481,7 +481,7 @@ module fixture_hyperbus_udma #(
         .cfg_rx_pending_i       ( cfg_rx_pending_i      ),
         .cfg_rx_curr_addr_i     ( cfg_rx_curr_addr_i    ),
         .cfg_rx_bytes_left_i    ( cfg_rx_bytes_left_i   ),
-        
+
         .cfg_tx_startaddr_o     ( cfg_tx_startaddr_o    ),
         .cfg_tx_size_o          ( cfg_tx_size_o         ),
         .data_tx_datasize_o     ( cfg_tx_datasize_o     ),
@@ -494,7 +494,7 @@ module fixture_hyperbus_udma #(
         .cfg_tx_bytes_left_i    ( cfg_tx_bytes_left_i   ),
 
         .evt_eot_hyper_o        (                       ),
-             
+
         .pad_hyper_csn          ( hyper_cs_n_wire       ),
         .pad_hyper_ck           ( hyper_ck_wire         ),
         .pad_hyper_ckn          ( hyper_ck_n_wire       ),
@@ -504,7 +504,7 @@ module fixture_hyperbus_udma #(
 
     );
 
-    
+
     generate
        for (genvar p=0; p<NumPhys; p++) begin : sdf_annotation
          initial begin
@@ -518,11 +518,11 @@ module fixture_hyperbus_udma #(
          end
        end
     endgenerate
-   
+
 
     // -------------------------- TB TASKS --------------------------
 
-   
+
      class SetConfig;
         int cfg_address;
         int cfg_data;
@@ -548,7 +548,7 @@ module fixture_hyperbus_udma #(
     default clocking cb_udma_hyper @(negedge sys_clk);
       default input #1step output #1ns;
 
-       
+
       output cfg_data_i, cfg_addr_i, cfg_valid_i, cfg_rwn_i,  cfg_rx_pending_i, cfg_rx_curr_addr_i,cfg_tx_en_i, cfg_tx_pending_i, cfg_tx_curr_addr_i, cfg_rx_bytes_left_i;
       output tx_data_udma_i, tx_valid_udma_i;
       input cfg_data_o, cfg_ready_o, cfg_rx_startaddr_o, cfg_rx_size_o, cfg_rx_datasize_o, cfg_rx_continuous_o, cfg_rx_en_o, cfg_rx_clr_o;
@@ -569,11 +569,11 @@ module fixture_hyperbus_udma #(
         rst_n = 0;
 
         `ifndef TARGET_POST_SYNTH_SIM
-        $readmemh("../test/test_mem.dat",data_mem); 
+        $readmemh("../test/test_mem.dat",data_mem);
         `else
-        $readmemh("../../test/test_mem.dat",data_mem); 
+        $readmemh("../../test/test_mem.dat",data_mem);
         `endif
-        // Set all inputs at the beginning    
+        // Set all inputs at the beginning
 
         // Will be applied on negedge of clock!
         cb_udma_hyper.cfg_addr_i <=0;
@@ -630,7 +630,7 @@ module fixture_hyperbus_udma #(
         phy_clk = 0;
         #(PHY_TCK/2);
     end
- 
+
 
     task reset_end;
         @(posedge rst_n);
@@ -653,13 +653,13 @@ module fixture_hyperbus_udma #(
         if(ar_beat.ax_size>AxiMaxSize) begin
           $display("Not supported");
         end else begin
-                     
+
           axi_master_drv.send_ar(ar_beat);
           $display("%p", ar_beat);
 
           temp_raddr = raddr;
           last_raddr = '0;
-                
+
           for(int unsigned i = 0; i < burst_len + 1; i++) begin
               axi_master_drv.recv_r(r_beat);
               `ifdef AXI_VERBOSE
@@ -668,7 +668,7 @@ module fixture_hyperbus_udma #(
               `endif
               trans_rdata = '1;
               if (i==0) begin
-                 for(k =temp_raddr[AxiMaxSize-1:0]; k<((temp_raddr[AxiMaxSize-1:0]>>size)<<size) + (2**size) ; k++) begin 
+                 for(k =temp_raddr[AxiMaxSize-1:0]; k<((temp_raddr[AxiMaxSize-1:0]>>size)<<size) + (2**size) ; k++) begin
                    trans_rdata[k*8 +:8] = r_beat.r_data[(k*8) +: 8];
                  end
               end else begin
@@ -682,16 +682,16 @@ module fixture_hyperbus_udma #(
               end
               if($isunknown(trans_rdata)) begin
                  $fatal(1,"Xs @%x\n",temp_raddr);
-              end   
+              end
               read_index++;
               if(i==0)
                 temp_raddr = ((temp_raddr>>size)<<size) + (2**size);
               else
-                temp_raddr = temp_raddr + (2**size);    
-              last_raddr = temp_raddr[AxiMaxSize-1:0] + (2**size);       
+                temp_raddr = temp_raddr + (2**size);
+              last_raddr = temp_raddr[AxiMaxSize-1:0] + (2**size);
           end // for (int unsigned i = 0; i < burst_len + 1; i++)
         end
-       
+
     endtask
 
     // axi write task
@@ -709,7 +709,7 @@ module fixture_hyperbus_udma #(
         aw_beat.ax_len   = burst_len;
         aw_beat.ax_burst = axi_pkg::BURST_INCR;
         aw_beat.ax_size  = size;
-       
+
         w_beat.w_strb   = wstrb;
         w_beat.w_last   = 1'b0;
         last_waddr = '0;
@@ -720,8 +720,8 @@ module fixture_hyperbus_udma #(
           $display("%p", aw_beat);
 
           axi_master_drv.send_aw(aw_beat);
-          
-          
+
+
           for(int unsigned i = 0; i < burst_len + 1; i++) begin
               if (i == burst_len) begin
                   w_beat.w_last = 1'b1;
@@ -749,7 +749,7 @@ module fixture_hyperbus_udma #(
               memory[write_index]=trans_wdata;
               if($isunknown(trans_wdata)) begin
                  $fatal(1,"Xs @%x\n",temp_waddr);
-              end   
+              end
               write_index++;
               if(i==0)
                 temp_waddr = ((temp_waddr>>size)<<size) + (2**size);
@@ -757,10 +757,10 @@ module fixture_hyperbus_udma #(
                 temp_waddr = temp_waddr + (2**size);
               last_waddr = temp_waddr[AxiMaxSize-1:0] + (2**size);
           end // for (int unsigned i = 0; i < burst_len + 1; i++)
-          
+
           axi_master_drv.recv_b(b_beat);
-        end 
-       
+        end
+
     endtask
 
     task WriteConfig(SetConfig sconfig, int id);
@@ -780,7 +780,7 @@ module fixture_hyperbus_udma #(
 
         automatic int mem_address;
         automatic int length;
-                         
+
         automatic int count2=0;
         automatic int burst_size_32=0;
         if((length%4)==0) burst_size_32 = length/4;
@@ -788,9 +788,9 @@ module fixture_hyperbus_udma #(
 
         mem_address = mem_address_i;
         length = length_i;
-                 
+
         $display("Request from tb: L3 addr: %d, l2_addr %d, length %d", mem_address_i, l2_address, length_i);
-                         
+
         // Check the transaction is compliant
         if(NumPhys==2) begin
           if(length_i%2!=0) begin
@@ -798,16 +798,16 @@ module fixture_hyperbus_udma #(
              $display("Not supported. Length of writes/reads with udma need to be aligned to 16 bits");
              `endif
              length = (length_i>>1)<<1;
-          end                       
-        end 
-                         
+          end
+        end
+
         if(length_i<4) begin
            `ifdef UDMA_VERBOSE
            $display("Not supported. Length of writes/reads with udma need to be aligned to > 32 bits");
            `endif
            length = 4;
         end
-                         
+
         $display("Issued         : L3 addr: %d, l2_addr %d, length %d", mem_address, l2_address, length);
 
           sconfig = new(`REG_T_RWDS_DELAY_LINE,32'h00000004);
@@ -832,7 +832,7 @@ module fixture_hyperbus_udma #(
           WriteConfig(sconfig,id);
           sconfig = new(`TWD_STRIDE_EXT,32'h000000);
           WriteConfig(sconfig,id);
-          
+
           sconfig = new(`REG_T_CS_MAX, 32'hffffffff); // un_limit burst length
           WriteConfig(sconfig,1);
           sconfig = new(`REG_TX_SADDR, l2_address); // TX Start address
@@ -843,12 +843,12 @@ module fixture_hyperbus_udma #(
           WriteConfig(sconfig,id);
           sconfig = new(`HYPER_CA_SETUP, 32'h000001); // Write is declared.
           WriteConfig(sconfig,id);
-          sconfig = new(`REG_UDMA_TXCFG, 32'h0000014); // Write transaction is kicked 
+          sconfig = new(`REG_UDMA_TXCFG, 32'h0000014); // Write transaction is kicked
           WriteConfig(sconfig,id);
-          
+
           #(SYS_TCK*burst_size_32);
           #(SYS_TCK*burst_size_32);
-          
+
           sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
           WriteConfig(sconfig,1);
           sconfig = new(`REG_UDMA_TXCFG, 32'h0000000); // Write transaction ends
@@ -859,7 +859,7 @@ module fixture_hyperbus_udma #(
           wait(rx_valid_udma_o);
           count2 = 0;
           #(SYS_TCK*burst_size_32*2);
-        
+
 
     endtask : LongWriteTransactionTest
 
@@ -892,7 +892,7 @@ module fixture_hyperbus_udma #(
     endtask : ReadTransaction
 
     task RegTransaction();
- 
+
         sconfig = new(`REG_PAGE_BOUND, 32'h00000004);
         WriteConfig(sconfig,1);
         sconfig = new(`REG_HYPER_ADDR, 32'h000000); // ID0 reg
@@ -909,8 +909,8 @@ module fixture_hyperbus_udma #(
         #(SYS_TCK*10);
         sconfig = new(`HYPER_CA_SETUP, 32'h000000); // configration is cleared
         WriteConfig(sconfig,1);
-  
-    
+
+
         sconfig = new(`REG_HYPER_ADDR, 32'h000001); // ID1 reg
         WriteConfig(sconfig,1);
         sconfig = new(`HYPER_CA_SETUP, 32'h000006); // Reg read
@@ -954,7 +954,7 @@ module fixture_hyperbus_udma #(
         WriteConfig(sconfig,1);
         sconfig = new(`HYPER_CA_SETUP, 32'h000002); // Reg Write is declared
         WriteConfig(sconfig,1);
-        sconfig = new(`REG_UDMA_TXCFG, 32'h0000014); // Write transaction is kicked 
+        sconfig = new(`REG_UDMA_TXCFG, 32'h0000014); // Write transaction is kicked
         WriteConfig(sconfig,1);
         sconfig = new(`HYPER_CA_SETUP, 32'h000000); // Reg Write finished
         WriteConfig(sconfig,1);
@@ -979,7 +979,7 @@ module fixture_hyperbus_udma #(
         #(SYS_TCK*2000);
     endtask: RegTransaction
 
-   
+
 endmodule : fixture_hyperbus_udma
 
 
