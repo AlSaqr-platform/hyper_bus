@@ -257,7 +257,7 @@ module hyperbus_synth_wrap
         .cfg_tx_curr_addr_i     ( cfg_tx_curr_addr_i   ),
         .cfg_tx_bytes_left_i    ( cfg_tx_bytes_left_i  ),
 
-        .evt_eot_hyper_o        ( evt_eot_hyper        ),
+        .evt_eot_hyper_o        ( evt_eot_hyper_o      ),
 
         .pad_hyper_csn          ( pad_hyper_csn         ),
         .pad_hyper_ck           ( pad_hyper_ck          ),
