@@ -14,7 +14,7 @@ dependencies:
   tech_cells_generic:  { git: "https://github.com/pulp-platform/tech_cells_generic.git", version: 0.2.11  }
   register_interface:  { git: "git@github.com:AlSaqr-platform/register_interface.git",   version:  0.3.2 }
   common_pads:         { git: "git@github.com:AlSaqr-platform/common_pads.git", version: 0.0.4 }
-  hyperbus:            { git: "https://github.com/pulp-platform/hyperbus.git", version: 0.0.3 }
+  hyperbus:            { git: "https://github.com/pulp-platform/hyperbus.git", rev: 3b51e74d77acbb9430464f06e1e02862c89b3310 }
 
 sources:
   files:
