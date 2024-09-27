@@ -365,6 +365,7 @@ module hyperbus_async_macro #(
         .AxiDataWidth   ( AxiDataWidth      ),
         .AxiAddrWidth   ( AxiAddrWidth      ),
         .AxiIdWidth     ( AxiIdWidth        ),
+        .AxiUserWidth   ( AxiUserWidth      ),
         .axi_req_t      ( axi_req_t         ),
         .axi_rsp_t      ( axi_rsp_t         ),
         .NumChips       ( NumChips          ),
