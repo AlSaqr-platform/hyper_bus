@@ -163,7 +163,7 @@ module hyperbus_async_macro #(
     reg_req_t                    reg_req_i, pad_reg_req_i, cfg_reg_req_i;
     reg_rsp_t                    reg_rsp_o, pad_reg_rsp_o, cfg_reg_rsp_o;
 
-    reg_cdc_master_intf #(
+    reg_cdc_dst #(
     .req_t(reg_req_t),
     .rsp_t(reg_rsp_t)
     )i_reg_master_cdc_intf (
@@ -227,7 +227,7 @@ module hyperbus_async_macro #(
          assign  s_udma_cfg_rsps[i].ready = cfg_ready_o[i];
          assign  s_udma_cfg_rsps[i].error = 1'b0;
 
-         reg_cdc_master_intf #(
+         reg_cdc_dst #(
           .req_t(udma_reg_req_t),
           .rsp_t(udma_reg_rsp_t)
          )i_reg_cdc_master_intf (
@@ -365,6 +365,7 @@ module hyperbus_async_macro #(
         .AxiDataWidth   ( AxiDataWidth      ),
         .AxiAddrWidth   ( AxiAddrWidth      ),
         .AxiIdWidth     ( AxiIdWidth        ),
+        .AxiUserWidth   ( AxiUserWidth      ),
         .axi_req_t      ( axi_req_t         ),
         .axi_rsp_t      ( axi_rsp_t         ),
         .NumChips       ( NumChips          ),

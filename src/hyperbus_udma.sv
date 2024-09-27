@@ -203,7 +203,7 @@ module hyperbus_udma #(
     logic                        s_async_reg_rsp_ack;
     reg_rsp_t                    s_async_reg_rsp_data;
 
-    reg_cdc_slave_intf #(
+    reg_cdc_src #(
      .req_t(reg_req_t),
      .rsp_t(reg_rsp_t)
     )i_reg_cdc_slave_intf (
@@ -244,7 +244,7 @@ module hyperbus_udma #(
          assign  cfg_data_o[i] = s_udma_cfg_rsps[i].rdata;
          assign  cfg_ready_o[i]= s_udma_cfg_rsps[i].ready;
 
-         reg_cdc_slave_intf #(
+         reg_cdc_src #(
           .req_t(udma_cfg_reg_req_t),
           .rsp_t(udma_cfg_reg_rsp_t)
          )i_reg_cdc_slave_intf (
