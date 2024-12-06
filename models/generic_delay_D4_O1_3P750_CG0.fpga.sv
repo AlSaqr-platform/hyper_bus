@@ -1,15 +1,5 @@
-
-// Copyright (c) 2021 ETH Zurich.
-// Thomas Benz <tbenz@iis.ee.ethz.ch>
-// Paul Scheffler <paulsc@iis.ee.ethz.ch>
-
-// Based on work of:
-// Fabian Schuiki <fschuiki@iis.ee.ethz.ch>
-// Florian Zaruba <zarubaf@iis.ee.ethz.ch>
-
-// Automatically generated
 `timescale 1ps/1ps
-  
+
 (* no_ungroup *)
 (* no_boundary_optimization *)
 module generic_delay_D4_O1_3P750_CG0 (
@@ -26,7 +16,7 @@ module generic_delay_D4_O1_3P750_CG0 (
       (
        .I  (clk_i),
        .O  (clk_o[0])
-       );  
-        
+       );
+
 endmodule
 
