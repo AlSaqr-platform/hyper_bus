@@ -1,0 +1,3 @@
+[submodule "gf22"]
+	path = gf22
+	url = git@iis-git.ee.ethz.ch:pulp-restricted/hyperbus_gf22.git

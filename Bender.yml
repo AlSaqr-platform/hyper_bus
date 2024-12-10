@@ -37,6 +37,7 @@ sources:
         GF22_DELAY_LINES: ~
       files:
         - models/techcells/tc_clk_gf22.sv
+        - models/techcells/configurable_delay_gf22.sv
     - src/udma_hyper/udma_hyper_busy.sv
     - src/udma_hyper/udma_cmd_queue.sv
     - src/udma_hyper/udma_hyper_reg_if_common.sv
@@ -57,7 +58,7 @@ sources:
 
     - target: post_synth_sim
       files:
-        - gf22/innovus/trial3/out/hyperbus_synth_wrap.v
+        - gf22/synopsys/trial/netlists/hyperbus_async_macro.v
 
     - target: test_tb
       files:
