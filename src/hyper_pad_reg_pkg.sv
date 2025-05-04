@@ -7,7 +7,7 @@
 package hyper_pad_reg_pkg;
 
   // Address widths within the block
-  parameter int BlockAw = 5;
+  parameter int BlockAw = 7;
 
   ////////////////////////////
   // Typedefs for registers //
@@ -31,38 +31,38 @@ package hyper_pad_reg_pkg;
   } hyper_pad_reg2hw_t;
 
   // Register offsets
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_0_OFFSET = 5'h 0;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_1_OFFSET = 5'h 1;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_2_OFFSET = 5'h 2;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_3_OFFSET = 5'h 3;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_4_OFFSET = 5'h 4;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_5_OFFSET = 5'h 5;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_6_OFFSET = 5'h 6;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_7_OFFSET = 5'h 7;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_8_OFFSET = 5'h 8;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_9_OFFSET = 5'h 9;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_10_OFFSET = 5'h a;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_11_OFFSET = 5'h b;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_12_OFFSET = 5'h c;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_13_OFFSET = 5'h d;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_14_OFFSET = 5'h e;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_15_OFFSET = 5'h f;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_16_OFFSET = 5'h 10;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_17_OFFSET = 5'h 11;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_18_OFFSET = 5'h 12;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_19_OFFSET = 5'h 13;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_20_OFFSET = 5'h 14;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_21_OFFSET = 5'h 15;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_22_OFFSET = 5'h 16;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_23_OFFSET = 5'h 17;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_24_OFFSET = 5'h 18;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_25_OFFSET = 5'h 19;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_26_OFFSET = 5'h 1a;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_27_OFFSET = 5'h 1b;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_28_OFFSET = 5'h 1c;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_29_OFFSET = 5'h 1d;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_30_OFFSET = 5'h 1e;
-  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_31_OFFSET = 5'h 1f;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_0_OFFSET = 7'h 0;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_1_OFFSET = 7'h 4;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_2_OFFSET = 7'h 8;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_3_OFFSET = 7'h c;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_4_OFFSET = 7'h 10;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_5_OFFSET = 7'h 14;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_6_OFFSET = 7'h 18;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_7_OFFSET = 7'h 1c;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_8_OFFSET = 7'h 20;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_9_OFFSET = 7'h 24;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_10_OFFSET = 7'h 28;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_11_OFFSET = 7'h 2c;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_12_OFFSET = 7'h 30;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_13_OFFSET = 7'h 34;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_14_OFFSET = 7'h 38;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_15_OFFSET = 7'h 3c;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_16_OFFSET = 7'h 40;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_17_OFFSET = 7'h 44;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_18_OFFSET = 7'h 48;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_19_OFFSET = 7'h 4c;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_20_OFFSET = 7'h 50;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_21_OFFSET = 7'h 54;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_22_OFFSET = 7'h 58;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_23_OFFSET = 7'h 5c;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_24_OFFSET = 7'h 60;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_25_OFFSET = 7'h 64;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_26_OFFSET = 7'h 68;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_27_OFFSET = 7'h 6c;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_28_OFFSET = 7'h 70;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_29_OFFSET = 7'h 74;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_30_OFFSET = 7'h 78;
+  parameter logic [BlockAw-1:0] HYPER_PAD_PADS_31_OFFSET = 7'h 7c;
 
   // Register index
   typedef enum int {

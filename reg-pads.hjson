@@ -9,7 +9,7 @@
   bus_interfaces: [
     { protocol: "reg_iface", direction: "device" }
   ],
-  regwidth: "4",
+  regwidth: "32",
   registers :[
             { multireg :
                        { name: "PADs",
