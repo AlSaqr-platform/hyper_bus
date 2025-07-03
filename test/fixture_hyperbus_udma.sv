@@ -51,11 +51,11 @@ module fixture_hyperbus_udma #(
 
     int unsigned            k, j;
 
-    localparam time SYS_TCK  = 8ns;
+    localparam time SYS_TCK  = 4ns;
     localparam time SYS_TA   = 1ns;
     localparam time SYS_TT   = SYS_TCK - 1ns;
 
-    localparam time PHY_TCK  = 4ns;
+    localparam time PHY_TCK  = 8ns;
 
     logic sys_clk      = 0;
     logic phy_clk      = 0;
