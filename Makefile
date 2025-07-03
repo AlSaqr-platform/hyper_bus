@@ -68,41 +68,41 @@ gf22/synopsys/scripts/analyze.tcl: Bender.yml | gf22/cockpit.log
 
 post_synth_compile:
 	echo 'set ROOT [file normalize [file dirname [info script]]/../]' > scripts/post_synth_compile.tcl
-	bender script $(VSIM) --vlog-arg="-work gate" -t post_synth_sim -t test | grep -v "set ROOT" >> scripts/post_synth_compile.tcl
+	bender script $(VSIM) --vlog-arg="-work gate" -t post_synth_sim -t test -t test_tb | grep -v "set ROOT" >> scripts/post_synth_compile.tcl
 
 # --------------
 # GENERIC-DELAY
 # --------------
 
-BUILD_DIR ?= /dev/shm/hyper
+# BUILD_DIR ?= /dev/shm/hyper
 
-DELAY_REMOTE ?= git@iis-git.ee.ethz.ch:bslk/generic-delay.git
-DELAY_TAG ?= master
+# DELAY_REMOTE ?= git@iis-git.ee.ethz.ch:bslk/generic-delay.git
+# DELAY_TAG ?= master
 
-DELAY_REPO ?= $(BUILD_DIR)/generic-delay
-DELAY_OUTDIR ?= $(BUILD_DIR)/generic-delay-build
-DELAY_TECH ?= tsmc65
-export
+# DELAY_REPO ?= $(BUILD_DIR)/generic-delay
+# DELAY_OUTDIR ?= $(BUILD_DIR)/generic-delay-build
+# DELAY_TECH ?= tsmc65
+# export
 
--include $(DELAY_REPO)/delay.mk
+# -include $(DELAY_REPO)/delay.mk
 
-DELAY_FILEPATHS ?= \
-	models/generic_delay_D4_O1_3P750_CG0.behav.sv \
-	models/generic_delay_D4_O1_3P750_CG0_mid.db
+# DELAY_FILEPATHS ?= \
+# 	models/generic_delay_D4_O1_3P750_CG0.behav.sv \
+# 	models/generic_delay_D4_O1_3P750_CG0_mid.db
 
-.PHONY: delay_clean
+# .PHONY: delay_clean
 
-delay_clean:
-	rm -rf $(BUILD_DIR)
-	rm -rf $(DELAY_OUTDIR)
-	rm -rf $(DELAY_FILEPATHS)
+# delay_clean:
+# 	rm -rf $(BUILD_DIR)
+# 	rm -rf $(DELAY_OUTDIR)
+# 	rm -rf $(DELAY_FILEPATHS)
 
-$(DELAY_REPO)/delay.mk:
-	mkdir -p $(BUILD_DIR)
-	rm -rf $(DELAY_REPO)
-	$(GIT) clone $(DELAY_REMOTE) $(DELAY_REPO) && cd $(DELAY_REPO) && $(GIT) checkout $(DELAY_TAG)
+# $(DELAY_REPO)/delay.mk:
+# 	mkdir -p $(BUILD_DIR)
+# 	rm -rf $(DELAY_REPO)
+# 	$(GIT) clone $(DELAY_REMOTE) $(DELAY_REPO) && cd $(DELAY_REPO) && $(GIT) checkout $(DELAY_TAG)
 
-.SECONDEXPANSION:
-$(DELAY_FILEPATHS): $$(DELAY_OUTDIR)/$$(notdir $$@)
-	mkdir -p $(dir $@)
-	cp $< $@
+# .SECONDEXPANSION:
+# $(DELAY_FILEPATHS): $$(DELAY_OUTDIR)/$$(notdir $$@)
+# 	mkdir -p $(dir $@)
+# 	cp $< $@
