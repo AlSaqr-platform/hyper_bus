@@ -504,20 +504,21 @@ module fixture_hyperbus_udma #(
 
     );
 
+    localparam string sdf_file_path =
+      `ifdef TARGET_POST_SYNTH_SIM
+      "../../models/s27ks0641/s27ks0641.sdf"
+      `else
+      "../models/s27ks0641/s27ks0641.sdf"
+      `endif
+    ;
 
-    generate
-       for (genvar p=0; p<NumPhys; p++) begin : sdf_annotation
-         initial begin
-             `ifndef TARGET_POST_SYNTH_SIM
-             automatic string sdf_file_path = "../models/s27ks0641/s27ks0641.sdf";
-             `else
-             automatic string sdf_file_path = "../../models/s27ks0641/s27ks0641.sdf";
-             `endif
-             $sdf_annotate(sdf_file_path, hyperrams[p].i_s27ks0641);
-             $display("NumPhys:%d",NumPhys);
-         end
-       end
-    endgenerate
+    $info("NumPhys:%d",NumPhys);
+
+    for (genvar p=0; p<NumPhys; p++) begin : sdf_annotation
+      initial begin
+          $sdf_annotate(sdf_file_path, hyperrams[p].i_s27ks0641);
+      end
+    end
 
 
     // -------------------------- TB TASKS --------------------------
