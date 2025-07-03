@@ -44,8 +44,9 @@
 `include "register_interface/typedef.svh"
 
 module fixture_hyperbus_udma #(
-    parameter int unsigned NumChips = 2,
-    parameter int unsigned NumPhys = 2
+    parameter int unsigned NumChips = 4,
+    parameter int unsigned NumPhys = 2,
+    parameter int unsigned MemBaseAddr = '0
 );
 
 
@@ -65,14 +66,14 @@ module fixture_hyperbus_udma #(
 
     // -------------------- AXI drivers --------------------
 
-    localparam AxiAw  = 32;
-    localparam AxiDw  = 64;
+    localparam AxiAw  = 'h40;
+    localparam AxiDw  = 'h40;
     localparam AxiMaxSize = $clog2(AxiDw/8);
-    localparam AxiIw  = 6;
-    localparam RegAw  = 32;
-    localparam RegDw  = 32;
+    localparam AxiIw  = 'h9;
+    localparam RegAw  = 'h20;
+    localparam RegDw  = 'h20;
 
-    typedef axi_pkg::xbar_rule_32_t rule_t;
+    typedef axi_pkg::xbar_rule_64_t rule_t;
 
     typedef logic [AxiAw-1:0]   axi_addr_t;
     typedef logic [AxiDw-1:0]   axi_data_t;
@@ -181,8 +182,8 @@ module fixture_hyperbus_udma #(
 
     // -------------------------- UDMA test --------------------
 
-    localparam L2_AWIDTH_NOAL = 12;
-    localparam TRANS_SIZE = 16;
+    localparam L2_AWIDTH_NOAL = 'h20;
+    localparam TRANS_SIZE = 'h14;
     localparam BYTE_WIDTH = 8;
     localparam MEM_DEPTH = 4096;
     localparam NB_CH=1;
@@ -423,26 +424,35 @@ module fixture_hyperbus_udma #(
 
     // DUT
     hyperbus_udma #(
-        .NumChips       ( NumChips    ),
-        .NumPhys        ( NumPhys     ),
-        .AxiAddrWidth   ( AxiAw       ),
-        .AxiDataWidth   ( AxiDw       ),
-        .AxiIdWidth     ( AxiIw       ),
-        .AxiUserWidth   ( 1           ),
-        .axi_req_t      ( req_t       ),
-        .axi_rsp_t      ( resp_t      ),
-        .axi_aw_chan_t  ( aw_chan_t   ),
-        .axi_w_chan_t   ( w_chan_t    ),
-        .axi_b_chan_t   ( b_chan_t    ),
-        .axi_ar_chan_t  ( ar_chan_t   ),
-        .axi_r_chan_t   ( r_chan_t    ),
-        .RegAddrWidth   ( RegAw       ),
-        .RegDataWidth   ( RegDw       ),
-        .reg_req_t      ( reg_req_t   ),
-        .reg_rsp_t      ( reg_rsp_t   ),
-        .IsClockODelayed( 0           ),
-        .NB_CH          ( NB_CH       ),
-        .axi_rule_t     ( rule_t      )
+        .NumChips       ( NumChips       ),
+        .NumPhys        ( NumPhys        ),
+        .AxiAddrWidth   ( AxiAw          ),
+        .AxiDataWidth   ( AxiDw          ),
+        .AxiIdWidth     ( AxiIw          ),
+        .AxiUserWidth   ( 1              ),
+        .axi_req_t      ( req_t          ),
+        .axi_rsp_t      ( resp_t         ),
+        .axi_aw_chan_t  ( aw_chan_t      ),
+        .axi_w_chan_t   ( w_chan_t       ),
+        .axi_b_chan_t   ( b_chan_t       ),
+        .axi_ar_chan_t  ( ar_chan_t      ),
+        .axi_r_chan_t   ( r_chan_t       ),
+        .RegAddrWidth   ( RegAw          ),
+        .RegDataWidth   ( RegDw          ),
+        .reg_req_t      ( reg_req_t      ),
+        .reg_rsp_t      ( reg_rsp_t      ),
+        .IsClockODelayed( 0              ),
+        .NB_CH          ( NB_CH          ),
+        .axi_rule_t     ( rule_t         ),
+        .L2_AWIDTH_NOAL ( L2_AWIDTH_NOAL ),
+        .TRANS_SIZE     ( TRANS_SIZE     ),
+        .AxiLogDepth    ( 'h3            ),
+        .SyncStages     ( 'h3            ),
+        .RxFifoLogDepth ( 'h4            ),
+        .TxFifoLogDepth ( 'h4            ),
+        .RstChipBase    ( MemBaseAddr    ),
+        .RstChipSpace   ( 'h01000000     ),
+        .PhyStartupCycles ('hea60        )
     ) i_dut (
         .clk_phy_i              ( phy_clk               ),
         .rst_phy_ni             ( rst_n                 ),
