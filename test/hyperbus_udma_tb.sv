@@ -18,10 +18,15 @@ module hyperbus_udma_tb;
 
     logic error;
 
+    bit [31:0] delay;
+
     initial begin
         fix.reset_end();
         #500us;
-        fix.i_rmaster.send_write('h4, 'h1, '1, error);
+        fix.i_rmaster.send_write('h1 << 'h2, 'h1, '1, error); // cfg_reg: en_latency_additional
+
+        if ($value$plusargs ("RX_DELAY=%d", delay))
+          fix.i_rmaster.send_write('h4 << 'h2, delay, '1, error); // cfg_reg: t_rx_clk_delay
 
         for(int i = 0; i<32; i = i+1) begin
            fix.i_rmaster.send_write('h100 + i, 'b1100, '1, error);
