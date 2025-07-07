@@ -46,17 +46,16 @@
 module fixture_hyperbus_udma #(
     parameter int unsigned NumChips = 4,
     parameter int unsigned NumPhys = 2,
-    parameter int unsigned MemBaseAddr = '0
+    parameter int unsigned MemBaseAddr = '0,
+    parameter time SYS_TCK  = 4ns,
+    parameter time SYS_TA   = 1ns,
+    parameter time SYS_TT   = SYS_TCK - 1ns,
+    parameter time TCK_SKEW = 0ns,
+    parameter time PHY_TCK  = 8ns
 );
 
 
     int unsigned            k, j;
-
-    localparam time SYS_TCK  = 4ns;
-    localparam time SYS_TA   = 1ns;
-    localparam time SYS_TT   = SYS_TCK - 1ns;
-
-    localparam time PHY_TCK  = 8ns;
 
     logic sys_clk      = 0;
     logic phy_clk      = 0;
@@ -629,6 +628,7 @@ module fixture_hyperbus_udma #(
 
     // Generate clock
     initial begin
+        #(TCK_SKEW);
         while (!eos) begin
             phy_clk = 1;
             #(PHY_TCK/2);
